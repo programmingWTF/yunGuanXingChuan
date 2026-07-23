@@ -1,0 +1,98 @@
+[
+  {
+    "id": "us_001",
+    "source": "SpaceNews",
+    "title": "China's Chang'e-6 Returns First-Ever Samples from Lunar Far Side",
+    "date": "2024-06-25",
+    "language": "en",
+    "country": "US",
+    "content": "China's Chang'e-6 mission successfully returned 1,935.3 grams of lunar material from the far side of the Moon, marking a historic first in space exploration. The achievement intensifies the space competition between the US and China, as NASA's Artemis program faces delays. Analysts note that while the scientific value is undeniable, the geopolitical implications of China's growing space capabilities cannot be ignored.",
+    "framework": "competition",
+    "sentiment": "mixed",
+    "key_phrases": ["space competition", "geopolitical implications", "historic first"]
+  },
+  {
+    "id": "us_002",
+    "source": "The New York Times",
+    "title": "China Brings Back Rocks From Far Side of Moon, a First for Humanity",
+    "date": "2024-06-26",
+    "language": "en",
+    "country": "US",
+    "content": "In a milestone for space exploration, China's Chang'e-6 spacecraft returned to Earth carrying samples from the far side of the Moon. The mission, which included instruments from France, Italy, Pakistan and the European Space Agency, represents both scientific achievement and strategic positioning in an increasingly competitive space landscape. The samples could reveal new insights about the Moon's geological history.",
+    "framework": "progress",
+    "sentiment": "positive",
+    "key_phrases": ["milestone", "scientific achievement", "competitive space landscape"]
+  },
+  {
+    "id": "us_003",
+    "source": "Foreign Affairs",
+    "title": "The New Space Race: What China's Lunar Success Means for US Policy",
+    "date": "2024-07-01",
+    "language": "en",
+    "country": "US",
+    "content": "China's successful Chang'e-6 mission underscores the intensifying strategic competition in space. While Washington focuses on the Artemis program's delays, Beijing has methodically executed its lunar exploration roadmap. The mission's international payloads demonstrate China's ability to build space partnerships, potentially challenging US leadership in space governance. US policymakers must decide whether to engage cooperatively or double down on competition.",
+    "framework": "competition",
+    "sentiment": "negative",
+    "key_phrases": ["strategic competition", "challenging US leadership", "space governance"]
+  },
+  {
+    "id": "us_004",
+    "source": "Nature",
+    "title": "First lunar far-side samples hint at ancient volcanic activity",
+    "date": "2024-11-15",
+    "language": "en",
+    "country": "US",
+    "content": "Analysis of samples returned by China's Chang'e-6 mission from the Moon's far side reveals evidence of volcanic activity dating back 2.8 billion years. The findings, published in Nature, suggest the lunar far side remained geologically active much longer than previously thought. International scientists praised the mission's contribution to planetary science, noting the samples fill a critical gap in our understanding of lunar evolution.",
+    "framework": "progress",
+    "sentiment": "positive",
+    "key_phrases": ["scientific contribution", "fill a critical gap", "international scientists praised"]
+  },
+  {
+    "id": "us_005",
+    "source": "Space.com",
+    "title": "Chang'e-6 Samples Available for International Research Applications",
+    "date": "2024-08-20",
+    "language": "en",
+    "country": "US",
+    "content": "China's National Space Administration has opened applications for international researchers to study Chang'e-6 lunar samples. US scientists at MIT and Caltech have submitted proposals, though political restrictions on NASA-China collaboration may complicate access. The samples represent a unique opportunity to study the Moon's largest impact basin.",
+    "framework": "cooperation",
+    "sentiment": "neutral",
+    "key_phrases": ["international applications", "political restrictions", "unique opportunity"]
+  },
+  {
+    "id": "us_006",
+    "source": "Washington Post",
+    "title": "China's Moon Success Puts Pressure on NASA's Artemis Timeline",
+    "date": "2024-09-05",
+    "language": "en",
+    "country": "US",
+    "content": "With each Chinese lunar success, the pressure mounts on NASA to deliver on Artemis promises. Congressional lawmakers are questioning whether the US can maintain its space leadership position when China consistently meets its milestones while Artemis faces repeated delays. The debate highlights tensions between ambitious goals and realistic budgeting.",
+    "framework": "competition",
+    "sentiment": "negative",
+    "key_phrases": ["pressure mounts", "space leadership", "repeated delays"]
+  },
+  {
+    "id": "us_007",
+    "source": "Scientific American",
+    "title": "What We Can Learn from the Moon's Hidden Side",
+    "date": "2024-10-12",
+    "language": "en",
+    "country": "US",
+    "content": "The far side of the Moon has always been a mystery, shielded from direct observation and sampling. Chang'e-6's returned materials are now revealing that the Moon's two hemispheres have strikingly different geological histories. This asymmetry challenges the prevailing giant-impact hypothesis and may require modifications to our understanding of how Earth's Moon formed.",
+    "framework": "progress",
+    "sentiment": "positive",
+    "key_phrases": ["strikingly different histories", "challenges hypothesis", "how Moon formed"]
+  },
+  {
+    "id": "us_008",
+    "source": "Defense News",
+    "title": "Pentagon Monitors China's Growing Space Capabilities After Lunar Win",
+    "date": "2024-11-01",
+    "language": "en",
+    "country": "US",
+    "content": "The US Space Force is closely tracking China's space programme advances, with Chang'e-6 cited in the latest threat assessment as evidence of Beijing's growing technical sophistication. While the mission is scientific in nature, officials note that the precision navigation, autonomous operations, and sample return capabilities have potential military applications in cislunar space.",
+    "framework": "threat",
+    "sentiment": "negative",
+    "key_phrases": ["threat assessment", "military applications", "cislunar space"]
+  }
+]

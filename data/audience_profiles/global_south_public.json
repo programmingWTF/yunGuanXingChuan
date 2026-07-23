@@ -1,0 +1,13 @@
+{
+  "name": "全球南方国家普通民众",
+  "country": "巴西/南非/东南亚",
+  "segment": "general_public",
+  "cultural_values": ["重视发展与合作", "关注实际利益", "反对霸权叙事", "追求平等参与"],
+  "media_preferences": ["本地新闻", "社交媒体", "短视频", "WhatsApp/Telegram"],
+  "sensitivity_points": ["避免大国博弈叙事", "强调共同受益", "不要居高临下"],
+  "preferred_tone": "务实、包容、强调共同机遇",
+  "preferred_persona": "collaborator",
+  "language": "pt/fr/en",
+  "key_concerns": ["技术普惠", "参与机会", "共同发展"],
+  "communication_channels": ["社交媒体", "短视频平台", "本地合作媒体"]
+}

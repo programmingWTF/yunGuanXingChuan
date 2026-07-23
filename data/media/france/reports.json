@@ -1,0 +1,50 @@
+[
+  {
+    "id": "fr_001",
+    "source": "Le Monde",
+    "title": "La Chine réussit une première historique avec Chang'e-6 sur la face cachée de la Lune",
+    "date": "2024-06-26",
+    "language": "fr",
+    "country": "France",
+    "content": "La mission chinoise Chang'e-6 a réussi à rapporter des échantillons de la face cachée de la Lune, une première dans l'histoire de l'exploration spatiale. Cette réussite intervient dans un contexte de compétition spatiale accrue entre les grandes puissances. La France, partenaire de la mission via son détecteur de radon, se positionne entre coopération scientifique et vigilance stratégique face à l'expansion des capacités spatiales chinoises.",
+    "framework": "competition",
+    "sentiment": "mixed",
+    "key_phrases": ["compétition spatiale", "coopération scientifique", "vigilance stratégique"]
+  },
+  {
+    "id": "fr_002",
+    "source": "Le Figaro",
+    "title": "Chang'e-6 : le succès lunaire chinois qui bouscule l'ordre spatial mondial",
+    "date": "2024-06-27",
+    "language": "fr",
+    "country": "France",
+    "content": "Avec le retour réussi de Chang'e-6, la Chine confirme son statut de puissance spatiale majeure. Cette mission, qui portait un instrument français, illustre la complexité des relations spatiales sino-européennes : entre collaboration scientifique fructueuse et rivalité technologique. L'Europe spatiale doit désormais définir sa position dans ce nouveau paysage dominé par la compétition américano-chinoise.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": ["rivalité technologique", "compétition américano-chinoise", "puissance spatiale majeure"]
+  },
+  {
+    "id": "fr_003",
+    "source": "Sciences et Avenir",
+    "title": "Les échantillons lunaires de Chang'e-6 : une fenêtre sur 2,8 milliards d'années d'histoire",
+    "date": "2024-11-20",
+    "language": "fr",
+    "country": "France",
+    "content": "Les premiers résultats de l'analyse des échantillons rapportés par Chang'e-6 révèlent des traces d'activité volcanique remontant à 2,8 milliards d'années. Cette découverte majeure pour la science planétaire démontre la valeur de la coopération internationale en matière d'exploration spatiale. Le détecteur de radon français embarqué a contribué à ces résultats, renforçant le partenariat spatial franco-chinois initié avec le satellite SVOM.",
+    "framework": "cooperation",
+    "sentiment": "positive",
+    "key_phrases": ["coopération internationale", "partenariat franco-chinois", "découverte majeure"]
+  },
+  {
+    "id": "fr_004",
+    "source": "France 24",
+    "title": "Exploration lunaire : la Chine et la France, entre coopération et compétition",
+    "date": "2024-07-05",
+    "language": "fr",
+    "country": "France",
+    "content": "La réussite de Chang'e-6 met en lumière le paradoxe des relations spatiales franco-chinoises. D'un côté, le satellite SVOM lancé conjointement en juin 2024 et l'instrument français sur Chang'e-6 témoignent d'une coopération scientifique active. De l'autre, la compétition spatiale mondiale pousse chaque nation à protéger ses intérêts stratégiques. Les scientifiques français appellent à maintenir le dialogue malgré les tensions géopolitiques.",
+    "framework": "cooperation",
+    "sentiment": "mixed",
+    "key_phrases": ["coopération scientifique active", "intérêts stratégiques", "dialogue malgré les tensions"]
+  }
+]

@@ -1,0 +1,50 @@
+[
+  {
+    "id": "br_001",
+    "source": "Folha de S.Paulo",
+    "title": "China traz amostras da face oculta da Lua em feito inédito na exploração espacial",
+    "date": "2024-06-26",
+    "language": "pt",
+    "country": "Brazil",
+    "content": "A missão chinesa Chang'e-6 conseguiu trazer de volta à Terra amostras da face oculta da Lua, um feito nunca antes realizado na história da exploração espacial. Para países em desenvolvimento como o Brasil, a conquista chinesa representa uma oportunidade de participação mais ampla na ciência espacial, longe do monopólio das potências tradicionais. Cientistas brasileiros expressaram interesse em colaborar na análise das amostras.",
+    "framework": "development",
+    "sentiment": "positive",
+    "key_phrases": ["oportunidade", "países em desenvolvimento", "colaboração"]
+  },
+  {
+    "id": "br_002",
+    "source": "O Globo",
+    "title": "Sucesso da Chang'e-6 abre novas possibilidades para cooperação espacial Sul-Sul",
+    "date": "2024-06-28",
+    "language": "pt",
+    "country": "Brazil",
+    "content": "O sucesso da missão Chang'e-6 da China abre novas perspectivas para a cooperação espacial entre países do Sul Global. Diferente da abordagem exclusiva das potências ocidentais, a China tem demonstrado disposição para compartilhar conquistas espaciais com nações em desenvolvimento. O programa espacial brasileiro poderia se beneficiar de parcerias com a China em áreas como observação terrestre e telecomunicações.",
+    "framework": "cooperation",
+    "sentiment": "positive",
+    "key_phrases": ["cooperação Sul-Sul", "compartilhar conquistas", "parcerias"]
+  },
+  {
+    "id": "br_003",
+    "source": "Agência Brasil",
+    "title": "Amostras lunares da Chang'e-6 podem beneficiar cientistas de todo o mundo",
+    "date": "2024-07-02",
+    "language": "pt",
+    "country": "Brazil",
+    "content": "As amostras trazidas pela Chang'e-6 não pertencem apenas à China - elas pertencem à humanidade. Cientistas de todo o mundo, incluindo do Brasil, poderão estudar essas amostras para entender melhor a história do nosso sistema solar. A Agência Espacial Brasileira (AEB) manifestou interesse em estabelecer canais de cooperação com a CNSA para acesso a dados científicos da missão.",
+    "framework": "development",
+    "sentiment": "positive",
+    "key_phrases": ["pertencem à humanidade", "cientistas de todo o mundo", "cooperação"]
+  },
+  {
+    "id": "br_004",
+    "source": "BBC Brasil",
+    "title": "Corrida espacial: como o sucesso lunar da China afeta o Brasil",
+    "date": "2024-07-10",
+    "language": "pt",
+    "country": "Brazil",
+    "content": "Enquanto EUA e China intensificam sua competição espacial, países como o Brasil buscam uma terceira via. O sucesso da Chang'e-6 demonstra que a exploração espacial não precisa ser um jogo de soma zero. Especialistas brasileiros defendem que o país deve aproveitar tanto a cooperação com a China quanto com os EUA para desenvolver suas próprias capacidades espaciais, mantendo uma posição de não-alinhamento estratégico.",
+    "framework": "development",
+    "sentiment": "neutral",
+    "key_phrases": ["terceira via", "não-alinhamento estratégico", "capacidades espaciais"]
+  }
+]

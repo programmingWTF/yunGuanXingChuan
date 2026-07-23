@@ -1,0 +1,74 @@
+[
+  {
+    "id": "jp_001",
+    "source": "NHK World",
+    "title": "中国の月面探査、日本も注目する科学的意義",
+    "date": "2024-06-26",
+    "language": "ja",
+    "country": "Japan",
+    "content": "中国の嫦娥6号が月の裏側からサンプルを持ち帰ったことは、惑星科学にとって画期的な成果である。日本のJAXA関係者は、このサンプルが月形成理論に新たな知見をもたらすと期待している。一方で、アジアにおける宇宙開発競争が激化していることへの懸念も表明されている。",
+    "framework": "progress",
+    "sentiment": "neutral",
+    "key_phrases": ["画期的な成果", "宇宙開発競争", "新たな知見"]
+  },
+  {
+    "id": "jp_002",
+    "source": "Nikkei Asia",
+    "title": "China's Space Wins Put Pressure on Japan's Lunar Programme",
+    "date": "2024-07-08",
+    "language": "en",
+    "country": "Japan",
+    "content": "Japan's SLIM mission achieved a precision landing in January 2024, but China's Chang'e-6 success raises the bar significantly. Japanese space policymakers are debating whether to accelerate the country's lunar exploration timeline. The competition between Asian space powers adds a new dimension to what was previously a US-Russia-China dynamic.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": ["raises the bar", "accelerate timeline", "Asian space powers"]
+  },
+  {
+    "id": "jp_003",
+    "source": "Asahi Shimbun",
+    "title": "月の裏側の岩石、地球の起源にも手がかり",
+    "date": "2024-08-20",
+    "language": "ja",
+    "country": "Japan",
+    "content": "嫦娥6号が持ち帰った月の裏側のサンプルは、地球と月の形成過程に関する新たな仮説を支持する証拠となる可能性がある。東京大学の研究チームは、中国側とのサンプル共有協定締結を働きかけており、日中科学協力の新たなモデルとなり得るとしている。",
+    "framework": "cooperation",
+    "sentiment": "positive",
+    "key_phrases": ["新たな仮説", "サンプル共有協定", "日中科学協力"]
+  },
+  {
+    "id": "jp_004",
+    "source": "Japan Times",
+    "title": "Beijing's Space Diplomacy Wins Over Global South",
+    "date": "2024-09-15",
+    "language": "en",
+    "country": "Japan",
+    "content": "China's inclusion of payloads from Pakistan, Italy, and ESA on Chang'e-6 demonstrates a sophisticated space diplomacy strategy. Tokyo analysts note that Beijing is building a coalition of space partners that could reshape international space governance. Japan must consider whether to engage with or counter this expanding network.",
+    "framework": "competition",
+    "sentiment": "negative",
+    "key_phrases": ["space diplomacy", "coalition of partners", "reshape governance"]
+  },
+  {
+    "id": "jp_005",
+    "source": "Yomiuri Shimbun",
+    "title": "宇宙資源開発の新時代、中国が先行",
+    "date": "2024-10-20",
+    "language": "ja",
+    "country": "Japan",
+    "content": "月の裏側サンプルの分析により、ヘリウム3などの宇宙資源の分布に関する新たなデータが得られる可能性がある。中国は月資源開発において技術的優位を確立しつつあり、日本の宇宙資源戦略にも影響を与える。経済産業省は宇宙資源分野での国際連携強化を検討している。",
+    "framework": "development",
+    "sentiment": "neutral",
+    "key_phrases": ["宇宙資源開発", "技術的優位", "国際連携強化"]
+  },
+  {
+    "id": "jp_006",
+    "source": "Mainichi Shimbun",
+    "title": "科学に国境なし：月サンプル研究で国際協力",
+    "date": "2024-11-05",
+    "language": "ja",
+    "country": "Japan",
+    "content": "中国が月サンプルの一部を国際科学コミュニティに開放する方針を示したことを受け、日本の惑星科学者たちは歓迎の意を表している。科学的協力は地政学的緊張を超越するべきであり、月サンプルの共有はその好例となるとの声が上がっている。",
+    "framework": "cooperation",
+    "sentiment": "positive",
+    "key_phrases": ["科学に国境なし", "国際科学コミュニティ", "緊張を超越"]
+  }
+]

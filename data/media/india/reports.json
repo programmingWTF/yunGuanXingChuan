@@ -1,0 +1,74 @@
+[
+  {
+    "id": "in_001",
+    "source": "The Hindu",
+    "title": "China's Far-Side Moon Mission: A Milestone for Asian Space Exploration",
+    "date": "2024-06-26",
+    "language": "en",
+    "country": "India",
+    "content": "China's Chang'e-6 mission success comes just months after India's own Chandrayaan-3 soft landing near the lunar south pole. Together, these achievements mark Asia's emergence as a dominant force in lunar exploration. Indian scientists at ISRO have expressed interest in collaborative studies of the far-side samples, particularly regarding the South Pole-Aitken basin's geology.",
+    "framework": "progress",
+    "sentiment": "positive",
+    "key_phrases": ["Asian space exploration", "collaborative studies", "dominant force"]
+  },
+  {
+    "id": "in_002",
+    "source": "Times of India",
+    "title": "Space Race Heats Up: India and China Compete for Lunar Supremacy",
+    "date": "2024-07-03",
+    "language": "en",
+    "country": "India",
+    "content": "The back-to-back successes of Chandrayaan-3 and Chang'e-6 have intensified the narrative of an India-China space race. While both nations emphasize peaceful exploration, defence analysts note the strategic implications of lunar presence. India's upcoming Chandrayaan-4 sample return mission will be watched closely as a response to China's capabilities.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": ["space race", "strategic implications", "lunar supremacy"]
+  },
+  {
+    "id": "in_003",
+    "source": "Indian Express",
+    "title": "What China's Moon Rocks Mean for Global South Science",
+    "date": "2024-07-20",
+    "language": "en",
+    "country": "India",
+    "content": "China's willingness to share lunar samples with international researchers represents a significant opportunity for developing nations' scientific communities. Indian planetary scientists argue that access to far-side samples could accelerate India's own lunar science programme without the cost of an independent sample return mission. This democratization of space science benefits the entire Global South.",
+    "framework": "development",
+    "sentiment": "positive",
+    "key_phrases": ["Global South science", "democratization", "accelerate programme"]
+  },
+  {
+    "id": "in_004",
+    "source": "NDTV",
+    "title": "ISRO Eyes Collaboration with China on Lunar Sample Research",
+    "date": "2024-08-10",
+    "language": "en",
+    "country": "India",
+    "content": "Despite border tensions, Indian space scientists are exploring channels for scientific cooperation with Chinese counterparts on lunar sample analysis. The Physical Research Laboratory in Ahmedabad has expertise in extraterrestrial sample analysis from Chandrayaan missions and could contribute unique analytical capabilities to joint studies.",
+    "framework": "cooperation",
+    "sentiment": "positive",
+    "key_phrases": ["scientific cooperation", "despite tensions", "unique capabilities"]
+  },
+  {
+    "id": "in_005",
+    "source": "Hindustan Times",
+    "title": "China's Space Achievements: Inspiration or Challenge for India?",
+    "date": "2024-09-25",
+    "language": "en",
+    "country": "India",
+    "content": "China's systematic lunar exploration programme serves as both inspiration and competitive pressure for India's space ambitions. While ISRO operates on a fraction of China's space budget, Indian scientists argue that frugal innovation can achieve comparable results. The success of Chang'e-6 validates the approach of step-by-step capability building that India has also adopted.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": ["inspiration and pressure", "frugal innovation", "step-by-step approach"]
+  },
+  {
+    "id": "in_006",
+    "source": "The Wire Science",
+    "title": "Lunar Far-Side Samples: A Treasure Trove for Planetary Science",
+    "date": "2024-11-10",
+    "language": "en",
+    "country": "India",
+    "content": "The volcanic basalts from the Moon's far side returned by Chang'e-6 open new research avenues for Indian planetary scientists. Studies of these samples could inform India's own lunar south pole exploration strategy, as similar geological processes may have shaped both regions. The scientific community benefits regardless of which nation delivers the samples.",
+    "framework": "progress",
+    "sentiment": "positive",
+    "key_phrases": ["treasure trove", "new research avenues", "scientific community benefits"]
+  }
+]

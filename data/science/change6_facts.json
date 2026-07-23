@@ -1,0 +1,55 @@
+{
+  "topic": "嫦娥六号",
+  "key_facts": [
+    "嫦娥六号于2024年5月3日发射，6月25日返回器着陆内蒙古",
+    "实现人类首次月球背面采样返回",
+    "采集月球背面样品约1935.3克",
+    "着陆点位于月球背面南极-艾特肯盆地",
+    "搭载4台国际载荷：ESA负离子分析仪、法国氡气探测仪、巴基斯坦立方星、意大利激光角反射器",
+    "鹊桥二号中继星提供地月通信支持",
+    "任务历时53天",
+    "样品发现月球背面28亿年前火山活动证据"
+  ],
+  "entities": [
+    {"name": "嫦娥六号", "type": "mission", "attributes": {"launch_date": "2024-05-03", "return_date": "2024-06-25", "sample_weight": "1935.3g", "duration_days": 53}},
+    {"name": "月球背面", "type": "body", "attributes": {"feature": "永远背对地球", "english_name": "Lunar Far Side"}},
+    {"name": "南极-艾特肯盆地", "type": "body", "attributes": {"diameter": "2500km", "english_name": "South Pole-Aitken Basin"}},
+    {"name": "鹊桥二号", "type": "technology", "attributes": {"function": "地月中继通信", "launch_date": "2024-03-20"}},
+    {"name": "CNSA", "type": "organization", "attributes": {"full_name": "中国国家航天局", "english_name": "China National Space Administration"}},
+    {"name": "ESA", "type": "organization", "attributes": {"full_name": "欧洲航天局", "english_name": "European Space Agency"}},
+    {"name": "SVOM", "type": "mission", "attributes": {"description": "中法天文卫星", "launch_date": "2024-06-22"}},
+    {"name": "中国探月工程", "type": "mission", "attributes": {"english_name": "Chinese Lunar Exploration Program", "alias": "嫦娥工程"}},
+    {"name": "负离子分析仪", "type": "technology", "attributes": {"provider": "ESA", "function": "月表负离子探测"}},
+    {"name": "氡气探测仪", "type": "technology", "attributes": {"provider": "法国", "function": "月表氡气及其衰变产物探测"}},
+    {"name": "内蒙古四子王旗", "type": "body", "attributes": {"function": "返回器着陆场"}},
+    {"name": "长征五号", "type": "technology", "attributes": {"function": "运载火箭", "english_name": "Long March 5"}}
+  ],
+  "relations": [
+    {"subject": "嫦娥六号", "predicate": "achieved", "object": "人类首次月球背面采样返回", "confidence": 1.0, "source": "CNSA官方公告"},
+    {"subject": "嫦娥六号", "predicate": "landed_on", "object": "南极-艾特肯盆地", "confidence": 1.0, "source": "CNSA官方公告"},
+    {"subject": "嫦娥六号", "predicate": "carries_payload_from", "object": "ESA", "confidence": 1.0, "source": "ESA官网"},
+    {"subject": "嫦娥六号", "predicate": "carries_payload_from", "object": "法国", "confidence": 1.0, "source": "中法航天合作公告"},
+    {"subject": "嫦娥六号", "predicate": "part_of", "object": "中国探月工程", "confidence": 1.0, "source": "CNSA"},
+    {"subject": "鹊桥二号", "predicate": "supports", "object": "嫦娥六号", "confidence": 1.0, "source": "CNSA"},
+    {"subject": "SVOM", "predicate": "collaboration_between", "object": "中国与法国", "confidence": 1.0, "source": "中法联合声明"},
+    {"subject": "嫦娥六号", "predicate": "launched_by", "object": "长征五号", "confidence": 1.0, "source": "CNSA"},
+    {"subject": "嫦娥六号", "predicate": "launched_at", "object": "2024-05-03", "confidence": 1.0, "source": "CNSA"},
+    {"subject": "嫦娥六号", "predicate": "returned_at", "object": "2024-06-25", "confidence": 1.0, "source": "CNSA"},
+    {"subject": "CNSA", "predicate": "operates", "object": "嫦娥六号", "confidence": 1.0, "source": "CNSA"},
+    {"subject": "月球背面", "predicate": "part_of", "object": "月球", "confidence": 1.0, "source": "天文学常识"}
+  ],
+  "timeline": [
+    {"date": "2024-03-20", "event": "鹊桥二号中继星发射"},
+    {"date": "2024-05-03", "event": "嫦娥六号探测器发射"},
+    {"date": "2024-06-02", "event": "着陆器成功着陆月球背面南极-艾特肯盆地"},
+    {"date": "2024-06-04", "event": "完成月背采样"},
+    {"date": "2024-06-25", "event": "返回器携带样品着陆内蒙古四子王旗"},
+    {"date": "2024-06-28", "event": "样品移交科研机构"}
+  ],
+  "data_sources": [
+    "中国国家航天局(CNSA)官方公告",
+    "欧洲航天局(ESA)官网",
+    "Nature相关论文",
+    "新华社报道"
+  ]
+}

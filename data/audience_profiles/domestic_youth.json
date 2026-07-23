@@ -1,0 +1,13 @@
+{
+  "name": "国内青年学生",
+  "country": "中国",
+  "segment": "youth",
+  "cultural_values": ["民族自豪感", "科技热情", "喜欢有趣表达", "追求知识获得感"],
+  "media_preferences": ["B站", "抖音", "微博", "知乎", "小红书"],
+  "sensitivity_points": ["不要说教", "不要太官方", "不要假大空"],
+  "preferred_tone": "活泼、好奇驱动、有画面感",
+  "preferred_persona": "storyteller",
+  "language": "zh",
+  "key_concerns": ["科学趣味性", "国家荣誉感", "个人参与感"],
+  "communication_channels": ["B站科普视频", "抖音短视频", "知乎深度回答", "微博话题"]
+}

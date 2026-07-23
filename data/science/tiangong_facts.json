@@ -1,0 +1,46 @@
+{
+  "topic": "天宫空间站",
+  "key_facts": [
+    "天宫空间站于2022年底完成在轨建造，进入应用与发展阶段",
+    "由天和核心舱、问天实验舱、梦天实验舱三个舱段组成T字构型",
+    "空间站总质量约100吨，设计寿命10年以上",
+    "可支持3名航天员长期驻留，轮换期间可支持6人",
+    "2024年完成多次航天员乘组轮换和货运飞船补给",
+    "面向联合国成员国开放科学实验项目申请",
+    "已安排来自17个国家的9个科学实验项目",
+    "空间站轨道高度约400公里，倾角41.5度"
+  ],
+  "entities": [
+    {"name": "天宫空间站", "type": "mission", "attributes": {"english_name": "Tiangong Space Station", "completion_date": "2022-12", "mass": "100t", "orbit_altitude": "400km"}},
+    {"name": "天和核心舱", "type": "technology", "attributes": {"english_name": "Tianhe Core Module", "launch_date": "2021-04-29", "function": "空间站核心控制"}},
+    {"name": "问天实验舱", "type": "technology", "attributes": {"english_name": "Wentian Lab Module", "launch_date": "2022-07-24"}},
+    {"name": "梦天实验舱", "type": "technology", "attributes": {"english_name": "Mengtian Lab Module", "launch_date": "2022-10-31"}},
+    {"name": "神舟飞船", "type": "technology", "attributes": {"english_name": "Shenzhou", "function": "载人天地往返"}},
+    {"name": "天舟货运飞船", "type": "technology", "attributes": {"english_name": "Tianzhou", "function": "货物运输补给"}},
+    {"name": "CNSA", "type": "organization", "attributes": {"full_name": "中国国家航天局"}},
+    {"name": "联合国外空司", "type": "organization", "attributes": {"english_name": "UNOOSA", "function": "国际合作项目协调"}}
+  ],
+  "relations": [
+    {"subject": "天宫空间站", "predicate": "part_of", "object": "中国载人航天工程", "confidence": 1.0, "source": "CMSA"},
+    {"subject": "天和核心舱", "predicate": "part_of", "object": "天宫空间站", "confidence": 1.0, "source": "CMSA"},
+    {"subject": "问天实验舱", "predicate": "part_of", "object": "天宫空间站", "confidence": 1.0, "source": "CMSA"},
+    {"subject": "梦天实验舱", "predicate": "part_of", "object": "天宫空间站", "confidence": 1.0, "source": "CMSA"},
+    {"subject": "天宫空间站", "predicate": "collaborates_with", "object": "联合国外空司", "confidence": 0.9, "source": "UNOOSA公告"},
+    {"subject": "神舟飞船", "predicate": "supports", "object": "天宫空间站", "confidence": 1.0, "source": "CMSA"},
+    {"subject": "天舟货运飞船", "predicate": "supports", "object": "天宫空间站", "confidence": 1.0, "source": "CMSA"},
+    {"subject": "天宫空间站", "predicate": "competes_with", "object": "国际空间站ISS", "confidence": 0.7, "source": "媒体分析"}
+  ],
+  "timeline": [
+    {"date": "2021-04-29", "event": "天和核心舱发射"},
+    {"date": "2022-07-24", "event": "问天实验舱发射对接"},
+    {"date": "2022-10-31", "event": "梦天实验舱发射对接"},
+    {"date": "2022-12-31", "event": "空间站全面建成"},
+    {"date": "2023-05-30", "event": "神舟十六号发射，首次含载荷专家"},
+    {"date": "2024-04-25", "event": "神舟十八号发射"}
+  ],
+  "data_sources": [
+    "中国载人航天工程办公室(CMSA)",
+    "联合国外空司(UNOOSA)",
+    "Nature/Science相关报道"
+  ]
+}

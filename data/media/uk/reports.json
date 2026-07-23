@@ -1,0 +1,74 @@
+[
+  {
+    "id": "uk_001",
+    "source": "BBC News",
+    "title": "China's Moon Mission Returns with Historic Far-Side Samples",
+    "date": "2024-06-25",
+    "language": "en",
+    "country": "UK",
+    "content": "China has become the first nation to bring back samples from the far side of the Moon, a feat that scientists say could reshape our understanding of lunar geology. The Chang'e-6 mission landed in the South Pole-Aitken basin, one of the largest impact craters in the solar system. British planetary scientists expressed excitement about the potential findings, noting the samples could reveal details about the Moon's early bombardment history.",
+    "framework": "progress",
+    "sentiment": "positive",
+    "key_phrases": ["historic achievement", "reshape understanding", "scientific excitement"]
+  },
+  {
+    "id": "uk_002",
+    "source": "The Guardian",
+    "title": "China's Space Ambitions Raise Questions About Global Governance",
+    "date": "2024-06-28",
+    "language": "en",
+    "country": "UK",
+    "content": "As China celebrates its Chang'e-6 success, Western policymakers are grappling with the implications of Beijing's expanding space programme. The mission's international payloads suggest China is building an alternative space cooperation network outside US-led frameworks. Experts warn that without inclusive governance mechanisms, space could become another arena for geopolitical rivalry.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": ["geopolitical rivalry", "alternative cooperation network", "governance mechanisms"]
+  },
+  {
+    "id": "uk_003",
+    "source": "Reuters UK",
+    "title": "Lunar Samples from Dark Side Could Unlock Moon's Secrets",
+    "date": "2024-07-02",
+    "language": "en",
+    "country": "UK",
+    "content": "The 1,935 grams of lunar material returned by China's Chang'e-6 mission represent an unprecedented scientific opportunity. Unlike previous samples from the Moon's near side, these rocks come from a region that has never been directly sampled. UK researchers at the Open University are among those hoping to gain access to the samples through international collaboration agreements.",
+    "framework": "progress",
+    "sentiment": "positive",
+    "key_phrases": ["unprecedented opportunity", "international collaboration", "never been sampled"]
+  },
+  {
+    "id": "uk_004",
+    "source": "Financial Times",
+    "title": "China's Space Programme Challenges Western Dominance",
+    "date": "2024-07-10",
+    "language": "en",
+    "country": "UK",
+    "content": "China's methodical advance in space exploration is forcing a reassessment of Western assumptions about technological leadership. The Chang'e-6 success, combined with the operational Tiangong space station, demonstrates Beijing's capacity to execute complex multi-year space programmes. Investment analysts note that China's space economy is growing at 15% annually, potentially rivalling US commercial space ventures within a decade.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": ["technological leadership", "methodical advance", "rivaling US ventures"]
+  },
+  {
+    "id": "uk_005",
+    "source": "New Scientist",
+    "title": "Far-Side Moon Rocks Reveal Ancient Volcanic Surprise",
+    "date": "2024-11-20",
+    "language": "en",
+    "country": "UK",
+    "content": "Preliminary analysis of Chang'e-6 samples has revealed basaltic rocks formed by volcanic eruptions 2.8 billion years ago on the Moon's far side — much more recent than expected. This challenges existing models of lunar thermal evolution and suggests the far side retained internal heat longer than the near side. The discovery has implications for understanding planetary cooling processes across the solar system.",
+    "framework": "progress",
+    "sentiment": "positive",
+    "key_phrases": ["challenges existing models", "volcanic surprise", "planetary cooling"]
+  },
+  {
+    "id": "uk_006",
+    "source": "Sky News",
+    "title": "UK Scientists Eye China's Moon Samples for Collaboration",
+    "date": "2024-08-15",
+    "language": "en",
+    "country": "UK",
+    "content": "British space scientists are exploring avenues to access samples from China's Chang'e-6 mission through bilateral science agreements. The Royal Astronomical Society has called for the UK government to facilitate research partnerships with Chinese space institutions, arguing that scientific cooperation should transcend political tensions. Several UK universities have already submitted proposals for sample analysis.",
+    "framework": "cooperation",
+    "sentiment": "positive",
+    "key_phrases": ["bilateral science agreements", "cooperation transcends politics", "research partnerships"]
+  }
+]

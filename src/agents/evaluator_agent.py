@@ -1,0 +1,134 @@
+"""
+云观星传 - 评测迭代 Agent
+职责：对策略输出进行五维评分，驱动迭代改进
+"""
+import json
+from typing import Dict, Any
+
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from src.agents.base_agent import BaseAgent
+from src.schemas import EvaluationResult
+from src.knowledge.data_loader import get_data_loader
+from config.settings import PASS_THRESHOLD
+
+
+class EvaluatorAgent(BaseAgent):
+    """评测迭代 Agent：五维评分 + 四步自迭代闭环"""
+
+    agent_name = "evaluator_agent"
+    prompt_file = "evaluator_agent.txt"
+    output_schema = EvaluationResult
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.data_loader = get_data_loader()
+
+    def _build_user_prompt(self, input_data: Dict[str, Any]) -> str:
+        """构建评测任务的 user prompt"""
+        topic = input_data.get("topic", "嫦娥六号")
+        strategies = input_data.get("strategies", [])
+        science_facts = input_data.get("science_facts", {})
+        hypotheses = input_data.get("hypotheses", [])
+        verification_report = input_data.get("verification_report", [])
+        iteration_round = input_data.get("iteration_round", 1)
+        previous_feedback = input_data.get("previous_feedback", [])
+
+        # 加载受众画像用于受众模拟
+        audience_profiles = self.data_loader.load_audience_profiles()
+
+        prompt = f"""请对以下传播策略进行五维评分，并给出改进建议。
+
+## 议题
+{topic}
+
+## 当前迭代轮次
+第 {iteration_round} 轮
+
+## 待评测策略
+{json.dumps(strategies, ensure_ascii=False, indent=2)[:3000]}
+
+## 科学事实（用于校验事实准确度）
+{json.dumps(science_facts, ensure_ascii=False, indent=2)[:1000]}
+
+## 校验报告
+{json.dumps(verification_report, ensure_ascii=False, indent=2)[:1000]}
+
+## 五维评分标准
+| 维度 | 权重 | 90分标准 | 60分标准 |
+|------|------|----------|----------|
+| factual_accuracy | 30% | 所有事实与RAG/KG完全一致 | 大部分准确，1-2处错误 |
+| strategic_actionability | 25% | 具体可执行，有渠道和时间 | 较笼统，缺执行路径 |
+| audience_fit | 20% | 语调渠道完全匹配 | 部分匹配，有偏差 |
+| cultural_sensitivity | 15% | 完全避开禁忌 | 1-2处敏感表述 |
+| narrative_fluency | 10% | 自然有人味 | AI痕迹明显但通顺 |
+
+## 受众画像（用于受众模拟评估）
+{json.dumps(audience_profiles, ensure_ascii=False, indent=2)[:1500]}
+
+"""
+        if previous_feedback:
+            prompt += f"""## 上一轮反馈（请检查是否已改进）
+{json.dumps(previous_feedback, ensure_ascii=False, indent=2)}
+
+"""
+
+        prompt += f"""## 输出要求
+请严格按照以下 JSON 格式输出：
+{{
+  "scores": {{
+    "factual_accuracy": 85,
+    "strategic_actionability": 80,
+    "audience_fit": 78,
+    "cultural_sensitivity": 82,
+    "narrative_fluency": 75
+  }},
+  "weighted_total": 81.5,
+  "passed": true,
+  "feedback": [
+    {{
+      "dimension": "narrative_fluency",
+      "current_score": 75,
+      "issue": "问题描述",
+      "suggestion": "改进建议",
+      "target_agent": "strategy_agent"
+    }}
+  ],
+  "experience_log": "本轮评测经验总结",
+  "audience_simulation": [
+    {{
+      "audience": "美国政策精英",
+      "persuasion_score": 7,
+      "credibility": "可信度评价",
+      "uncomfortable_points": ["不适点"],
+      "willingness_to_share": true,
+      "comments": "总体评价"
+    }}
+  ]
+}}
+
+## 迭代规则
+- 通过阈值：加权总分 >= {PASS_THRESHOLD}
+- 某维度 < 60 必须触发针对性改进
+- 每轮只改最弱的 1-2 个维度，避免全面重写
+- feedback 中的 target_agent 指定由哪个 Agent 改进
+
+## 受众模拟
+请扮演目标受众评估策略说服力：
+1. 这段内容让你有什么感受？（1-10分）
+2. 你觉得它可信吗？为什么？
+3. 有没有让你不舒服或反感的表述？
+4. 你愿意分享给朋友吗？为什么？"""
+
+        return prompt
+
+    def get_agent_info(self) -> Dict:
+        return {
+            "name": self.agent_name,
+            "description": "评测迭代 Agent：五维评分 + 四步自迭代闭环",
+            "input": "Strategies + ScienceFacts + VerificationReport",
+            "output": "EvaluationResult (JSON)",
+            "prompt_file": self.prompt_file,
+        }

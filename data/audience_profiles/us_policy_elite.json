@@ -1,0 +1,13 @@
+{
+  "name": "美国政策精英与理性公众",
+  "country": "美国",
+  "segment": "policy_elite",
+  "cultural_values": ["技术竞争意识强", "重视太空主导权", "尊重科学成就", "强调国家安全视角"],
+  "media_preferences": ["NYT", "Washington Post", "Foreign Affairs", "SpaceNews", "The Atlantic"],
+  "sensitivity_points": ["避免威胁论但承认竞争", "不宜过度民族自豪感", "不要忽视美国自身成就"],
+  "preferred_tone": "理性、平衡、承认竞争但强调对话空间",
+  "preferred_persona": "communicator",
+  "language": "en",
+  "key_concerns": ["太空军事化风险", "技术差距", "国际合作可能性"],
+  "communication_channels": ["智库报告", "政策简报", "深度报道", "播客"]
+}

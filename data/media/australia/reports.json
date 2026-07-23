@@ -1,0 +1,74 @@
+[
+  {
+    "id": "au_001",
+    "source": "ABC News Australia",
+    "title": "China's Moon Mission Hailed as Scientific Breakthrough",
+    "date": "2024-06-27",
+    "language": "en",
+    "country": "Australia",
+    "content": "Australian planetary scientists at Curtin University are celebrating China's Chang'e-6 success, noting that the far-side samples could answer fundamental questions about the Moon's formation. Professor Phil Bland from the Space Science and Technology Centre called it 'one of the most significant sample return missions in decades' and expressed hope for Australian access to the samples.",
+    "framework": "progress",
+    "sentiment": "positive",
+    "key_phrases": ["scientific breakthrough", "most significant mission", "fundamental questions"]
+  },
+  {
+    "id": "au_002",
+    "source": "The Australian",
+    "title": "Beijing's Space Push Raises Strategic Concerns for Canberra",
+    "date": "2024-07-15",
+    "language": "en",
+    "country": "Australia",
+    "content": "While scientists celebrate the lunar samples, defence strategists in Canberra are monitoring China's expanding space capabilities with concern. The dual-use nature of space technology means that achievements like Chang'e-6 also demonstrate capabilities relevant to space domain awareness and potential counterspace operations. Australia's AUKUS partnership includes space cooperation dimensions.",
+    "framework": "threat",
+    "sentiment": "negative",
+    "key_phrases": ["strategic concerns", "dual-use technology", "counterspace operations"]
+  },
+  {
+    "id": "au_003",
+    "source": "Sydney Morning Herald",
+    "title": "Australian Scientists Seek Access to Chinese Moon Rocks",
+    "date": "2024-08-22",
+    "language": "en",
+    "country": "Australia",
+    "content": "Researchers from the University of Western Australia and ANU have submitted proposals to study Chang'e-6 samples through China's international sample sharing programme. The samples' unique geological context — from the largest impact basin in the solar system — makes them invaluable for understanding planetary bombardment history, an area where Australian researchers have world-leading expertise.",
+    "framework": "cooperation",
+    "sentiment": "positive",
+    "key_phrases": ["world-leading expertise", "invaluable samples", "international sharing"]
+  },
+  {
+    "id": "au_004",
+    "source": "The Conversation",
+    "title": "What the Far Side of the Moon Tells Us About Earth's History",
+    "date": "2024-09-30",
+    "language": "en",
+    "country": "Australia",
+    "content": "The Chang'e-6 samples from the South Pole-Aitken basin may hold clues about the Late Heavy Bombardment that shaped all inner solar system planets, including Earth. Australian geologists note that understanding this period is crucial for models of how Earth became habitable. The mission's success enables science that no single nation could achieve alone.",
+    "framework": "progress",
+    "sentiment": "positive",
+    "key_phrases": ["Earth's history", "how Earth became habitable", "no single nation"]
+  },
+  {
+    "id": "au_005",
+    "source": "SBS News",
+    "title": "Space Diplomacy: Australia Navigates US-China Rivalry in Orbit",
+    "date": "2024-10-18",
+    "language": "en",
+    "country": "Australia",
+    "content": "Australia's space agency faces a delicate balancing act between its alliance commitments to the US and growing scientific cooperation opportunities with China. The Chang'e-6 mission's international payloads demonstrate that space science can bridge political divides, but Canberra must weigh scientific benefits against strategic alignment with Washington's space policy.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": ["balancing act", "bridge political divides", "strategic alignment"]
+  },
+  {
+    "id": "au_006",
+    "source": "Cosmos Magazine",
+    "title": "Lunar Far-Side Volcanism: Rewriting the Textbooks",
+    "date": "2024-12-01",
+    "language": "en",
+    "country": "Australia",
+    "content": "New data from Chang'e-6 samples confirms volcanic activity on the Moon's far side persisted until 2.8 billion years ago, far later than models predicted. Australian researchers contributing to the analysis say this forces a rethink of how small planetary bodies retain internal heat. The findings have implications for assessing habitability of moons throughout the solar system.",
+    "framework": "progress",
+    "sentiment": "positive",
+    "key_phrases": ["rewriting textbooks", "rethink models", "habitability implications"]
+  }
+]

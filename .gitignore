@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Environment (API Keys — DO NOT COMMIT!)
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+secrets/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# Data outputs (runtime generated)
+data/output/
+data/results/
+data/kg/graph.json
+data/kg/vectors.meta.json
+*.faiss
+*.npy
+*.pkl
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Type checkers
+.mypy_cache/
+.pyre/
+.pytype/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Logs
+*.log
+logs/
+
+# Coverage
+.coverage
+htmlcov/
+.coverage.*

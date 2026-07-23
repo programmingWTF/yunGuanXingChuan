@@ -1,0 +1,74 @@
+[
+  {
+    "id": "pk_001",
+    "source": "Dawn",
+    "title": "Pakistan's ICUBE-Q CubeSat Successfully Orbits Moon on China's Chang'e-6",
+    "date": "2024-06-25",
+    "language": "en",
+    "country": "Pakistan",
+    "content": "Pakistan's first lunar satellite, ICUBE-Q, developed by the Institute of Space Technology in collaboration with Shanghai Jiao Tong University, has successfully entered lunar orbit aboard China's Chang'e-6 mission. This marks Pakistan's entry into the elite club of nations with lunar orbital assets and demonstrates the depth of China-Pakistan space cooperation.",
+    "framework": "cooperation",
+    "sentiment": "positive",
+    "key_phrases": ["first lunar satellite", "elite club", "depth of cooperation"]
+  },
+  {
+    "id": "pk_002",
+    "source": "The Express Tribune",
+    "title": "China-Pakistan Space Partnership Reaches New Heights",
+    "date": "2024-07-01",
+    "language": "en",
+    "country": "Pakistan",
+    "content": "The successful deployment of ICUBE-Q on Chang'e-6 represents the culmination of years of bilateral space cooperation between Pakistan and China. SUPARCO officials describe the mission as a 'defining moment' for Pakistan's space programme, opening doors to future joint missions including potential participation in China's International Lunar Research Station.",
+    "framework": "cooperation",
+    "sentiment": "positive",
+    "key_phrases": ["defining moment", "bilateral cooperation", "future joint missions"]
+  },
+  {
+    "id": "pk_003",
+    "source": "Geo News",
+    "title": "چین کی چاند مشن میں پاکستان کی کامیاب شراکت",
+    "date": "2024-07-10",
+    "language": "ur",
+    "country": "Pakistan",
+    "content": "پاکستان کا کیوب سیٹ ICUBE-Q چاند کے مدار میں کامیابی سے داخل ہو گیا ہے۔ یہ پاکستان کی خلائی تاریخ کا ایک اہم سنگ میل ہے۔ ماہرین کا کہنا ہے کہ اس تعاون سے پاکستانی سائنسدانوں کو چاند کی تصاویر اور ڈیٹا تک رسائی حاصل ہوگی جو ملکی تحقیق کے لیے بے حد اہم ہے۔",
+    "framework": "progress",
+    "sentiment": "positive",
+    "key_phrases": ["اہم سنگ میل", "خلائی تاریخ", "تعاون"]
+  },
+  {
+    "id": "pk_004",
+    "source": "The News International",
+    "title": "Lunar Samples Mission: Pakistan Benefits from China's Generosity",
+    "date": "2024-08-05",
+    "language": "en",
+    "country": "Pakistan",
+    "content": "Beyond ICUBE-Q, Pakistani scientists are among the first international researchers granted access to Chang'e-6 lunar samples. This unprecedented opportunity allows SUPARCO and IST researchers to participate in cutting-edge planetary science without the enormous cost of an independent sample return mission — a model that other developing nations may seek to emulate.",
+    "framework": "development",
+    "sentiment": "positive",
+    "key_phrases": ["unprecedented opportunity", "cutting-edge science", "model to emulate"]
+  },
+  {
+    "id": "pk_005",
+    "source": "Business Recorder",
+    "title": "Space Cooperation: A New Dimension of CPEC Partnership",
+    "date": "2024-09-12",
+    "language": "en",
+    "country": "Pakistan",
+    "content": "The China-Pakistan Economic Corridor (CPEC) is expanding into space technology cooperation. The Chang'e-6 collaboration demonstrates how the strategic partnership extends beyond infrastructure into high-technology domains. Analysts suggest space cooperation could become the 'third pillar' of bilateral relations alongside trade and defence.",
+    "framework": "cooperation",
+    "sentiment": "positive",
+    "key_phrases": ["third pillar", "high-technology domains", "strategic partnership"]
+  },
+  {
+    "id": "pk_006",
+    "source": "Pakistan Today",
+    "title": "From ICUBE-Q to Lunar Base: Pakistan's Space Roadmap",
+    "date": "2024-10-30",
+    "language": "en",
+    "country": "Pakistan",
+    "content": "Emboldened by the ICUBE-Q success, Pakistan's space agency is drafting an ambitious 20-year roadmap that includes participation in China's lunar research station programme. The roadmap envisions Pakistani instruments on future Chinese lunar landers and eventual Pakistani astronaut participation in Chinese space station missions.",
+    "framework": "development",
+    "sentiment": "positive",
+    "key_phrases": ["ambitious roadmap", "lunar research station", "astronaut participation"]
+  }
+]

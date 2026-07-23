@@ -1,0 +1,74 @@
+[
+  {
+    "id": "de_001",
+    "source": "Der Spiegel",
+    "title": "Chinas Mond-Mission: Ein Triumph der Wissenschaft oder Machtdemonstration?",
+    "date": "2024-06-26",
+    "language": "de",
+    "country": "Germany",
+    "content": "Chinas Chang'e-6-Mission hat erstmals Gesteinsproben von der Rückseite des Mondes zur Erde gebracht. Während deutsche Wissenschaftler die wissenschaftliche Bedeutung würdigen, fragen sich politische Beobachter, ob Peking damit seine technologische Überlegenheit demonstrieren will. Die Mission zeigt Chinas Fähigkeit, komplexe Raumfahrtprojekte unabhängig durchzuführen.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": ["technologische Überlegenheit", "wissenschaftliche Bedeutung", "Machtdemonstration"]
+  },
+  {
+    "id": "de_002",
+    "source": "Deutsche Welle",
+    "title": "Moon Samples from China: German Scientists Hope for Access",
+    "date": "2024-07-05",
+    "language": "en",
+    "country": "Germany",
+    "content": "German planetary researchers at the University of Münster and DLR are eager to study the Chang'e-6 lunar samples. Germany's participation in ESA's lunar exploration programme positions it well for potential sample-sharing agreements with China. The Max Planck Institute for Solar System Research has expressed interest in analyzing the far-side basalts for insights into early solar system dynamics.",
+    "framework": "cooperation",
+    "sentiment": "positive",
+    "key_phrases": ["eager to study", "sample-sharing agreements", "scientific interest"]
+  },
+  {
+    "id": "de_003",
+    "source": "Frankfurter Allgemeine Zeitung",
+    "title": "Der neue Wettlauf im All: China überholt den Westen",
+    "date": "2024-07-12",
+    "language": "de",
+    "country": "Germany",
+    "content": "Während die NASA mit Verzögerungen beim Artemis-Programm kämpft, setzt China seine Mondambitionen planmäßig um. Der Erfolg von Chang'e-6 unterstreicht Pekings systematischen Ansatz in der Raumfahrt. Europäische Raumfahrtexperten warnen, dass die EU Gefahr läuft, zwischen den beiden Großmächten marginalisiert zu werden, wenn sie nicht eigene Ambitionen entwickelt.",
+    "framework": "competition",
+    "sentiment": "negative",
+    "key_phrases": ["Wettlauf im All", "systematischer Ansatz", "marginalisiert"]
+  },
+  {
+    "id": "de_004",
+    "source": "Süddeutsche Zeitung",
+    "title": "Mondgestein von der dunklen Seite öffnet neues Kapitel",
+    "date": "2024-08-01",
+    "language": "de",
+    "country": "Germany",
+    "content": "Die von Chang'e-6 zurückgebrachten Proben könnten unser Verständnis der Mondentstehung revolutionieren. Erste Analysen deuten auf vulkanische Aktivität hin, die deutlich jünger ist als bisher angenommen. Deutsche Geochemiker sehen darin eine Chance, Theorien über die thermische Entwicklung terrestrischer Planeten zu überprüfen.",
+    "framework": "progress",
+    "sentiment": "positive",
+    "key_phrases": ["neues Kapitel", "revolutionieren", "thermische Entwicklung"]
+  },
+  {
+    "id": "de_005",
+    "source": "Tagesschau",
+    "title": "China und Europa: Raumfahrt-Kooperation trotz politischer Spannungen",
+    "date": "2024-09-10",
+    "language": "de",
+    "country": "Germany",
+    "content": "Trotz zunehmender geopolitischer Spannungen zwischen der EU und China bleibt die Raumfahrt ein Bereich möglicher Zusammenarbeit. Die Beteiligung europäischer Instrumente an chinesischen Mondmissionen zeigt, dass wissenschaftliche Interessen politische Differenzen überbrücken können. Die Bundesregierung prüft, ob deutsche Forscher direkten Zugang zu chinesischen Mondproben erhalten können.",
+    "framework": "cooperation",
+    "sentiment": "neutral",
+    "key_phrases": ["Zusammenarbeit trotz Spannungen", "wissenschaftliche Interessen", "politische Differenzen überbrücken"]
+  },
+  {
+    "id": "de_006",
+    "source": "Handelsblatt",
+    "title": "Chinas Raumfahrtindustrie wächst rasant – Europa muss reagieren",
+    "date": "2024-10-05",
+    "language": "de",
+    "country": "Germany",
+    "content": "Die chinesische Raumfahrtindustrie verzeichnet zweistellige Wachstumsraten und entwickelt zunehmend kommerzielle Anwendungen. Deutsche Unternehmen wie OHB und Airbus Defence beobachten die Entwicklung aufmerksam. Analysten sehen in Chinas Raumfahrtsektor sowohl eine Bedrohung für europäische Marktanteile als auch Kooperationsmöglichkeiten bei Satellitentechnologie und Erdbeobachtung.",
+    "framework": "development",
+    "sentiment": "neutral",
+    "key_phrases": ["zweistellige Wachstumsraten", "Kooperationsmöglichkeiten", "Marktanteile"]
+  }
+]
