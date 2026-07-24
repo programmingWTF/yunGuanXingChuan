@@ -170,8 +170,10 @@ class VectorStore:
             检索结果列表，每项包含 text、score、metadata
         """
         if self.index is None or self.index.ntotal == 0:
-            logger.warning("索引为空，尝试加载已有索引")
+            logger.info("索引为空，自动构建中...")
             if not self._load_index():
+                self.build_index()
+            if self.index is None or self.index.ntotal == 0:
                 return []
 
         # 获取查询向量

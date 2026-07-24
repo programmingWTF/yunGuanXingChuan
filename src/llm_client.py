@@ -120,19 +120,21 @@ class LLMClient:
         json_mode: bool = False,
     ) -> str:
         """
-        使用 Responses API 进行联网搜索调用
-        qwen3.8-max-preview 等模型仅支持此方式联网
-        如果 SDK 不支持 Responses API，回退到 Chat Completions + enable_search
+        使用联网搜索调用 LLM
+        - 百炼平台 (dashscope): 使用 Responses API + web_search 工具
+        - 其他平台 (DeepSeek 等): 回退到普通 Chat Completions（不支持原生搜索）
         """
         use_model = model or self.model
 
-        # 构建 input：system + user 合并为 input 字符串
-        input_text = f"[System]\n{system_prompt}\n\n[User]\n{user_prompt}"
-        if json_mode:
-            input_text += "\n\n[重要] 请严格以 JSON 格式输出，不要包含其他内容。"
+        # 检测是否为百炼平台（只有百炼支持 Responses API 联网搜索）
+        is_dashscope = 'dashscope' in self.base_url or 'maas.aliyuncs' in self.base_url
 
-        # 尝试 Responses API
-        if hasattr(self.client, 'responses'):
+        if is_dashscope and hasattr(self.client, 'responses'):
+            # 百炼平台：使用 Responses API + web_search
+            input_text = f"[System]\n{system_prompt}\n\n[User]\n{user_prompt}"
+            if json_mode:
+                input_text += "\n\n[重要] 请严格以 JSON 格式输出，不要包含其他内容。"
+
             for attempt in range(self.max_retries):
                 try:
                     response = self.client.responses.create(
@@ -141,10 +143,8 @@ class LLMClient:
                         tools=[{"type": "web_search"}],
                         max_output_tokens=16384,
                     )
-                    # Responses API 返回格式：response.output_text
                     content = getattr(response, 'output_text', None)
                     if not content:
-                        # 兼容：尝试从 output 列表提取文本
                         parts = []
                         for item in getattr(response, 'output', []):
                             if hasattr(item, 'content'):
@@ -164,39 +164,41 @@ class LLMClient:
                     if attempt < self.max_retries - 1:
                         time.sleep(self.retry_delay * (attempt + 1))
                     else:
-                        raise
-        else:
-            # 回退：Chat Completions API + enable_search（适用于 qwen-plus 等模型）
-            logger.info("SDK 不支持 Responses API，回退到 Chat Completions + enable_search")
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ]
-            kwargs: Dict[str, Any] = {
-                "model": use_model,
-                "messages": messages,
-                "temperature": 0.3,
-                "max_tokens": 16384,
-                "extra_body": {"enable_search": True},
-            }
-            if json_mode:
-                kwargs["response_format"] = {"type": "json_object"}
+                        # 百炼 Responses API 失败，回退到普通调用
+                        logger.warning("百炼 Responses API 失败，回退到普通 Chat Completions")
+                        break
 
-            for attempt in range(self.max_retries):
-                try:
-                    response = self.client.chat.completions.create(**kwargs)
-                    content = response.choices[0].message.content
-                    if content:
-                        return content
-                    raise ValueError("模型返回空内容")
-                except Exception as e:
-                    logger.warning(
-                        f"LLM 联网搜索回退调用失败 (尝试 {attempt + 1}/{self.max_retries}): {e}"
-                    )
-                    if attempt < self.max_retries - 1:
-                        time.sleep(self.retry_delay * (attempt + 1))
-                    else:
-                        raise
+        # 非百炼平台（DeepSeek 等）或百炼回退：普通 Chat Completions
+        # DeepSeek 不支持 enable_search，直接调用普通接口
+        logger.info(f"使用普通 Chat Completions 调用 (model={use_model})")
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        kwargs: Dict[str, Any] = {
+            "model": use_model,
+            "messages": messages,
+            "temperature": 0.3,
+            "max_tokens": 16384,
+        }
+        if json_mode:
+            kwargs["response_format"] = {"type": "json_object"}
+
+        for attempt in range(self.max_retries):
+            try:
+                response = self.client.chat.completions.create(**kwargs)
+                content = response.choices[0].message.content
+                if content:
+                    return content
+                raise ValueError("模型返回空内容")
+            except Exception as e:
+                logger.warning(
+                    f"LLM 调用失败 (尝试 {attempt + 1}/{self.max_retries}): {e}"
+                )
+                if attempt < self.max_retries - 1:
+                    time.sleep(self.retry_delay * (attempt + 1))
+                else:
+                    raise
 
         return ""
 

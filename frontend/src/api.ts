@@ -210,6 +210,137 @@ export async function getVerifyStatus() {
   return res.data
 }
 
+// ============ 认知议会接口 ============
+
+export interface ParliamentMotion {
+  motion_id: string
+  motion_type: string
+  proposer: string
+  content: string
+  supporting_evidence: string[]
+  confidence: number
+}
+
+export interface ParliamentSpeech {
+  speaker: string
+  round_num: number
+  content: string
+  stance: string
+  references: string[]
+}
+
+export interface ParliamentVote {
+  motion_id: string
+  votes: Record<string, string>
+  weighted_yes: number
+  weighted_no: number
+  result: string
+  minority_opinions: string[]
+  speaker_ruling: string
+}
+
+export interface ParliamentMinorityOpinion {
+  agent: string
+  motion_id: string
+  objection: string
+  alternative_proposal: string
+  why_overruled: string
+}
+
+export interface ParliamentRound {
+  round_id: number
+  topic: string
+  speeches: ParliamentSpeech[]
+  speaker_weights: Record<string, number>
+  speaker_rationale: string
+}
+
+export interface FinalReport {
+  one_line_takeaway: string
+  core_conclusion: string
+  top_strategies: { rank: number; title: string; audience: string; action: string }[]
+  risk_warnings: string[]
+  audience_recommendations: { audience: string; suggestion: string }[]
+  generated_by?: string
+}
+
+export interface DeliberationTranscript {
+  topic: string
+  total_rounds: number
+  rounds: ParliamentRound[]
+  motions: ParliamentMotion[]
+  votes: ParliamentVote[]
+  minority_opinions: ParliamentMinorityOpinion[]
+  final_strategies: {
+    pipeline_evaluation?: Record<string, number>
+    pipeline_strategies?: Record<string, unknown>
+    pipeline_verification?: Record<string, unknown>[]
+    debate_transcript_summary?: string
+    search_sources?: { url: string; title: string; content: string; score: number; source: string }[]
+  }
+  final_report?: FinalReport
+  started_at: string
+  completed_at: string
+  task_id?: string
+  task_status?: string
+}
+
+/** 异步召集认知议会 */
+export async function conveneParliament(topic: string, maxRounds?: number, maxPipelineRounds?: number) {
+  const res = await api.post('/parliament/convene', { topic, max_rounds: maxRounds, max_pipeline_rounds: maxPipelineRounds })
+  return res.data as { task_id: string; status: string; message: string }
+}
+
+export async function stopParliament(taskId: string) {
+  const res = await api.post(`/parliament/stop/${taskId}`)
+  return res.data as { task_id: string; status: string; message: string }
+}
+
+/** 查询议会任务状态 */
+export interface PhaseProgress {
+  key: string; label: string; icon: string; group: string
+  status: 'pending' | 'running' | 'completed' | 'error'
+  message: string
+  sub_steps?: { key: string; status: string; label: string; icon: string; detail: string; full_content?: string }[]
+}
+
+export async function getParliamentStatus(taskId: string) {
+  const res = await api.get(`/parliament/status/${taskId}`)
+  return res.data as {
+    task_id: string
+    status: string
+    has_result: boolean
+    progress?: {
+      phases: PhaseProgress[]
+      current_round: number
+      total_rounds: number
+      pipeline_round: number
+    }
+  }
+}
+
+/** 获取议会辩论记录 */
+export async function getParliamentResult(taskId: string) {
+  const res = await api.get(`/parliament/result/${taskId}`)
+  return res.data as DeliberationTranscript
+}
+
+/** 获取议会历史记录 */
+export async function getParliamentHistory() {
+  const res = await api.get('/parliament/history')
+  return res.data as {
+    history: {
+      task_id: string; topic: string; total_rounds: number; motion_count: number
+      vote_count: number; passed_count: number; pass_rate: number
+      minority_count: number; avg_score: number | null; completed_at: string
+    }[]
+    summary: {
+      total_runs: number; avg_rounds: number; avg_motions: number
+      avg_minority: number; avg_score: number | null; total_votes: number
+    }
+  }
+}
+
 // ============ 其他 ============
 
 /** 获取框架类型列表 */

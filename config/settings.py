@@ -17,7 +17,7 @@ load_dotenv(PROJECT_ROOT / ".env")
 # Qwen API 配置
 QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
 QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
-QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen3.8-max-preview")
+QWEN_MODEL = os.getenv("QWEN_MODEL", "deepseek-v4-flash")
 QWEN_MODEL_FAST = os.getenv("QWEN_MODEL_FAST", "qwen-plus")
 QWEN_MODEL_LONG = os.getenv("QWEN_MODEL_LONG", "qwen-long")
 QWEN_EMBEDDING_MODEL = os.getenv("QWEN_EMBEDDING_MODEL", "qwen3.7-text-embedding")
@@ -28,6 +28,12 @@ QWEN_EMBEDDING_API_KEY = os.getenv("QWEN_EMBEDDING_API_KEY", QWEN_API_KEY)
 # Pipeline 配置
 MAX_ITERATION_ROUNDS = int(os.getenv("MAX_ITERATION_ROUNDS", "3"))
 PASS_THRESHOLD = float(os.getenv("PASS_THRESHOLD", "75"))
+ENABLE_AGENT_TOOLS = os.getenv("ENABLE_AGENT_TOOLS", "true").lower() == "true"  # Agent Tool Use 开关
+
+# 认知议会配置
+PARLIAMENT_MAX_ROUNDS = int(os.getenv("PARLIAMENT_MAX_ROUNDS", "5"))
+PARLIAMENT_DEADLOCK_THRESHOLD = float(os.getenv("PARLIAMENT_DEADLOCK_THRESHOLD", "0.15"))
+PARLIAMENT_PASS_THRESHOLD = float(os.getenv("PARLIAMENT_PASS_THRESHOLD", "0.65"))
 
 # API 配置
 API_PORT = int(os.getenv("API_PORT", "8000"))

@@ -1,13 +1,13 @@
 """
 云观星传 - Agent 基类
-提供：LLM 调用、JSON 解析、失败重试（最多3次）、错误处理
+提供：LLM 调用、JSON 解析、失败重试（最多3次）、错误处理、Tool Use 循环
 """
 import json
 import logging
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, Optional, Any, Type
+from typing import Dict, List, Optional, Any, Type
 
 from pydantic import BaseModel, ValidationError
 
@@ -36,6 +36,7 @@ class BaseAgent(ABC):
     prompt_file: str = ""  # config/prompts/ 下的文件名
     output_schema: Optional[Type[BaseModel]] = None  # 输出的 Pydantic 模型
     enable_search: bool = False  # 是否启用联网搜索（百炼平台原生支持）
+    agent_tools: List[str] = []  # 绑定的工具名列表（用于 Function Calling）
 
     def __init__(
         self,
@@ -96,6 +97,9 @@ class BaseAgent(ABC):
         # 构建 user prompt
         user_prompt = self._build_user_prompt(input_data)
 
+        # 投票任务无需联网搜索（基于已有辩论内容判断，避免每轮 5 个 Agent 各触发一次搜索）
+        use_search = self.enable_search and input_data.get("task_type") != "vote"
+
         last_error = None
         for attempt in range(self.max_retries):
             try:
@@ -105,14 +109,19 @@ class BaseAgent(ABC):
                     user_prompt=user_prompt,
                     model=self.model,
                     temperature=self.temperature,
-                    enable_search=self.enable_search,
+                    enable_search=use_search,
                 )
 
                 # 解析输出
                 parsed = self._parse_output(raw_output)
 
+                # 辩论/投票类 task_type 跳过固定 Schema 校验（输出格式由 prompt 控制）
+                skip_schema = input_data.get("task_type", "") in (
+                    "opening_report", "debate_speech", "vote"
+                )
+
                 # 校验 Schema
-                if self.output_schema:
+                if self.output_schema and not skip_schema:
                     validated = self._validate_output(parsed)
                     logger.info(f"[{self.agent_name}] 执行成功 (尝试 {attempt + 1})")
                     return validated
@@ -236,3 +245,258 @@ class BaseAgent(ABC):
     def get_agent_info(self) -> Dict:
         """获取 Agent 信息（子类实现）"""
         pass
+
+    # ------------------------------------------------------------------
+    # Tool Use 循环（P0-C）
+    # ------------------------------------------------------------------
+
+    def run_with_tools(self, input_data: Dict[str, Any], max_tool_rounds: int = 5,
+                       context_messages: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+        """
+        带工具调用的 Agent 执行循环
+
+        流程：
+        1. 发送 user prompt + tools 定义 → LLM
+        2. 如果 LLM 返回 tool_calls → 执行工具 → 把结果加入 messages → 再次调 LLM
+        3. 重复直到 LLM 返回 final answer（无 tool_calls）或达到 max_tool_rounds
+        4. 最终输出解析为 Schema
+
+        Args:
+            input_data: 输入数据字典
+            max_tool_rounds: 最大工具调用轮次
+            context_messages: 可选的历史辩论上下文（认知议会模式）
+
+        Returns:
+            输出数据字典（符合 output_schema）
+        """
+        from src.agents.tools import get_tools_for_agent, execute_tool
+
+        # 如果没有绑定工具，回退到普通 run()
+        if not self.agent_tools:
+            return self.run(input_data)
+
+        logger.info(f"[{self.agent_name}] 开始 Tool Use 执行 (tools={self.agent_tools})...")
+
+        # 获取工具定义
+        tools = get_tools_for_agent(self.agent_tools)
+        if not tools:
+            logger.warning(f"[{self.agent_name}] 无有效工具，回退到 run()")
+            return self.run(input_data)
+
+        # 构建初始 messages
+        user_prompt = self._build_user_prompt(input_data)
+        messages: List[Dict[str, Any]] = [
+            {"role": "system", "content": self.system_prompt},
+        ]
+        # 注入历史辩论上下文（认知议会模式）
+        if context_messages:
+            messages.extend(context_messages)
+        messages.append({"role": "user", "content": user_prompt})
+
+        # Tool Use 循环
+        for round_num in range(max_tool_rounds):
+            try:
+                response = self.llm_client.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    tools=tools,
+                    tool_choice="auto",
+                    temperature=self.temperature,
+                )
+
+                choice = response.choices[0]
+                message = choice.message
+
+                # 检查是否有 tool_calls
+                if message.tool_calls:
+                    # 将 assistant 消息加入历史
+                    messages.append({
+                        "role": "assistant",
+                        "content": message.content or "",
+                        "tool_calls": [
+                            {
+                                "id": tc.id,
+                                "type": "function",
+                                "function": {
+                                    "name": tc.function.name,
+                                    "arguments": tc.function.arguments,
+                                },
+                            }
+                            for tc in message.tool_calls
+                        ],
+                    })
+
+                    # 执行每个工具调用
+                    for tc in message.tool_calls:
+                        tool_name = tc.function.name
+                        try:
+                            arguments = json.loads(tc.function.arguments)
+                        except json.JSONDecodeError:
+                            # 尝试修复工具参数 JSON
+                            try:
+                                repaired_args = self.llm_client._repair_json_quotes(tc.function.arguments)
+                                arguments = json.loads(repaired_args) if repaired_args else {}
+                            except Exception:
+                                arguments = {}
+
+                        logger.info(
+                            f"[{self.agent_name}] 调用工具: {tool_name}({json.dumps(arguments, ensure_ascii=False)[:100]})"
+                        )
+                        tool_result = execute_tool(tool_name, arguments)
+
+                        # 将工具结果加入 messages
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tc.id,
+                            "content": tool_result,
+                        })
+
+                    logger.info(
+                        f"[{self.agent_name}] Tool Use 第 {round_num + 1} 轮完成，"
+                        f"调用了 {len(message.tool_calls)} 个工具"
+                    )
+                else:
+                    # 无 tool_calls → 最终答案
+                    final_content = message.content or ""
+                    logger.info(f"[{self.agent_name}] Tool Use 完成 (第 {round_num + 1} 轮得到最终答案)")
+                    return self._parse_tool_use_output(final_content)
+
+            except Exception as e:
+                logger.error(f"[{self.agent_name}] Tool Use 异常 (round {round_num + 1}): {e}")
+                # 返回空字典让上层兜底（不递归调 run，避免二次 LLM 调用链失败）
+                return {}
+
+        # 达到最大轮次，强制要求输出
+        logger.warning(f"[{self.agent_name}] 达到最大工具轮次 ({max_tool_rounds})，强制输出")
+        messages.append({
+            "role": "user",
+            "content": "请不要再调用工具，直接输出最终的 JSON 结果。",
+        })
+        try:
+            response = self.llm_client.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=self.temperature,
+                response_format={"type": "json_object"},
+            )
+            final_content = response.choices[0].message.content or ""
+            return self._parse_tool_use_output(final_content)
+        except Exception as e:
+            logger.error(f"[{self.agent_name}] 强制输出失败: {e}")
+            # 兜底：返回含所有必填字段的默认值
+            return self._get_fallback_result()
+
+    def _get_fallback_result(self) -> Dict[str, Any]:
+        """当所有解析都失败时，根据 output_schema 生成含所有必填字段的兜底结果"""
+        fallback_map = {
+            "EvaluationResult": {
+                "scores": {"factual_accuracy": 70, "strategic_actionability": 70,
+                           "audience_fit": 70, "cultural_sensitivity": 70, "narrative_fluency": 70},
+                "weighted_total": 70, "passed": False, "feedback": [],
+                "experience_log": "解析失败，使用默认评分", "audience_simulation": [],
+            },
+            "StrategySet": {
+                "topic": "", "strategies": [], "audience_coverage": [], "cultural_notes": [],
+            },
+        }
+        schema_name = self.output_schema.__name__ if self.output_schema else ""
+        if schema_name in fallback_map:
+            return fallback_map[schema_name]
+        return {}
+
+    def _parse_tool_use_output(self, content: str) -> Dict[str, Any]:
+        """解析 Tool Use 最终输出"""
+        # 尝试提取 JSON
+        try:
+            # 去除可能的 markdown 代码块标记
+            text = content.strip()
+            if text.startswith("```"):
+                lines = text.split("\n")
+                lines = [l for l in lines if not l.strip().startswith("```")]
+                text = "\n".join(lines)
+    
+            parsed = json.loads(text)
+    
+            # Schema 校验
+            if self.output_schema:
+                validated = self.output_schema.model_validate(parsed)
+                return validated.model_dump()
+            return parsed
+    
+        except (json.JSONDecodeError, ValidationError) as e:
+            logger.warning(f"[{self.agent_name}] Tool Use 输出解析失败: {e}")
+    
+            # 尝试 1: 修复未转义的内部引号
+            try:
+                repaired = self.llm_client._repair_json_quotes(content.strip())
+                if repaired:
+                    parsed = json.loads(repaired)
+                    if self.output_schema:
+                        validated = self.output_schema.model_validate(parsed)
+                        return validated.model_dump()
+                    return parsed
+            except Exception:
+                pass
+    
+            # 尝试 2: 用 _fix_truncated_json 修复截断的 JSON
+            try:
+                fixed = self.llm_client._fix_truncated_json(content)
+                if fixed:
+                    parsed = json.loads(fixed)
+                    if self.output_schema:
+                        validated = self.output_schema.model_validate(parsed)
+                        return validated.model_dump()
+                    return parsed
+            except Exception:
+                pass
+    
+            # 尝试 3: 组合修复（先修引号再补截断）
+            try:
+                repaired = self.llm_client._repair_json_quotes(content.strip())
+                if repaired:
+                    fixed = self.llm_client._fix_truncated_json(repaired)
+                    if fixed:
+                        parsed = json.loads(fixed)
+                        if self.output_schema:
+                            validated = self.output_schema.model_validate(parsed)
+                            return validated.model_dump()
+                        return parsed
+            except Exception:
+                pass
+    
+            # 尝试 4: 用正则提取 JSON 部分再解析
+            import re
+            try:
+                json_match = re.search(r'\{[\s\S]*\}', content)
+                if json_match:
+                    extracted = json_match.group()
+                    repaired = self.llm_client._repair_json_quotes(extracted)
+                    parsed = json.loads(repaired or extracted)
+                    if self.output_schema:
+                        validated = self.output_schema.model_validate(parsed)
+                        return validated.model_dump()
+                    return parsed
+            except Exception:
+                pass
+
+            # 尝试 5: 修复缺少逗号分隔符的 JSON（如 "key": "value" "key2"）
+            import re as _re
+            try:
+                text = content.strip()
+                json_match = _re.search(r'\{[\s\S]*\}', text)
+                if json_match:
+                    raw = json_match.group()
+                    # 在 }" 或 ]" 或 "\n" 之间缺少逗号的位置插入逗号
+                    fixed = _re.sub(r'(["\]\}])\s*\n\s*"', r'\1,\n"', raw)
+                    fixed = _re.sub(r'(["\]\}])\s+("[^"]+"\s*:)', r'\1, \2', fixed)
+                    parsed = json.loads(fixed)
+                    if self.output_schema:
+                        validated = self.output_schema.model_validate(parsed)
+                        return validated.model_dump()
+                    return parsed
+            except Exception:
+                pass
+    
+            # 最终回退：返回兜底结果，避免无限递归 LLM 调用
+            logger.warning(f"[{self.agent_name}] 所有解析尝试失败，返回兜底结果")
+            return self._get_fallback_result()

@@ -1,6 +1,6 @@
 """
 云观星传 - 评测模块
-五维评分矩阵 + 四步自迭代闭环
+五维评分矩阵 + 四步自迭代闭环 + SQLite 经验池持久化
 """
 import logging
 from typing import List, Dict, Optional
@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config.settings import PASS_THRESHOLD, MAX_ITERATION_ROUNDS, EVALUATION_WEIGHTS
 from src.schemas import EvaluationScores, IterationFeedback, EvaluationResult
+from src.knowledge.experience_store import get_experience_store
 
 logger = logging.getLogger(__name__)
 
@@ -152,14 +153,16 @@ class EvaluationEngine:
 
         return feedback_list
 
-    def log_experience(self, round_num: int, scores: EvaluationScores, feedback: List[IterationFeedback]):
+    def log_experience(self, round_num: int, scores: EvaluationScores, feedback: List[IterationFeedback], topic: str = ""):
         """
         记录经验到经验池（四步自迭代闭环的第2步）
+        同时写入内存池和 SQLite 持久化存储
 
         Args:
             round_num: 迭代轮次
             scores: 五维评分
             feedback: 迭代反馈
+            topic: 议题名称（用于持久化）
         """
         experience = {
             "round": round_num,
@@ -178,6 +181,21 @@ class EvaluationEngine:
 
         self.experience_pool.append(experience)
         self.iteration_history.append(experience)
+
+        # SQLite 持久化
+        if topic:
+            try:
+                store = get_experience_store()
+                store.log_experience(
+                    topic=topic,
+                    round_num=round_num,
+                    scores=experience["scores"],
+                    feedback=[fb.model_dump() if hasattr(fb, 'model_dump') else fb for fb in feedback],
+                    passed=experience["passed"],
+                    weak_dims=experience["weak_dimensions"],
+                )
+            except Exception as e:
+                logger.warning(f"[经验池] SQLite 持久化失败（不影响主流程）: {e}")
 
         logger.info(
             f"[经验池] 第 {round_num} 轮: 加权总分 {experience['weighted_total']:.1f}, "
@@ -240,3 +258,48 @@ class EvaluationEngine:
             "final_passed": last["passed"],
             "history": self.iteration_history,
         }
+
+    def load_past_experience(self, topic: str) -> Dict:
+        """
+        从 SQLite 加载历史经验（相似议题的最佳实践）
+
+        Args:
+            topic: 当前议题
+
+        Returns:
+            {similar_topics, common_weaknesses, global_insights}
+        """
+        try:
+            store = get_experience_store()
+            similar = store.find_similar_topics(topic, top_k=3)
+            weaknesses = store.get_common_weaknesses(limit=3)
+            insights = store.get_improvement_trend()
+
+            if similar:
+                logger.info(f"[经验池] 找到 {len(similar)} 个相似议题: {[s['topic'] for s in similar]}")
+
+            return {
+                "similar_topics": similar,
+                "common_weaknesses": weaknesses,
+                "global_insights": insights,
+            }
+        except Exception as e:
+            logger.warning(f"[经验池] 加载历史经验失败: {e}")
+            return {"similar_topics": [], "common_weaknesses": [], "global_insights": {}}
+
+    def get_global_insights(self) -> Dict:
+        """
+        获取跨议题全局统计
+
+        Returns:
+            全局统计信息
+        """
+        try:
+            store = get_experience_store()
+            return {
+                "trend": store.get_improvement_trend(),
+                "weaknesses": store.get_common_weaknesses(),
+            }
+        except Exception as e:
+            logger.warning(f"[经验池] 获取全局统计失败: {e}")
+            return {"trend": {}, "weaknesses": []}

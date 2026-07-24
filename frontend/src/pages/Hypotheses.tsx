@@ -5,6 +5,8 @@ import type { Hypothesis } from '../api'
 const frameworkNames: Record<string, string> = {
   competition: '竞争框架', cooperation: '合作框架', progress: '进步框架',
   threat: '威胁框架', development: '发展框架',
+  fact_claim: '事实主张', hypothesis: '假设', value_judgment: '价值判断',
+  policy_recommendation: '政策建议', causal: '因果推断',
 }
 
 const frameworkColors: Record<string, string> = {
@@ -13,6 +15,35 @@ const frameworkColors: Record<string, string> = {
   progress: 'bg-cyan-500/20 text-cyan-400',
   threat: 'bg-red-500/20 text-red-400',
   development: 'bg-green-500/20 text-green-400',
+  fact_claim: 'bg-blue-500/20 text-blue-400',
+  hypothesis: 'bg-purple-500/20 text-purple-400',
+  value_judgment: 'bg-pink-500/20 text-pink-400',
+  policy_recommendation: 'bg-teal-500/20 text-teal-400',
+  causal: 'bg-amber-500/20 text-amber-400',
+}
+
+/** 从议会结果中提取动议作为假设回退数据 */
+function loadParliamentMotions(): Hypothesis[] {
+  try {
+    const r = localStorage.getItem('ygxc_latest_parliament')
+    if (!r) return []
+    const d = JSON.parse(r)
+    const motions = d?.motions
+    if (!motions || !Array.isArray(motions) || motions.length === 0) return []
+    return motions.map((m: Record<string, unknown>, i: number) => ({
+      hypothesis_id: (m.motion_id as string) || `M${i + 1}`,
+      statement: (m.content as string) || '',
+      framework: (m.motion_type as string) || 'progress',
+      target_countries: [] as string[],
+      evidence_chain: ((m.supporting_evidence as string[]) || []).map((e: string) => ({
+        source: '议会辩论', quote: e, relevance: 0.8, evidence_type: '议会证据',
+      })),
+      verification_path: '议会投票通过',
+      confidence: (m.confidence as number) || 0.7,
+      kg_entities_involved: [] as string[],
+      falsification_criteria: '',
+    }))
+  } catch { return [] }
 }
 
 function Hypotheses() {
@@ -21,13 +52,20 @@ function Hypotheses() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const result = state.result
-  const hypotheses: Hypothesis[] = result?.hypotheses || []
+  const hypotheses: Hypothesis[] = result?.hypotheses?.length ? result.hypotheses : loadParliamentMotions()
+
+  // 统计各框架数量（用 trim 防止空格导致筛选失败）
+  const frameworkCounts = new Map<string, number>()
+  for (const h of hypotheses) {
+    const fw = (h.framework || '').trim() || 'unknown'
+    frameworkCounts.set(fw, (frameworkCounts.get(fw) || 0) + 1)
+  }
 
   const filtered = frameworkFilter === 'all'
     ? hypotheses
-    : hypotheses.filter(h => h.framework === frameworkFilter)
+    : hypotheses.filter(h => ((h.framework || '').trim() || 'unknown') === frameworkFilter)
 
-  if (!result) {
+  if (!result && hypotheses.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <div className="text-6xl mb-4">💡</div>
@@ -49,12 +87,10 @@ function Hypotheses() {
           onChange={e => setFrameworkFilter(e.target.value)}
           className="bg-space-dark border border-star-blue/30 rounded-lg px-4 py-2 text-white"
         >
-          <option value="all">全部框架</option>
-          <option value="competition">竞争框架</option>
-          <option value="cooperation">合作框架</option>
-          <option value="progress">进步框架</option>
-          <option value="threat">威胁框架</option>
-          <option value="development">发展框架</option>
+          <option value="all">全部框架 ({hypotheses.length})</option>
+          {[...frameworkCounts.entries()].map(([f, count]) => (
+            <option key={f} value={f}>{frameworkNames[f] || f} ({count})</option>
+          ))}
         </select>
       </div>
 

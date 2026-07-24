@@ -14,10 +14,30 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`px-2 py-1 rounded text-xs whitespace-nowrap ${cfg.color}`}>{cfg.text}</span>
 }
 
+function loadParliamentVerification() {
+  try {
+    const r = localStorage.getItem('ygxc_latest_parliament')
+    if (!r) return null
+    const d = JSON.parse(r)
+    const v = d?.final_strategies?.pipeline_verification
+    if (!v || !Array.isArray(v) || v.length === 0) return null
+    // 确保字段名匹配前端类型
+    return v.map((item: Record<string, unknown>) => ({
+      claim: (item.claim as string) || '',
+      status: (item.status as string) || (item.verification_status as string) || 'unverified',
+      rag_evidence: (item.rag_evidence as string) || null,
+      kg_match: (item.kg_match as string) || null,
+      cross_source_agreement: (item.cross_source_agreement as boolean) ?? null,
+      confidence: (item.confidence as number) || 0,
+      notes: (item.notes as string) || '',
+    })) as VerificationResult[]
+  } catch { return null }
+}
+
 function VerifyReport() {
   const { state } = useStore()
   const result = state.result
-  const verifications: VerificationResult[] = result?.verification_report || []
+  const verifications: VerificationResult[] = result?.verification_report || loadParliamentVerification() || []
 
   // 手动校验
   const [manualClaim, setManualClaim] = useState('')
@@ -48,7 +68,7 @@ function VerifyReport() {
     conflicting: verifications.filter(v => v.status === 'conflicting').length,
   }
 
-  if (!result) {
+  if (!result && verifications.length === 0) {
     return (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-star-blue">✅ 校验报告</h2>
@@ -128,7 +148,7 @@ function VerifyReport() {
       </div>
 
       {/* 迭代反馈 */}
-      {result.iteration_feedback && result.iteration_feedback.length > 0 && (
+      {result?.iteration_feedback && result.iteration_feedback.length > 0 && (
         <div className="card p-4">
           <h3 className="text-lg font-bold mb-3 text-star-gold">评测迭代反馈</h3>
           <div className="space-y-2">

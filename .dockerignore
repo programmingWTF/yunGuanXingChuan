@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+
+# Frontend
+frontend/node_modules/
+frontend/src/           # 源码不需要，只用 dist
+
+# Tests & Coverage
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temp
+.remember/
+temp/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env（deploy 时分别处理）
+.env
+.env.local

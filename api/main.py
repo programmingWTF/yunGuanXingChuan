@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from api.routes import analyze, hypotheses, strategies, knowledge_graph, verify
+from api.routes import analyze, hypotheses, strategies, knowledge_graph, verify, parliament
 
 # 创建 FastAPI 应用
 app = FastAPI(
@@ -37,6 +37,7 @@ app.include_router(hypotheses.router, prefix="/api/hypotheses", tags=["假设"])
 app.include_router(strategies.router, prefix="/api/strategies", tags=["策略"])
 app.include_router(knowledge_graph.router, prefix="/api/kg", tags=["知识图谱"])
 app.include_router(verify.router, prefix="/api/verify", tags=["校验"])
+app.include_router(parliament.router, prefix="/api/parliament", tags=["认知议会"])
 
 
 @app.get("/api/health")
@@ -85,4 +86,4 @@ if frontend_dist.exists():
 if __name__ == "__main__":
     import uvicorn
     from config.settings import API_PORT
-    uvicorn.run(app, host="0.0.0.0", port=API_PORT)
+    uvicorn.run(app, host="0.0.0.0", port=API_PORT, timeout_graceful_shutdown=2)

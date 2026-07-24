@@ -21,7 +21,8 @@ class ScienceAgent(BaseAgent):
     agent_name = "science_agent"
     prompt_file = "science_agent.txt"
     output_schema = ScienceFacts
-    enable_search = False  # Step 0 已提供联网搜索上下文，无需重复搜索（提速）
+    enable_search = True  # 新闻时效性强，所有Agent均需联网搜索
+    agent_tools = ["query_knowledge_graph", "search_wikipedia", "search_news", "search_web"]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -29,6 +30,14 @@ class ScienceAgent(BaseAgent):
 
     def _build_user_prompt(self, input_data: Dict[str, Any]) -> str:
         """构建科学理解任务的 user prompt"""
+        task_type = input_data.get("task_type", "")
+        if task_type == "debate_speech":
+            return self._build_debate_prompt(input_data)
+        if task_type == "vote":
+            return self._build_vote_prompt(input_data)
+        if task_type == "opening_report":
+            return self._build_opening_prompt(input_data)
+
         topic = input_data.get("topic", "嫦娥六号")
         search_context = input_data.get("search_context", "")
 
@@ -88,6 +97,76 @@ class ScienceAgent(BaseAgent):
 - 【重要】JSON 字符串值内部禁止使用英文双引号(")，如需引用请改用中文引号「」或『』"""
 
         return prompt
+
+    def _build_opening_prompt(self, input_data: Dict[str, Any]) -> str:
+        """开幕报告 prompt"""
+        topic = input_data.get("topic", "")
+        science_facts = input_data.get("science_facts", {})
+        facts_json = json.dumps(science_facts, ensure_ascii=False)[:1500]
+        return f"""你是认知议会中的科学专家。请做开幕报告，提取关键科学事实并提出动议。
+
+## 议题
+{topic}
+
+## 已有科学数据
+{facts_json}
+
+## 输出要求（严格 JSON）
+{{
+  "content": "你的开场报告（200-300字）",
+  "motions": [
+    {{
+      "motion_id": "M_S001",
+      "motion_type": "fact_claim",
+      "content": "关于科学事实的断言",
+      "supporting_evidence": ["证据"],
+      "confidence": 0.8
+    }}
+  ]
+}}"""
+
+    def _build_debate_prompt(self, input_data: Dict[str, Any]) -> str:
+        """辩论发言 prompt"""
+        topic = input_data.get("topic", "")
+        current_motion = input_data.get("current_motion", {})
+        previous_speeches = input_data.get("previous_speeches", [])
+        round_num = input_data.get("round_num", 1)
+        search_context = input_data.get("search_context", "")
+        speeches_text = "\\n".join(
+            f"【{s.get('speaker', '?')}】({s.get('stance', '?')}): {s.get('content', '')[:200]}"
+            for s in previous_speeches
+        )
+        prompt = f"""你是认知议会中的科学专家。现在进入第 {round_num} 轮辩论。
+
+## 当前议题
+{topic}
+
+## 当前动议
+{json.dumps(current_motion, ensure_ascii=False)[:800]}
+
+## 本轮已有发言
+{speeches_text if speeches_text else "（你是本轮第一位发言者）"}
+"""
+        if search_context:
+            prompt += f"""
+{search_context}
+"""
+        prompt += """## 你的任务
+从科学事实和证据角度发言，核实动议中的科学主张是否准确、是否有来源支撑。
+## 输出（严格 JSON）
+{{"stance": "support/oppose/amend/question", "content": "发言内容（150-300字）", "references": ["引用"]}}"""
+        return prompt
+
+    def _build_vote_prompt(self, input_data: Dict[str, Any]) -> str:
+        """投票 prompt"""
+        motion = input_data.get("current_motion", {})
+        debate_summary = input_data.get("debate_summary", "")
+        return f"""你现在是在投票表决，不是在辩论。请只输出 yes/no/abstain 加一行理由。
+## 待表决动议
+{json.dumps(motion, ensure_ascii=False)[:600]}
+## 辩论摘要
+{debate_summary[:600]}
+## 严格 JSON: {{"vote": "yes/no/abstain", "reason": "理由"}}"""
 
     def get_agent_info(self) -> Dict:
         return {

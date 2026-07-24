@@ -3,7 +3,7 @@
 所有 Agent 间通信必须使用这些结构化 Schema
 """
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import Dict, List, Optional
 from enum import Enum
 
 
@@ -194,3 +194,78 @@ class PipelineResult(BaseModel):
     iteration_count: int
     final_status: str  # completed / max_iterations_reached / error
     search_sources: List[dict] = Field(default_factory=list)  # Tavily 搜索来源（含 URL）
+
+
+# ==========================================================================
+# 认知议会 (Cognitive Parliament) 相关 Schema
+# ==========================================================================
+
+
+class MotionType(str, Enum):
+    """议案类型"""
+    FACT_CLAIM = "fact_claim"         # 事实性断言
+    HYPOTHESIS = "hypothesis"         # 传播假设
+    STRATEGY_PROPOSAL = "strategy"    # 策略建议
+    METHODOLOGY = "methodology"       # 方法论问题
+
+
+class Motion(BaseModel):
+    """议会动议/提案"""
+    motion_id: str                    # M001, M002...
+    motion_type: MotionType
+    proposer: str                     # 提案 Agent 名: "scientist"/"context"等
+    content: str                      # 提案全文
+    supporting_evidence: List[str] = Field(default_factory=list)
+    confidence: float = 0.0
+
+
+class Speech(BaseModel):
+    """一次发言"""
+    speaker: str                      # "scientist"/"humanist"/"strategist"...
+    round_num: int
+    content: str
+    stance: str                       # "support"/"oppose"/"amend"/"question"/"clarify"
+    references: List[str] = Field(default_factory=list)
+
+
+class DebateRound(BaseModel):
+    """一轮辩论"""
+    round_id: int
+    topic: str                        # 当前轮核心议题
+    speeches: List[Speech] = Field(default_factory=list)
+    speaker_weights: Dict[str, float] = Field(default_factory=dict)
+    speaker_rationale: str = ""       # Speaker为什么这样分配权重
+
+
+class VoteResult(BaseModel):
+    """投票结果"""
+    motion_id: str
+    votes: Dict[str, str] = Field(default_factory=dict)  # {agent_name: "yes"/"no"/"abstain"}
+    weighted_yes: float = 0.0         # 加权赞成票总和（0-1）
+    weighted_no: float = 0.0          # 加权反对票总和（0-1）
+    result: str = "pending"           # "passed"/"rejected"/"amended"/"deadlocked"
+    minority_opinions: List[str] = Field(default_factory=list)
+    speaker_ruling: str = ""          # 议长裁决（僵持时）
+
+
+class MinorityOpinion(BaseModel):
+    """少数派意见"""
+    agent: str
+    motion_id: str
+    objection: str                    # 反对理由
+    alternative_proposal: str = ""    # 替代方案
+    why_overruled: str = ""           # 为什么多数派仍否决（由Speaker记录）
+
+
+class DeliberationTranscript(BaseModel):
+    """完整辩论记录"""
+    topic: str
+    total_rounds: int = 0
+    rounds: List[DebateRound] = Field(default_factory=list)
+    motions: List[Motion] = Field(default_factory=list)
+    votes: List[VoteResult] = Field(default_factory=list)
+    minority_opinions: List[MinorityOpinion] = Field(default_factory=list)
+    final_strategies: dict = Field(default_factory=dict)
+    final_report: dict = Field(default_factory=dict)  # 结构化最终总结报告（核心结论/TOP3策略/风险/受众建议）
+    started_at: str = ""              # ISO时间
+    completed_at: str = ""            # ISO时间

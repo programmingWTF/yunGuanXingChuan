@@ -21,6 +21,8 @@ class EvaluatorAgent(BaseAgent):
     agent_name = "evaluator_agent"
     prompt_file = "evaluator_agent.txt"
     output_schema = EvaluationResult
+    enable_search = True  # 新闻时效性强，所有Agent均需联网搜索
+    agent_tools = ["verify_claim_external", "query_knowledge_graph", "search_news", "search_web"]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -28,6 +30,12 @@ class EvaluatorAgent(BaseAgent):
 
     def _build_user_prompt(self, input_data: Dict[str, Any]) -> str:
         """构建评测任务的 user prompt"""
+        task_type = input_data.get("task_type", "")
+        if task_type == "debate_speech":
+            return self._build_debate_prompt(input_data)
+        if task_type == "vote":
+            return self._build_vote_prompt(input_data)
+
         topic = input_data.get("topic", "嫦娥六号")
         strategies = input_data.get("strategies", [])
         science_facts = input_data.get("science_facts", {})
@@ -123,6 +131,38 @@ class EvaluatorAgent(BaseAgent):
 4. 你愿意分享给朋友吗？为什么？"""
 
         return prompt
+
+    def _build_debate_prompt(self, input_data: Dict[str, Any]) -> str:
+        """辩论发言 prompt — 从五维评分角度独立评估动议质量"""
+        topic = input_data.get("topic", "")
+        current_motion = input_data.get("current_motion", {})
+        previous_speeches = input_data.get("previous_speeches", [])
+        round_num = input_data.get("round_num", 1)
+        search_context = input_data.get("search_context", "")
+        speeches_text = "\\n".join(
+            f"【{s.get('speaker', '?')}】({s.get('stance', '?')}): {s.get('content', '')[:200]}"
+            for s in previous_speeches
+        )
+        prompt = f"""你是认知议会中的独立评估者。从事实准确度、策略可操作性、受众适配度等五维标准发言。第 {round_num} 轮。
+议题: {topic}
+动议: {json.dumps(current_motion, ensure_ascii=False)[:600]}
+已有发言:{speeches_text or "（你是第一位）"}
+"""
+        if search_context:
+            prompt += f"""
+{search_context}
+"""
+        prompt += """## 输出（严格 JSON）
+{{"stance": "support/amend/question/oppose", "content": "评估意见（150-300字）", "references": ["引用"]}}"""
+        return prompt
+
+    def _build_vote_prompt(self, input_data: Dict[str, Any]) -> str:
+        motion = input_data.get("current_motion", {})
+        debate_summary = input_data.get("debate_summary", "")
+        return f"""你现在是在投票表决，不是在辩论。请只输出 yes/no/abstain 加一行理由。
+动议: {json.dumps(motion, ensure_ascii=False)[:500]}
+摘要: {debate_summary[:500]}
+## 严格 JSON: {{"vote": "yes/no/abstain", "reason": "理由"}}"""
 
     def get_agent_info(self) -> Dict:
         return {

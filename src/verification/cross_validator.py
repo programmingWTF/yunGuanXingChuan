@@ -1,6 +1,6 @@
 """
 云观星传 - 交叉验证模块
-结合 RAG 和 KG 校验结果进行综合判定
+结合 RAG、KG、Wikidata、Wikipedia 四路校验结果进行综合判定
 """
 import logging
 from typing import List, Dict, Optional
@@ -11,30 +11,31 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.verification.rag_checker import RAGChecker
 from src.verification.kg_checker import KGChecker
+from src.verification.external_validator import get_external_validator
 from src.schemas import VerificationResult, VerificationStatus
 
 logger = logging.getLogger(__name__)
 
 
 class CrossValidator:
-    """交叉验证器：结合 RAG + KG 双校验结果"""
+    """交叉验证器：结合 RAG + KG + Wikidata + Wikipedia 四路校验结果"""
 
     def __init__(self):
         self.rag_checker = RAGChecker()
         self.kg_checker = KGChecker()
+        self.external_validator = get_external_validator()
 
     def cross_validate_claim(self, claim: str, entities: Optional[List[str]] = None) -> VerificationResult:
         """
-        对单条断言进行交叉验证
+        对单条断言进行四路交叉验证
 
-        判定表：
-        | RAG结果 | KG结果 | 最终判定 | 处理 |
-        |---------|--------|----------|------|
-        | 支持 | 支持 | VERIFIED | 高置信度通过 |
-        | 支持 | 无数据 | PARTIAL | 中置信度 |
-        | 无数据 | 支持 | PARTIAL | 中置信度 |
-        | 反对 | 反对 | CONFLICTING | 触发修正 |
-        | 支持 | 反对 | CONFLICTING | 人工审查标记 |
+        判定表（四路投票）：
+        | 支持数 | 最终判定 |
+        |---------|----------|
+        | ≥3 支持 | VERIFIED |
+        | 2 支持 | PARTIALLY_VERIFIED |
+        | 仅 1 支持 | UNVERIFIED |
+        | 支持+反对各 ≥1 | CONFLICTING |
 
         Args:
             claim: 待验证的断言
@@ -43,13 +44,13 @@ class CrossValidator:
         Returns:
             VerificationResult
         """
-        # RAG 校验
+        # 路径 1: RAG 校验
         rag_result = self.rag_checker.verify_claim(claim)
         rag_status = rag_result["status"]
         rag_confidence = rag_result["confidence"]
         rag_evidence = rag_result.get("evidence", "")
 
-        # KG 校验（如果有相关实体）
+        # 路径 2: KG 校验（如果有相关实体）
         kg_status = "unverified"
         kg_match = ""
         kg_confidence = 0.0
@@ -63,20 +64,111 @@ class CrossValidator:
                     kg_confidence = 0.5
                     break
 
-        # 交叉判定
-        final_status, final_confidence = self._determine_status(
-            rag_status, rag_confidence, kg_status, kg_confidence
+        # 路径 3+4: 外部校验（Wikidata + Wikipedia）
+        ext_status = "unverified"
+        ext_confidence = 0.0
+        ext_evidence = ""
+        try:
+            ext_result = self.external_validator.validate(claim, entities=entities or [])
+            ext_status = ext_result.get("status", "unverified")
+            ext_confidence = ext_result.get("confidence", 0.0)
+            ext_evidence = ext_result.get("evidence", "")
+        except Exception as e:
+            logger.debug(f"[交叉验证] 外部校验器异常（已降级）: {e}")
+
+        # 四路投票判定
+        final_status, final_confidence = self._four_way_vote(
+            rag_status, rag_confidence,
+            kg_status, kg_confidence,
+            ext_status, ext_confidence,
         )
+
+        # 组装 notes
+        notes_parts = [
+            f"RAG: {rag_status} ({rag_confidence:.2f})",
+            f"KG: {kg_status} ({kg_confidence:.2f})",
+            f"External: {ext_status} ({ext_confidence:.2f})",
+        ]
 
         return VerificationResult(
             claim=claim,
             status=final_status,
             rag_evidence=rag_evidence if rag_evidence else None,
             kg_match=kg_match if kg_match else None,
-            cross_source_agreement=(rag_status == "supported" and kg_status in ["verified", "partial"]),
+            cross_source_agreement=(
+                sum(1 for s in [rag_status, kg_status, ext_status]
+                    if s in ["supported", "verified", "partial"]) >= 2
+            ),
             confidence=final_confidence,
-            notes=f"RAG: {rag_status} ({rag_confidence:.2f}), KG: {kg_status} ({kg_confidence:.2f})",
+            notes=" | ".join(notes_parts),
         )
+
+    def _four_way_vote(
+        self,
+        rag_status: str,
+        rag_confidence: float,
+        kg_status: str,
+        kg_confidence: float,
+        ext_status: str,
+        ext_confidence: float,
+    ) -> tuple:
+        """
+        四路投票判定（RAG + KG + Wikidata + Wikipedia）
+
+        判定表：
+        | 支持数 | 最终判定 |
+        |---------|----------|
+        | ≥3 支持 | VERIFIED |
+        | 2 支持 | PARTIALLY_VERIFIED |
+        | 仅 1 支持 | UNVERIFIED |
+        | 支持+反对各 ≥1 | CONFLICTING |
+
+        Returns:
+            (status, confidence) 元组
+        """
+        # 统计支持/反对
+        support_signals = []  # (source, confidence)
+        conflict_signals = []
+
+        # RAG
+        if rag_status == "supported":
+            support_signals.append(("rag", rag_confidence))
+        elif rag_status == "conflicting":
+            conflict_signals.append(("rag", rag_confidence))
+
+        # KG
+        if kg_status in ["verified", "partial"]:
+            support_signals.append(("kg", kg_confidence))
+        elif kg_status == "conflicting":
+            conflict_signals.append(("kg", kg_confidence))
+
+        # External (Wikidata + Wikipedia 综合)
+        if ext_status in ["verified", "partial"]:
+            support_signals.append(("external", ext_confidence))
+        elif ext_status == "conflicting":
+            conflict_signals.append(("external", ext_confidence))
+
+        num_support = len(support_signals)
+        num_conflict = len(conflict_signals)
+
+        # 冲突判定：支持+反对各 ≥1
+        if num_support >= 1 and num_conflict >= 1:
+            return VerificationStatus.CONFLICTING, 0.3
+
+        # 按支持数判定
+        if num_support >= 3:
+            avg_conf = sum(c for _, c in support_signals) / num_support
+            return VerificationStatus.VERIFIED, min(0.95, avg_conf + 0.1)
+        elif num_support == 2:
+            avg_conf = sum(c for _, c in support_signals) / 2
+            return VerificationStatus.PARTIALLY_VERIFIED, min(0.8, avg_conf)
+        elif num_support == 1:
+            _, conf = support_signals[0]
+            return VerificationStatus.PARTIALLY_VERIFIED, conf * 0.7
+        else:
+            # 无支持
+            max_conf = max(rag_confidence, kg_confidence, ext_confidence)
+            return VerificationStatus.UNVERIFIED, max_conf * 0.3
 
     def _determine_status(
         self,
@@ -86,7 +178,7 @@ class CrossValidator:
         kg_confidence: float,
     ) -> tuple:
         """
-        根据 RAG 和 KG 结果确定最终状态
+        兼容旧版双路判定（保留向后兼容）
 
         Returns:
             (status, confidence) 元组

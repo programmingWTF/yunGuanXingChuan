@@ -20,7 +20,8 @@ class ContextAgent(BaseAgent):
     agent_name = "context_agent"
     prompt_file = "context_agent.txt"
     output_schema = ContextAnalysis
-    enable_search = False  # Step 0 已提供联网搜索上下文，无需重复搜索（提速）
+    enable_search = True  # 新闻时效性强，所有Agent均需联网搜索
+    agent_tools = ["search_news", "search_web", "search_rag_knowledge"]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -28,6 +29,12 @@ class ContextAgent(BaseAgent):
 
     def _build_user_prompt(self, input_data: Dict[str, Any]) -> str:
         """构建语境分析任务的 user prompt"""
+        task_type = input_data.get("task_type", "")
+        if task_type == "debate_speech":
+            return self._build_debate_prompt(input_data)
+        if task_type == "vote":
+            return self._build_vote_prompt(input_data)
+
         topic = input_data.get("topic", "嫦娥六号")
         science_facts = input_data.get("science_facts", {})
         search_context = input_data.get("search_context", "")
@@ -85,6 +92,31 @@ class ContextAgent(BaseAgent):
 - 如果某国数据较少，仍需单独列出分析结果"""
 
         return prompt
+
+    def _build_debate_prompt(self, input_data: Dict[str, Any]) -> str:
+        """辩论发言 prompt — 从国际媒体框架角度评价动议"""
+        topic = input_data.get("topic", "")
+        current_motion = input_data.get("current_motion", {})
+        previous_speeches = input_data.get("previous_speeches", [])
+        round_num = input_data.get("round_num", 1)
+        speeches_text = "\\n".join(
+            f"【{s.get('speaker', '?')}】({s.get('stance', '?')}): {s.get('content', '')[:200]}"
+            for s in previous_speeches
+        )
+        return f"""你是认知议会中的语境分析专家。从国际媒体框架和受众角度发言。第 {round_num} 轮。
+议题: {topic}
+动议: {json.dumps(current_motion, ensure_ascii=False)[:600]}
+已有发言:{speeches_text or "（你是第一位）"}
+## 输出（严格 JSON）
+{{"stance": "support/oppose/amend/question", "content": "发言内容（150-300字）", "references": ["引用"]}}"""
+
+    def _build_vote_prompt(self, input_data: Dict[str, Any]) -> str:
+        motion = input_data.get("current_motion", {})
+        debate_summary = input_data.get("debate_summary", "")
+        return f"""你现在是在投票表决，不是在辩论。请只输出 yes/no/abstain 加一行理由。
+动议: {json.dumps(motion, ensure_ascii=False)[:500]}
+摘要: {debate_summary[:500]}
+## 严格 JSON: {{"vote": "yes/no/abstain", "reason": "理由"}}"""
 
     def get_agent_info(self) -> Dict:
         return {

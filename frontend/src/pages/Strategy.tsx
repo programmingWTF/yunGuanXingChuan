@@ -11,11 +11,42 @@ const personaStyles: Record<string, string> = {
   storyteller: '国家地理/纪录片风格', communicator: '智库/政策分析风格',
 }
 
+function loadParliamentFallback() {
+  try {
+    const r = localStorage.getItem('ygxc_latest_parliament')
+    if (!r) return null
+    const d = JSON.parse(r)
+    const fs = d?.final_strategies
+    if (!fs) return null
+    // pipeline_strategies 可能是 {strategies: [...]} 或直接是数组
+    const ps = fs.pipeline_strategies as Record<string, unknown> | unknown[] | undefined
+    let strategies: Strategy[] = []
+    if (Array.isArray(ps)) {
+      strategies = ps as Strategy[]
+    } else if (ps && typeof ps === 'object') {
+      const inner = (ps as Record<string, unknown>).strategies
+      if (Array.isArray(inner)) strategies = inner as Strategy[]
+    }
+    // 如果 pipeline_strategies 没有数据，尝试从顶层 strategies 字段获取
+    if (strategies.length === 0 && Array.isArray(fs.strategies)) {
+      strategies = fs.strategies as Strategy[]
+    }
+    const evaluation = fs.pipeline_evaluation || {}
+    return {
+      strategies,
+      evaluation,
+      iteration_count: d?.total_rounds || 0,
+      topic: d?.topic || '',
+      iteration_feedback: [] as { dimension: string; current_score: number; issue: string; suggestion: string; target_agent: string }[],
+    }
+  } catch { return null }
+}
+
 function StrategyPage() {
   const { state } = useStore()
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  const result = state.result
+  const result = state.result || loadParliamentFallback()
   const strategies: Strategy[] = result?.strategies || []
   const evaluation = result?.evaluation
 

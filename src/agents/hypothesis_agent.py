@@ -21,12 +21,20 @@ class HypothesisAgent(BaseAgent):
     agent_name = "hypothesis_agent"
     prompt_file = "hypothesis_agent.txt"
     output_schema = HypothesisSet
+    enable_search = True  # 新闻时效性强，所有Agent均需联网搜索
+    agent_tools = ["query_knowledge_graph", "verify_claim_external", "search_news", "search_web"]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
     def _build_user_prompt(self, input_data: Dict[str, Any]) -> str:
         """构建假设生成任务的 user prompt"""
+        task_type = input_data.get("task_type", "")
+        if task_type == "debate_speech":
+            return self._build_debate_prompt(input_data)
+        if task_type == "vote":
+            return self._build_vote_prompt(input_data)
+
         topic = input_data.get("topic", "嫦娥六号")
         science_facts = input_data.get("science_facts", {})
         context_analysis = input_data.get("context_analysis", {})
@@ -99,6 +107,44 @@ class HypothesisAgent(BaseAgent):
 - evidence_type 可选：media_report/scientific_data/policy_document"""
 
         return prompt
+
+    def _build_debate_prompt(self, input_data: Dict[str, Any]) -> str:
+        """辩论发言 prompt — 在认知议会中充当方法论质疑者（Skeptic）"""
+        topic = input_data.get("topic", "")
+        current_motion = input_data.get("current_motion", {})
+        previous_speeches = input_data.get("previous_speeches", [])
+        round_num = input_data.get("round_num", 1)
+        search_context = input_data.get("search_context", "")
+        speeches_text = "\\n".join(
+            f"【{s.get('speaker', '?')}】({s.get('stance', '?')}): {s.get('content', '')[:200]}"
+            for s in previous_speeches
+        )
+        prompt = f"""你是认知议会中的方法论质疑者（Skeptic）。你的职责是挑逻辑漏洞、找反例、检验可证伪性。第 {round_num} 轮。
+议题: {topic}
+动议: {json.dumps(current_motion, ensure_ascii=False)[:600]}
+已有发言:{speeches_text or "（你是第一位）"}
+"""
+        if search_context:
+            prompt += f"""
+{search_context}
+"""
+        prompt += """## 严格规则
+你必须在每条动议中找到至少一个具体的逻辑漏洞、证据不足点或可证伪性问题。
+如果你认为动议无懈可击（极少见），你可以输出 stance: "support"，
+但必须用 50 字以上解释为什么这条动议经得起所有质疑。
+严禁输出 stance: "support" 且理由少于 50 字。
+
+## 输出（严格 JSON）
+{{"stance": "oppose/question/amend/support", "content": "质疑内容（150-300字）", "references": ["引用"]}}"""
+        return prompt
+
+    def _build_vote_prompt(self, input_data: Dict[str, Any]) -> str:
+        motion = input_data.get("current_motion", {})
+        debate_summary = input_data.get("debate_summary", "")
+        return f"""你现在是在投票表决，不是在辩论。请只输出 yes/no/abstain 加一行理由。
+动议: {json.dumps(motion, ensure_ascii=False)[:500]}
+摘要: {debate_summary[:500]}
+## 严格 JSON: {{"vote": "yes/no/abstain", "reason": "理由"}}"""
 
     def get_agent_info(self) -> Dict:
         return {

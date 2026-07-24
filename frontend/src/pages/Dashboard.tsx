@@ -1,6 +1,15 @@
 import ReactECharts from 'echarts-for-react'
 import { useStore } from '../store'
 
+function loadParliamentEval() {
+  try {
+    const r = localStorage.getItem('ygxc_latest_parliament')
+    if (!r) return null
+    const d = JSON.parse(r)
+    return d?.final_strategies?.pipeline_evaluation || null
+  } catch { return null }
+}
+
 /** 空状态提示 */
 function EmptyState() {
   const { state } = useStore()
@@ -30,11 +39,121 @@ function EmptyState() {
   )
 }
 
+function ParliamentFallbackDashboard() {
+  const eval_ = loadParliamentEval()
+  const dims = [{k:'factual_accuracy',l:'事实准确',i:'🔬'},{k:'strategic_actionability',l:'策略可行',i:'🎯'},{k:'audience_fit',l:'受众匹配',i:'👥'},{k:'cultural_sensitivity',l:'文化敏感',i:'🌍'},{k:'narrative_fluency',l:'叙事流畅',i:'✍️'}]
+
+  // 从议会结果中提取更多数据
+  let parliamentData: { topic?: string; total_rounds?: number; motion_count?: number; vote_count?: number; strategy_count?: number; verify_count?: number; search_sources?: { url: string; title: string; content: string; score: number; source: string }[] } | null = null
+  try {
+    const r = localStorage.getItem('ygxc_latest_parliament')
+    if (r) {
+      const d = JSON.parse(r)
+      const fs = d?.final_strategies || {}
+      const ps = fs.pipeline_strategies
+      let strategyCount = 0
+      if (Array.isArray(ps)) strategyCount = ps.length
+      else if (ps?.strategies && Array.isArray(ps.strategies)) strategyCount = ps.strategies.length
+      else if (Array.isArray(fs.strategies)) strategyCount = fs.strategies.length
+      parliamentData = {
+        topic: d?.topic,
+        total_rounds: d?.total_rounds || 0,
+        motion_count: d?.motions?.length || 0,
+        vote_count: d?.votes?.length || 0,
+        strategy_count: strategyCount,
+        verify_count: (fs.pipeline_verification || []).length,
+        search_sources: fs.search_sources || [],
+      }
+    }
+  } catch { /* ignore */ }
+
+  if (!eval_ && !parliamentData) return <EmptyState />
+
+  const vals = dims.map(d => eval_?.[d.k] || 0)
+  const avg = vals.reduce((a, b) => a + b, 0) / vals.length
+  const hasScores = vals.some(v => v > 0)
+
+  return (
+    <div className="space-y-6 max-w-3xl mx-auto mt-8">
+      {parliamentData && (
+        <div className="glass-card p-5">
+          <h3 className="text-sm font-bold text-gray-300 mb-3">🏛️ 认知议会分析概览{parliamentData.topic ? `：${parliamentData.topic}` : ''}</h3>
+          <div className="grid grid-cols-5 gap-3">
+            {[
+              { l: '辩论轮次', v: parliamentData.total_rounds, i: '⚔️' },
+              { l: '动议数', v: parliamentData.motion_count, i: '📜' },
+              { l: '表决数', v: parliamentData.vote_count, i: '🗳️' },
+              { l: '策略数', v: parliamentData.strategy_count, i: '📋' },
+              { l: '校验数', v: parliamentData.verify_count, i: '✅' },
+            ].map(s => (
+              <div key={s.l} className="bg-white/5 rounded-lg p-3 text-center">
+                <div className="text-lg">{s.i}</div>
+                <div className="text-xl font-bold text-white">{s.v ?? 0}</div>
+                <div className="text-[10px] text-gray-400">{s.l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {hasScores && (
+        <div className="glass-card p-5">
+          <h3 className="text-sm font-bold text-gray-300 mb-4">📊 五维评分（来自认知议会分析）</h3>
+          <div className="grid grid-cols-5 gap-3">
+            {dims.map((d, i) => (
+              <div key={d.k} className="text-center">
+                <div className="text-lg">{d.i}</div>
+                <div className={`text-lg font-bold mt-1 ${vals[i] >= 75 ? 'text-green-400' : vals[i] >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>{vals[i]}</div>
+                <div className="text-[10px] text-gray-400">{d.l}</div>
+                <div className="mt-1.5 h-1.5 rounded-full bg-gray-700 overflow-hidden">
+                  <div className={`h-full rounded-full ${vals[i] >= 75 ? 'bg-green-500' : vals[i] >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${vals[i]}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 text-center text-xs text-gray-400">加权平均:<span className={`font-bold ${avg >= 75 ? 'text-green-400' : 'text-yellow-400'}`}>{avg.toFixed(1)}</span> · 详细结果请查看 🏛️ 认知议会页面</div>
+        </div>
+      )}
+      {/* 联网搜索来源 */}
+      {parliamentData?.search_sources && parliamentData.search_sources.length > 0 && (
+        <div className="glass-card p-5">
+          <h3 className="text-sm font-bold text-gray-300 mb-3">
+            🌐 联网搜索内容
+            <span className="text-xs font-normal text-gray-400 ml-2">(TavilySearch + QwenWebSearch)</span>
+          </h3>
+          <div className="space-y-2">
+            {parliamentData.search_sources.map((source, i) => (
+              <a key={i} href={source.url || undefined} target="_blank" rel="noopener noreferrer"
+                className={`block p-3 bg-white/5 rounded-lg transition-colors group ${source.url ? 'hover:bg-white/10 cursor-pointer' : 'cursor-default'}`}>
+                <div className="flex items-start gap-2">
+                  <span className="text-star-blue text-xs mt-0.5">🔗</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                        source.source === 'TavilySearch' ? 'bg-blue-500/20 text-blue-300' : 'bg-purple-500/20 text-purple-300'
+                      }`}>
+                        {source.source === 'TavilySearch' ? 'TavilySearch' : 'QwenWebSearch'}
+                      </span>
+                      <span className="text-sm text-white group-hover:text-star-blue transition-colors truncate">{source.title}</span>
+                    </div>
+                    {source.url && <div className="text-xs text-gray-500 truncate mt-0.5">{source.url}</div>}
+                    {source.content && <div className="text-xs text-gray-400 mt-1 line-clamp-2">{source.content}</div>}
+                  </div>
+                  {source.score > 0 && <span className="text-xs text-gray-600 whitespace-nowrap">相关度 {(source.score * 100).toFixed(0)}%</span>}
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Dashboard() {
   const { state } = useStore()
   const result = state.result
 
-  if (!result) return <EmptyState />
+  if (!result) return <ParliamentFallbackDashboard />
 
   const { context_analysis, science_facts, hypotheses, strategies, evaluation } = result
 
