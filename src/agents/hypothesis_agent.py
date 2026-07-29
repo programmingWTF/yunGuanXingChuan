@@ -109,7 +109,7 @@ class HypothesisAgent(BaseAgent):
         return prompt
 
     def _build_debate_prompt(self, input_data: Dict[str, Any]) -> str:
-        """辩论发言 prompt — 在认知议会中充当方法论质疑者（Skeptic）"""
+        """辩论发言 prompt — 在 AI Scientist 工作流中充当方法论质疑者（Verifier）"""
         topic = input_data.get("topic", "")
         current_motion = input_data.get("current_motion", {})
         previous_speeches = input_data.get("previous_speeches", [])
@@ -119,7 +119,7 @@ class HypothesisAgent(BaseAgent):
             f"【{s.get('speaker', '?')}】({s.get('stance', '?')}): {s.get('content', '')[:200]}"
             for s in previous_speeches
         )
-        prompt = f"""你是认知议会中的方法论质疑者（Skeptic）。你的职责是挑逻辑漏洞、找反例、检验可证伪性。第 {round_num} 轮。
+        prompt = f"""你是 AI Scientist 工作流中的证据校验者（Verifier）。你的职责是挑逻辑漏洞、找反例、检验可证伪性。第 {round_num} 轮。
 议题: {topic}
 动议: {json.dumps(current_motion, ensure_ascii=False)[:600]}
 已有发言:{speeches_text or "（你是第一位）"}

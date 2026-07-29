@@ -210,7 +210,7 @@ export async function getVerifyStatus() {
   return res.data
 }
 
-// ============ 认知议会接口 ============
+// ============ AI Scientist 工作流接口 ============
 
 export interface ParliamentMotion {
   motion_id: string
@@ -285,7 +285,7 @@ export interface DeliberationTranscript {
   task_status?: string
 }
 
-/** 异步召集认知议会 */
+/** 异步启动 AI Scientist 工作流 */
 export async function conveneParliament(topic: string, maxRounds?: number, maxPipelineRounds?: number) {
   const res = await api.post('/parliament/convene', { topic, max_rounds: maxRounds, max_pipeline_rounds: maxPipelineRounds })
   return res.data as { task_id: string; status: string; message: string }

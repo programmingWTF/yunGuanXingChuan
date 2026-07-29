@@ -1,3 +1,7 @@
+/**
+ * 云观星传 V2.0 — 知识图谱
+ * 三库知识中心 · 实体关系图谱 · 力导向可视化
+ */
 import { useState, useEffect, useCallback, useRef } from 'react'
 import ReactECharts from 'echarts-for-react'
 import type { ECharts } from 'echarts'
@@ -5,12 +9,12 @@ import { useStore } from '../store'
 import { getKnowledgeGraph, getKGStats, searchEntities } from '../api'
 
 const typeColors: Record<string, string> = {
-  mission: '#00D4FF',
-  body: '#FFD700',
-  technology: '#4CAF50',
-  organization: '#FF6B35',
-  person: '#E91E63',
-  event: '#9C27B0',
+  mission: '#38d4f8',
+  body: '#fbbf24',
+  technology: '#34d399',
+  organization: '#ff6b35',
+  person: '#fb7185',
+  event: '#a78bfa',
 }
 
 const typeNames: Record<string, string> = {
@@ -31,7 +35,6 @@ function KnowledgeGraph() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<{ name: string; type: string }[]>([])
 
-  // 加载知识图谱数据
   const loadKG = useCallback(async () => {
     setLoading(true)
     setError('')
@@ -45,7 +48,6 @@ function KnowledgeGraph() {
       const s = statsData as Record<string, unknown>
       setStats({ node_count: (s.total_entities as number) ?? (s.node_count as number) ?? 0, edge_count: (s.total_relations as number) ?? (s.edge_count as number) ?? 0 })
     } catch {
-      // 如果 API 不可用，尝试从 pipeline 结果获取
       const result = state.result
       if (result?.science_facts) {
         const entities = result.science_facts.entities || []
@@ -63,33 +65,26 @@ function KnowledgeGraph() {
 
   useEffect(() => { loadKG() }, [loadKG])
 
-  // 搜索实体
   const handleSearch = async () => {
     if (!searchQuery.trim()) { setSearchResults([]); return }
     try {
       const res = await searchEntities(searchQuery.trim())
       setSearchResults(res.results || [])
     } catch {
-      // 本地搜索 fallback
       const q = searchQuery.toLowerCase()
       setSearchResults(nodes.filter(n => n.name.toLowerCase().includes(q)).map(n => ({ name: n.name, type: n.type })))
     }
   }
 
   const chartRef = useRef<ECharts | null>(null)
-
-  const handleChartReady = useCallback((instance: ECharts) => {
-    chartRef.current = instance
-  }, [])
+  const handleChartReady = useCallback((instance: ECharts) => { chartRef.current = instance }, [])
 
   const graphOption = {
-    // 状态切换渐变动画：控制 emphasis/blur 过渡（缓慢亮起/熄灭）
-    stateAnimation: {
-      duration: 800,
-      easing: 'cubicInOut',
-    },
-    title: { text: `知识图谱${state.result ? ` - ${state.result.topic}` : ''}`, left: 'center', textStyle: { color: '#E0E0E0' } },
+    stateAnimation: { duration: 800, easing: 'cubicInOut' },
     tooltip: {
+      backgroundColor: 'rgba(6,13,28,0.95)',
+      borderColor: 'rgba(56,212,248,0.3)',
+      textStyle: { color: '#dce7f5' },
       formatter: (params: { dataType: string; data: Record<string, unknown> }) => {
         if (params.dataType === 'node') {
           const d = params.data as { name: string; category?: string }
@@ -108,16 +103,10 @@ function KnowledgeGraph() {
       layout: 'force',
       roam: true,
       draggable: true,
-      // 初始动画
       animationDuration: 1200,
       animationEasing: 'cubicInOut',
-      // 节点逐个缓入：产生星空逐一亮起的平滑效果
       animationDelay: (idx: number) => idx * 60,
-      // series 级状态动画：确保 hover 高亮/恢复有平滑渐变
-      stateAnimation: {
-        duration: 800,
-        easing: 'cubicInOut',
-      },
+      stateAnimation: { duration: 800, easing: 'cubicInOut' },
       force: {
         repulsion: 400,
         edgeLength: [80, 200],
@@ -129,7 +118,13 @@ function KnowledgeGraph() {
       data: nodes.map(n => ({
         name: n.name,
         symbolSize: n.type === 'mission' ? 40 : 24,
-        itemStyle: { color: typeColors[n.type] || '#888', borderColor: '#fff', borderWidth: 1 },
+        itemStyle: {
+          color: typeColors[n.type] || '#64748b',
+          borderColor: 'rgba(255,255,255,0.5)',
+          borderWidth: 1,
+          shadowBlur: 10,
+          shadowColor: typeColors[n.type] || '#64748b',
+        },
         category: n.type,
       })),
       links: edges.map(e => ({
@@ -138,68 +133,40 @@ function KnowledgeGraph() {
         value: e.predicate || e.relation || '',
         lineStyle: { width: 2, opacity: 0.5 },
       })),
-      // 节点标签
-      label: {
-        show: true,
-        color: '#E0E0E0',
-        fontSize: 10,
-        position: 'right',
-        distance: 5,
-      },
-      // 边标签（关系文字显示在线上）
+      label: { show: true, color: '#cbd5e1', fontSize: 10, position: 'right', distance: 5 },
       edgeLabel: {
-        show: true,
-        fontSize: 9,
-        color: '#999',
+        show: true, fontSize: 9, color: '#64748b',
         formatter: (params: { data: { value?: string } }) => params.data.value || '',
       },
       lineStyle: { color: 'source', curveness: 0.2, opacity: 0.5, width: 2 },
-      // hover 时高亮相邻节点和边（内置状态系统，不触发 setOption，不会抖动）
       emphasis: {
         focus: 'adjacency',
-        // 节点高亮样式
-        itemStyle: {
-          borderWidth: 2,
-          shadowBlur: 12,
-          shadowColor: 'rgba(255,255,255,0.3)',
-        },
-        // 边高亮样式
-        lineStyle: {
-          width: 3.5,
-          opacity: 1,
-        },
-        label: {
-          show: true,
-        },
+        itemStyle: { borderWidth: 2, shadowBlur: 16, shadowColor: 'rgba(56,212,248,0.6)' },
+        lineStyle: { width: 3.5, opacity: 1 },
+        label: { show: true },
       },
-      // 非高亮元素柔和渐隐
       blur: {
-        itemStyle: {
-          opacity: 0.15,
-        },
-        lineStyle: {
-          opacity: 0.08,
-        },
-        label: {
-          opacity: 0.15,
-        },
+        itemStyle: { opacity: 0.15 },
+        lineStyle: { opacity: 0.08 },
+        label: { opacity: 0.15 },
       },
       scaleLimit: { min: 0.3, max: 3 },
     }],
     backgroundColor: 'transparent',
   }
 
-  // 统计卡片数据
   const typeCounts: Record<string, number> = {}
   nodes.forEach(n => { typeCounts[n.type] = (typeCounts[n.type] || 0) + 1 })
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-star-blue">🔗 知识图谱</h2>
-        <button onClick={loadKG} className="px-4 py-2 rounded-lg bg-white/5 border border-star-blue/30 text-sm text-star-blue hover:bg-star-blue/10 transition-colors">
-          🔄 刷新数据
-        </button>
+      <div className="flex justify-between items-end">
+        <div>
+          <p className="sec-label mb-1">Knowledge Graph</p>
+          <h2 className="font-display text-2xl font-bold text-white">知识图谱</h2>
+          <p className="text-xs text-slate-500 mt-1.5">三库知识中心 · 实体关系网络 · 力导向布局</p>
+        </div>
+        <button onClick={loadKG} className="btn-ghost text-sm">⟳ 刷新数据</button>
       </div>
 
       {/* 搜索栏 */}
@@ -209,50 +176,51 @@ function KnowledgeGraph() {
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSearch()}
-          placeholder="搜索实体（如：嫦娥六号、CNSA）..."
-          className="flex-1 bg-white/5 border border-star-blue/30 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-star-blue"
+          placeholder="搜索实体（如：嫦娥六号、CNSA、JWST）..."
+          className="input-field flex-1"
         />
         <button onClick={handleSearch} className="btn-primary text-sm">搜索</button>
       </div>
 
       {/* 搜索结果 */}
       {searchResults.length > 0 && (
-        <div className="card p-4">
-          <h3 className="text-sm font-bold text-star-gold mb-2">搜索结果 ({searchResults.length})</h3>
+        <div className="panel p-4">
+          <h3 className="text-[11px] font-bold text-nova-400 mb-2.5">搜索结果（{searchResults.length}）</h3>
           <div className="flex flex-wrap gap-2">
             {searchResults.map((r, i) => (
-              <span key={i} className="px-3 py-1 rounded-full text-sm" style={{ backgroundColor: `${typeColors[r.type] || '#888'}33`, color: typeColors[r.type] || '#888' }}>
-                {r.name} ({typeNames[r.type] || r.type})
+              <span key={i} className="px-3 py-1 rounded-md text-xs border"
+                style={{ backgroundColor: `${typeColors[r.type] || '#64748b'}1a`, color: typeColors[r.type] || '#94a3b8', borderColor: `${typeColors[r.type] || '#64748b'}40` }}>
+                {r.name} · {typeNames[r.type] || r.type}
               </span>
             ))}
           </div>
         </div>
       )}
 
-      {error && <div className="card p-4 text-red-400 text-sm">{error}</div>}
-      {loading && <div className="card p-4 text-star-blue text-sm animate-pulse">加载知识图谱数据中...</div>}
+      {error && <div className="panel p-4 text-flare-400 text-sm">{error}</div>}
+      {loading && <div className="panel p-4 text-astro-300 text-sm animate-pulse">加载知识图谱数据中...</div>}
 
       {/* 统计卡片 */}
       <div className="grid grid-cols-4 gap-4">
-        <div className="card p-4 text-center">
-          <div className="text-2xl font-bold text-star-blue">{stats?.node_count ?? nodes.length}</div>
-          <div className="text-sm text-gray-400">实体总数</div>
+        <div className="panel p-5 text-center">
+          <div className="stat-num text-3xl text-astro-300">{stats?.node_count ?? nodes.length}</div>
+          <div className="text-xs text-slate-500 mt-1">实体总数</div>
         </div>
-        <div className="card p-4 text-center">
-          <div className="text-2xl font-bold text-star-gold">{stats?.edge_count ?? edges.length}</div>
-          <div className="text-sm text-gray-400">关系总数</div>
+        <div className="panel p-5 text-center">
+          <div className="stat-num text-3xl text-nova-400">{stats?.edge_count ?? edges.length}</div>
+          <div className="text-xs text-slate-500 mt-1">关系总数</div>
         </div>
         {Object.entries(typeCounts).slice(0, 2).map(([type, count]) => (
-          <div key={type} className="card p-4 text-center">
-            <div className="text-2xl font-bold" style={{ color: typeColors[type] || '#888' }}>{count}</div>
-            <div className="text-sm text-gray-400">{typeNames[type] || type}</div>
+          <div key={type} className="panel p-5 text-center">
+            <div className="stat-num text-3xl" style={{ color: typeColors[type] || '#94a3b8' }}>{count}</div>
+            <div className="text-xs text-slate-500 mt-1">{typeNames[type] || type}</div>
           </div>
         ))}
       </div>
 
       {/* 图谱可视化 */}
       {nodes.length > 0 ? (
-        <div className="card p-4">
+        <div className="panel p-4">
           <ReactECharts
             option={graphOption}
             style={{ height: 600 }}
@@ -263,20 +231,20 @@ function KnowledgeGraph() {
         </div>
       ) : (
         !loading && !error && (
-          <div className="card p-8 text-center text-gray-500">
-            暂无图谱数据。请确认后端已启动，或先运行分析任务。
+          <div className="panel p-12 text-center text-slate-600 text-sm">
+            暂无图谱数据。请确认后端已启动，或先在研究工作台运行分析任务。
           </div>
         )
       )}
 
       {/* 图例 */}
-      <div className="card p-4">
-        <h3 className="text-lg font-bold mb-3 text-star-gold">图例说明</h3>
+      <div className="panel p-5">
+        <h3 className="text-[11px] font-bold text-astro-300 mb-3">图例说明</h3>
         <div className="flex gap-6 text-sm flex-wrap">
           {Object.entries(typeNames).map(([type, name]) => (
-            <span key={type} className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: typeColors[type] }} />
-              {name} ({type})
+            <span key={type} className="flex items-center gap-2 text-slate-400">
+              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: typeColors[type], boxShadow: `0 0 8px ${typeColors[type]}` }} />
+              {name} <span className="text-slate-600 font-mono text-xs">{type}</span>
             </span>
           ))}
         </div>

@@ -56,13 +56,16 @@ class CrossValidator:
         kg_confidence = 0.0
 
         if entities:
-            for entity in entities:
-                related = self.kg_checker.get_related_context(entity, depth=1)
-                if related:
-                    kg_status = "partial"
-                    kg_match = f"找到相关实体: {entity}"
-                    kg_confidence = 0.5
-                    break
+            try:
+                for entity in entities:
+                    related = self.kg_checker.get_related_context(entity, depth=1)
+                    if related:
+                        kg_status = "partial"
+                        kg_match = f"找到相关实体: {entity}"
+                        kg_confidence = 0.5
+                        break
+            except Exception as e:
+                logger.debug(f"[交叉验证] KG 校验异常（已降级）: {e}")
 
         # 路径 3+4: 外部校验（Wikidata + Wikipedia）
         ext_status = "unverified"
@@ -223,16 +226,26 @@ class CrossValidator:
         entities = [e.get("name", "") for e in science_facts.get("entities", [])]
 
         for fact in key_facts:
-            result = self.cross_validate_claim(fact, entities=entities)
-            results.append(result)
+            try:
+                result = self.cross_validate_claim(fact, entities=entities)
+                results.append(result)
+            except Exception as e:
+                logger.warning(f"[校验] 事实校验异常，已跳过: {e}")
+                results.append(VerificationResult(
+                    claim=fact, status=VerificationStatus.UNVERIFIED,
+                    confidence=0.0, notes=f"校验异常: {e}"
+                ))
 
         # 校验关系三元组
         relations = science_facts.get("relations", [])
         for rel in relations:
-            claim = f"{rel.get('subject', '')} {rel.get('predicate', '')} {rel.get('object', '')}"
-            rel_entities = [rel.get("subject", ""), rel.get("object", "")]
-            result = self.cross_validate_claim(claim, entities=rel_entities)
-            results.append(result)
+            try:
+                claim = f"{rel.get('subject', '')} {rel.get('predicate', '')} {rel.get('object', '')}"
+                rel_entities = [rel.get("subject", ""), rel.get("object", "")]
+                result = self.cross_validate_claim(claim, entities=rel_entities)
+                results.append(result)
+            except Exception as e:
+                logger.warning(f"[校验] 关系校验异常，已跳过: {e}")
 
         return results
 
@@ -249,19 +262,26 @@ class CrossValidator:
         results = []
 
         for hyp in hypotheses:
-            statement = hyp.get("statement", "")
-            kg_entities = hyp.get("kg_entities_involved", [])
+            try:
+                statement = hyp.get("statement", "")
+                kg_entities = hyp.get("kg_entities_involved", [])
 
-            # 校验假设陈述
-            result = self.cross_validate_claim(statement, entities=kg_entities)
-            results.append(result)
+                # 校验假设陈述
+                result = self.cross_validate_claim(statement, entities=kg_entities)
+                results.append(result)
 
-            # 校验证据链
-            for evidence in hyp.get("evidence_chain", []):
-                quote = evidence.get("quote", "")
-                if quote:
-                    ev_result = self.cross_validate_claim(quote, entities=kg_entities)
-                    results.append(ev_result)
+                # 校验证据链
+                for evidence in hyp.get("evidence_chain", []):
+                    quote = evidence.get("quote", "")
+                    if quote:
+                        ev_result = self.cross_validate_claim(quote, entities=kg_entities)
+                        results.append(ev_result)
+            except Exception as e:
+                logger.warning(f"[校验] 假设校验异常，已跳过: {e}")
+                results.append(VerificationResult(
+                    claim=hyp.get("statement", ""), status=VerificationStatus.UNVERIFIED,
+                    confidence=0.0, notes=f"校验异常: {e}"
+                ))
 
         return results
 

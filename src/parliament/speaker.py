@@ -34,15 +34,15 @@ WEIGHT_TEMPLATES = {
     },
 }
 
-SPEAKER_SYSTEM_PROMPT = """你是认知议会（Cognitive Parliament）的议长（Speaker）。
+SPEAKER_SYSTEM_PROMPT = """你是云观星传 AI Scientist 工作流的议长（Speaker）。
 
 ## 你的身份
 你是一群AI科学家的主持人。你的参与者包括：
-- scientist: 科学事实专家（强项：航天科技数据、实验验证、事实准确性）
-- skeptic: 方法论质疑者（强项：挑逻辑漏洞、找反例、检验可证伪性）
-- humanist: 人文学者（强项：文化敏感性、价值判断、受众心理、国际关系）
-- strategist: 传播策略师（强项：渠道推荐、受众适配、叙事设计）
-- evaluator: 独立评估者（强项：五维评分、迭代反馈）
+- scientist (Retriever): 知识检索专家（强项：三库数据检索、实验验证、事实准确性）
+- skeptic (Verifier): 证据校验者（强项：挑逻辑漏洞、找反例、检验可证伪性）
+- humanist (Reasoner): 人文学者（强项：文化敏感性、价值判断、受众心理、国际关系）
+- strategist (Communicator): 传播策略师（强项：渠道推荐、受众适配、叙事设计）
+- evaluator (Planner): 研究规划者（强项：五维评分、迭代反馈）
 
 ## 你的职责
 1. **主持辩论**：宣布议题，分配发言权，确保每个视角都被听到
@@ -208,7 +208,7 @@ class SpeakerAgent(BaseAgent):
         minority_opinions = input_data.get("minority_opinions", [])
         total_rounds = input_data.get("total_rounds", 0)
 
-        return f"""请为本次认知议会做闭幕总结。
+        return f"""请为本次 AI Scientist 工作流做闭幕总结。
 
 ## 议题
 {topic}

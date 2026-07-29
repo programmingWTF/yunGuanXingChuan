@@ -103,7 +103,7 @@ class ScienceAgent(BaseAgent):
         topic = input_data.get("topic", "")
         science_facts = input_data.get("science_facts", {})
         facts_json = json.dumps(science_facts, ensure_ascii=False)[:1500]
-        return f"""你是认知议会中的科学专家。请做开幕报告，提取关键科学事实并提出动议。
+        return f"""你是 AI Scientist 工作流中的知识检索专家（Retriever）。请做开幕报告，提取关键科学事实并提出动议。
 
 ## 议题
 {topic}
@@ -136,7 +136,7 @@ class ScienceAgent(BaseAgent):
             f"【{s.get('speaker', '?')}】({s.get('stance', '?')}): {s.get('content', '')[:200]}"
             for s in previous_speeches
         )
-        prompt = f"""你是认知议会中的科学专家。现在进入第 {round_num} 轮辩论。
+        prompt = f"""你是 AI Scientist 工作流中的知识检索专家（Retriever）。现在进入第 {round_num} 轮辩论。
 
 ## 当前议题
 {topic}

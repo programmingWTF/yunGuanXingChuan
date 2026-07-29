@@ -126,7 +126,7 @@ class StrategyAgent(BaseAgent):
             f"【{s.get('speaker', '?')}】({s.get('stance', '?')}): {s.get('content', '')[:200]}"
             for s in previous_speeches
         )
-        prompt = f"""你是认知议会中的传播策略师。从策略可操作性、渠道匹配、受众覆盖角度发言。第 {round_num} 轮。
+        prompt = f"""你是 AI Scientist 工作流中的传播策略师（Communicator）。从策略可操作性、渠道匹配、受众覆盖角度发言。第 {round_num} 轮。
 议题: {topic}
 动议: {json.dumps(current_motion, ensure_ascii=False)[:600]}
 已有发言:{speeches_text or "（你是第一位）"}

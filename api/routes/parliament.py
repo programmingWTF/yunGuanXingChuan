@@ -90,10 +90,10 @@ def make_parliament_callback(task_id: str):
     }
 
     def callback(step: str, status: str, message: str = "", *args):
-        # 解析 full_content: 可能从 args[1] 或 kwargs 传入
+        # 解析 full_content: 第4个位置参数即为发言全文
         full_content = ""
-        if len(args) >= 2 and isinstance(args[1], str):
-            full_content = args[1]
+        if len(args) >= 1 and isinstance(args[0], str):
+            full_content = args[0]
 
         progress = parliament_progress.get(task_id)
         if not progress:

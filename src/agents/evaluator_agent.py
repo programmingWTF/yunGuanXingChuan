@@ -143,7 +143,7 @@ class EvaluatorAgent(BaseAgent):
             f"【{s.get('speaker', '?')}】({s.get('stance', '?')}): {s.get('content', '')[:200]}"
             for s in previous_speeches
         )
-        prompt = f"""你是认知议会中的独立评估者。从事实准确度、策略可操作性、受众适配度等五维标准发言。第 {round_num} 轮。
+        prompt = f"""你是 AI Scientist 工作流中的研究规划者（Planner）。从事实准确度、策略可操作性、受众适配度等五维标准发言。第 {round_num} 轮。
 议题: {topic}
 动议: {json.dumps(current_motion, ensure_ascii=False)[:600]}
 已有发言:{speeches_text or "（你是第一位）"}

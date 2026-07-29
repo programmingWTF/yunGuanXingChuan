@@ -103,7 +103,7 @@ class ContextAgent(BaseAgent):
             f"【{s.get('speaker', '?')}】({s.get('stance', '?')}): {s.get('content', '')[:200]}"
             for s in previous_speeches
         )
-        return f"""你是认知议会中的语境分析专家。从国际媒体框架和受众角度发言。第 {round_num} 轮。
+        return f"""你是 AI Scientist 工作流中的跨文化推理专家（Reasoner）。从国际媒体框架和受众角度发言。第 {round_num} 轮。
 议题: {topic}
 动议: {json.dumps(current_motion, ensure_ascii=False)[:600]}
 已有发言:{speeches_text or "（你是第一位）"}

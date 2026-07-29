@@ -1,17 +1,21 @@
+/**
+ * 云观星传 V2.0 — 证据校验
+ * Verifier Agent · RAG + KG 交叉验证 · 手动断言校验
+ */
 import { useState } from 'react'
 import { useStore } from '../store'
 import { verifyClaim, type VerificationResult } from '../api'
 
 const statusConfig: Record<string, { color: string; text: string }> = {
-  verified: { color: 'text-green-400 bg-green-500/20', text: '✓ 已验证' },
-  partial: { color: 'text-yellow-400 bg-yellow-500/20', text: '◐ 部分验证' },
-  conflicting: { color: 'text-red-400 bg-red-500/20', text: '✗ 冲突' },
-  unverified: { color: 'text-gray-400 bg-gray-500/20', text: '? 未验证' },
+  verified: { color: 'text-aurora-400 bg-aurora-400/10 border-aurora-400/30', text: '✓ 已验证' },
+  partial: { color: 'text-nova-400 bg-nova-400/10 border-nova-400/30', text: '◐ 部分验证' },
+  conflicting: { color: 'text-flare-400 bg-flare-500/10 border-flare-400/30', text: '✗ 冲突' },
+  unverified: { color: 'text-slate-400 bg-slate-500/10 border-slate-500/30', text: '? 未验证' },
 }
 
 function StatusBadge({ status }: { status: string }) {
   const cfg = statusConfig[status] || statusConfig.unverified
-  return <span className={`px-2 py-1 rounded text-xs whitespace-nowrap ${cfg.color}`}>{cfg.text}</span>
+  return <span className={`px-2.5 py-1 rounded-md text-[11px] font-medium border whitespace-nowrap ${cfg.color}`}>{cfg.text}</span>
 }
 
 function loadParliamentVerification() {
@@ -21,7 +25,6 @@ function loadParliamentVerification() {
     const d = JSON.parse(r)
     const v = d?.final_strategies?.pipeline_verification
     if (!v || !Array.isArray(v) || v.length === 0) return null
-    // 确保字段名匹配前端类型
     return v.map((item: Record<string, unknown>) => ({
       claim: (item.claim as string) || '',
       status: (item.status as string) || (item.verification_status as string) || 'unverified',
@@ -39,7 +42,6 @@ function VerifyReport() {
   const result = state.result
   const verifications: VerificationResult[] = result?.verification_report || loadParliamentVerification() || []
 
-  // 手动校验
   const [manualClaim, setManualClaim] = useState('')
   const [manualResult, setManualResult] = useState<VerificationResult | null>(null)
   const [verifying, setVerifying] = useState(false)
@@ -60,7 +62,6 @@ function VerifyReport() {
     }
   }
 
-  // 统计
   const counts = {
     total: verifications.length,
     verified: verifications.filter(v => v.status === 'verified').length,
@@ -71,19 +72,21 @@ function VerifyReport() {
   if (!result && verifications.length === 0) {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-star-blue">✅ 校验报告</h2>
+        <div>
+          <p className="sec-label mb-1">Evidence Verification</p>
+          <h2 className="font-display text-2xl font-bold text-white">证据校验</h2>
+        </div>
 
-        {/* 即使没有分析结果，也允许手动校验 */}
         <ManualVerify
           claim={manualClaim} setClaim={setManualClaim}
           onVerify={handleVerify} verifying={verifying}
           result={manualResult} error={manualError}
         />
 
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="text-6xl mb-4">✅</div>
-          <h3 className="text-xl font-bold text-gray-300 mb-2">暂无 Pipeline 校验数据</h3>
-          <p className="text-gray-500">运行分析后，校验层（RAG + KG 交叉验证）将自动校验所有事实和假设</p>
+        <div className="panel p-16 text-center">
+          <div className="text-5xl mb-5 opacity-50">◇</div>
+          <h3 className="text-lg font-bold text-white mb-2">暂无证据校验数据</h3>
+          <p className="text-sm text-slate-500">运行分析后，Verifier Agent（RAG + KG 交叉验证）将自动校验所有事实与假设</p>
         </div>
       </div>
     )
@@ -91,7 +94,11 @@ function VerifyReport() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-star-blue">✅ 校验报告</h2>
+      <div>
+        <p className="sec-label mb-1">Evidence Verification</p>
+        <h2 className="font-display text-2xl font-bold text-white">证据校验</h2>
+        <p className="text-xs text-slate-500 mt-1.5">RAG 向量检索 + 知识图谱交叉验证 · 可证伪性检验</p>
+      </div>
 
       {/* 手动校验 */}
       <ManualVerify
@@ -103,42 +110,42 @@ function VerifyReport() {
       {/* 总览卡片 */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: '总断言数', value: String(counts.total), color: 'text-star-blue' },
-          { label: '已验证', value: String(counts.verified), color: 'text-green-400' },
-          { label: '部分验证', value: String(counts.partial), color: 'text-yellow-400' },
-          { label: '冲突', value: String(counts.conflicting), color: 'text-red-400' },
+          { label: '总断言数', value: counts.total, color: 'text-astro-300' },
+          { label: '已验证', value: counts.verified, color: 'text-aurora-400' },
+          { label: '部分验证', value: counts.partial, color: 'text-nova-400' },
+          { label: '冲突', value: counts.conflicting, color: 'text-flare-400' },
         ].map((item, i) => (
-          <div key={i} className="card p-4 text-center">
-            <div className={`text-2xl font-bold ${item.color}`}>{item.value}</div>
-            <div className="text-sm text-gray-400">{item.label}</div>
+          <div key={i} className="panel p-5 text-center">
+            <div className={`stat-num text-3xl ${item.color}`}>{item.value}</div>
+            <div className="text-xs text-slate-500 mt-1">{item.label}</div>
           </div>
         ))}
       </div>
 
       {/* 校验详情 */}
-      <div className="card p-4">
-        <h3 className="text-lg font-bold mb-4 text-star-gold">逐条校验详情（RAG + KG 交叉验证）</h3>
+      <div className="panel p-5">
+        <p className="sec-label mb-1">Cross Verification</p>
+        <h3 className="font-display text-base font-bold text-white mb-4">逐条校验详情</h3>
         {verifications.length === 0 ? (
-          <p className="text-gray-500 text-sm">本次分析未产生校验结果</p>
+          <p className="text-slate-600 text-sm">本次分析未产生校验结果</p>
         ) : (
           <div className="space-y-3">
             {verifications.map((item, i) => (
-              <div key={i} className="p-3 bg-white/5 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm flex-1 mr-4">{item.claim}</span>
-                  <div className="flex items-center gap-3">
+              <div key={i} className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.05] animate-rise" style={{ animationDelay: `${i * 0.04}s` }}>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-sm text-slate-200 flex-1 leading-relaxed">{item.claim}</span>
+                  <div className="flex items-center gap-3 shrink-0">
                     <StatusBadge status={item.status} />
-                    <span className="text-sm text-gray-400 w-20 text-right" title="RAG向量检索置信度：基于本地知识库的语义匹配度，0%表示索引为空或无匹配">
-                      置信度 {(item.confidence * 100).toFixed(0)}%
+                    <span className="text-xs text-slate-500 w-20 text-right font-mono" title="RAG向量检索置信度">
+                      {(item.confidence * 100).toFixed(0)}%
                     </span>
                   </div>
                 </div>
-                {/* 证据详情 */}
                 {(item.rag_evidence || item.kg_match || item.notes) && (
-                  <div className="mt-2 pt-2 border-t border-white/5 text-xs text-gray-500 space-y-1">
-                    {item.rag_evidence && <p>📄 RAG: {item.rag_evidence}</p>}
-                    {item.kg_match && <p>🔗 KG: {item.kg_match}</p>}
-                    {item.notes && <p>📝 {item.notes}</p>}
+                  <div className="mt-3 pt-3 border-t border-white/[0.05] text-xs text-slate-500 space-y-1.5">
+                    {item.rag_evidence && <p><span className="text-astro-300">📄 RAG</span> · {item.rag_evidence}</p>}
+                    {item.kg_match && <p><span className="text-nova-400">🔗 KG</span> · {item.kg_match}</p>}
+                    {item.notes && <p><span className="text-slate-400">📝</span> {item.notes}</p>}
                   </div>
                 )}
               </div>
@@ -149,15 +156,16 @@ function VerifyReport() {
 
       {/* 迭代反馈 */}
       {result?.iteration_feedback && result.iteration_feedback.length > 0 && (
-        <div className="card p-4">
-          <h3 className="text-lg font-bold mb-3 text-star-gold">评测迭代反馈</h3>
+        <div className="panel p-5">
+          <p className="sec-label mb-1">Iteration Feedback</p>
+          <h3 className="font-display text-base font-bold text-white mb-3">评测迭代反馈</h3>
           <div className="space-y-2">
             {result.iteration_feedback.map((fb, i) => (
-              <div key={i} className="flex items-start gap-3 p-3 bg-white/5 rounded-lg text-sm">
-                <span className="text-star-blue font-bold whitespace-nowrap">{fb.dimension}</span>
-                <span className="text-gray-500 whitespace-nowrap">({fb.current_score}分)</span>
-                <span className="text-gray-300">{fb.issue}</span>
-                <span className="text-green-400/80 ml-auto whitespace-nowrap">→ {fb.target_agent}</span>
+              <div key={i} className="flex items-start gap-3 p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-sm">
+                <span className="text-astro-300 font-bold whitespace-nowrap">{fb.dimension}</span>
+                <span className="text-slate-600 whitespace-nowrap font-mono text-xs">({fb.current_score})</span>
+                <span className="text-slate-300">{fb.issue}</span>
+                <span className="text-aurora-400/80 ml-auto whitespace-nowrap text-xs">→ {fb.target_agent}</span>
               </div>
             ))}
           </div>
@@ -177,8 +185,9 @@ function ManualVerify({ claim, setClaim, onVerify, verifying, result, error }: {
   error: string
 }) {
   return (
-    <div className="card p-4">
-      <h3 className="text-lg font-bold mb-3 text-star-gold">🔍 手动断言校验</h3>
+    <div className="panel p-5">
+      <p className="sec-label mb-1">Manual Check</p>
+      <h3 className="font-display text-base font-bold text-white mb-3">手动断言校验</h3>
       <div className="flex gap-3">
         <input
           type="text"
@@ -186,30 +195,30 @@ function ManualVerify({ claim, setClaim, onVerify, verifying, result, error }: {
           onChange={e => setClaim(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && onVerify()}
           placeholder="输入需要校验的断言，如：嫦娥六号于2024年5月3日发射"
-          className="flex-1 bg-white/5 border border-star-blue/30 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-star-blue"
+          className="input-field flex-1"
         />
         <button onClick={onVerify} disabled={verifying || !claim.trim()} className="btn-primary text-sm disabled:opacity-50">
           {verifying ? '校验中...' : '校验'}
         </button>
       </div>
 
-      {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+      {error && <p className="mt-2.5 text-sm text-flare-400">{error}</p>}
 
       {result && (
-        <div className="mt-3 p-4 bg-white/5 rounded-lg">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm">{result.claim}</span>
-            <div className="flex items-center gap-3">
+        <div className="mt-4 p-4 rounded-xl bg-white/[0.02] border border-white/[0.05] animate-fade-in">
+          <div className="flex items-center justify-between mb-3 gap-4">
+            <span className="text-sm text-slate-200">{result.claim}</span>
+            <div className="flex items-center gap-3 shrink-0">
               <StatusBadge status={result.status} />
-              <span className="text-sm text-gray-400">置信度 {(result.confidence * 100).toFixed(0)}%</span>
+              <span className="text-xs text-slate-500 font-mono">置信度 {(result.confidence * 100).toFixed(0)}%</span>
             </div>
           </div>
-          <div className="text-xs text-gray-500 space-y-1">
-            {result.rag_evidence && <p>📄 RAG 证据: {result.rag_evidence}</p>}
-            {result.kg_match && <p>🔗 KG 匹配: {result.kg_match}</p>}
-            {result.notes && <p>📝 备注: {result.notes}</p>}
+          <div className="text-xs text-slate-500 space-y-1.5">
+            {result.rag_evidence && <p><span className="text-astro-300">📄 RAG 证据</span> · {result.rag_evidence}</p>}
+            {result.kg_match && <p><span className="text-nova-400">🔗 KG 匹配</span> · {result.kg_match}</p>}
+            {result.notes && <p><span className="text-slate-400">📝 备注</span> · {result.notes}</p>}
             {result.cross_source_agreement !== null && (
-              <p>🤝 交叉一致性: {result.cross_source_agreement ? '一致' : '不一致'}</p>
+              <p><span className="text-aurora-400">🤝 交叉一致性</span> · {result.cross_source_agreement ? '一致' : '不一致'}</p>
             )}
           </div>
         </div>

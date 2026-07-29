@@ -2344,5 +2344,186 @@
       "wikidata_id": "Q106268946",
       "description": "2014年学术文章"
     }
+  },
+  {
+    "id": "e264",
+    "name": "嫦娥七号",
+    "type": "mission",
+    "attributes": {
+      "launch_date": "2026年下半年",
+      "launch_site": "文昌航天发射场",
+      "rocket": "长征五号遥十四",
+      "composition": "轨道器、着陆器、巡视器、飞跃器",
+      "payloads": "21台（含6台国际载荷）",
+      "detection_mode": "绕、落、巡、飞跃四位一体",
+      "target": "月球南极水冰探测"
+    }
+  },
+  {
+    "id": "e265",
+    "name": "天问二号",
+    "type": "mission",
+    "attributes": {
+      "launch_date": "2025-05-29",
+      "launch_site": "西昌卫星发射中心",
+      "rocket": "长征三号乙遥一一〇",
+      "mass": "约2.1吨",
+      "wingspan": "15米",
+      "mission_duration": "约10年",
+      "early_name": "郑和号",
+      "target": "小行星2016HO3采样返回 + 主带彗星311P伴飞"
+    }
+  },
+  {
+    "id": "e266",
+    "name": "小行星2016HO3",
+    "type": "body",
+    "attributes": {
+      "permanent_number": 469219,
+      "chinese_name": "振荡天星",
+      "hawaiian_name": "Kamo'oalewa",
+      "diameter": "40-100米",
+      "rotation_period": "约28分钟",
+      "orbital_period": "约365.79天",
+      "type": "近地小行星/地球准卫星",
+      "origin_hypothesis": "可能源自月球背面布鲁诺撞击坑"
+    }
+  },
+  {
+    "id": "e267",
+    "name": "主带彗星311P",
+    "type": "body",
+    "attributes": {
+      "designation": "P/2013 P5",
+      "distance_from_sun": "约3.75亿千米",
+      "type": "主带彗星",
+      "arrival_estimate": "2034年底"
+    }
+  },
+  {
+    "id": "e268",
+    "name": "月球南极",
+    "type": "body",
+    "attributes": {
+      "latitude": "南纬85度以上",
+      "basin": "南极-艾特肯盆地",
+      "feature": "永久阴影坑，可能蕴藏水冰资源",
+      "light_condition": "部分坑壁峰顶几乎持续受阳光照射"
+    }
+  },
+  {
+    "id": "e269",
+    "name": "沙克尔顿撞击坑",
+    "type": "body",
+    "attributes": {
+      "location": "月球南极附近",
+      "diameter": "约21公里",
+      "feature": "坑内永久黑暗，坑壁峰几乎持续受阳光照射"
+    }
+  },
+  {
+    "id": "e270",
+    "name": "国际月球科研站",
+    "type": "mission",
+    "attributes": {
+      "english_name": "International Lunar Research Station (ILRS)",
+      "initiator": "中国与俄罗斯",
+      "status": "规划建设中",
+      "partners": "多国参与"
+    }
+  },
+  {
+    "id": "e271",
+    "name": "飞跃器",
+    "type": "technology",
+    "attributes": {
+      "function": "月面飞跃探测，从光照区飞跃至永久阴影坑",
+      "payload": "月壤水分子分析仪",
+      "landing_tech": "主动式着陆缓冲技术",
+      "mobility": "腿足规划与关节驱动"
+    }
+  },
+  {
+    "id": "e272",
+    "name": "中国航天科技集团五院",
+    "type": "organization",
+    "attributes": {
+      "full_name": "中国空间技术研究院",
+      "role": "抓总研制嫦娥七号、天问二号等探测器"
+    }
+  },
+  {
+    "id": "e273",
+    "name": "文昌航天发射场",
+    "type": "organization",
+    "attributes": {
+      "location": "海南省文昌市",
+      "role": "长征五号系列火箭发射场"
+    }
+  },
+  {
+    "id": "e274",
+    "name": "吴伟仁",
+    "type": "person",
+    "attributes": {
+      "title": "中国探月工程总设计师",
+      "role": "探月工程总体规划与技术决策"
+    }
+  },
+  {
+    "id": "e275",
+    "name": "孙泽洲",
+    "type": "person",
+    "attributes": {
+      "title": "中国航天科技集团五院研究员",
+      "role": "嫦娥七号/八号探测器总设计师"
+    }
+  },
+  {
+    "id": "e276",
+    "name": "长征五号遥十四",
+    "type": "technology",
+    "attributes": {
+      "type": "重型运载火箭",
+      "role": "嫦娥七号发射任务",
+      "arrival_at_site": "2026-07-13"
+    }
+  },
+  {
+    "id": "e277",
+    "name": "长征三号乙",
+    "type": "technology",
+    "attributes": {
+      "variant": "遥一一〇",
+      "role": "天问二号发射任务",
+      "launch_site": "西昌卫星发射中心"
+    }
+  },
+  {
+    "id": "e278",
+    "name": "西昌卫星发射中心",
+    "type": "organization",
+    "attributes": {
+      "location": "四川省西昌市",
+      "role": "长征三号系列火箭发射场"
+    }
+  },
+  {
+    "id": "e279",
+    "name": "宝音",
+    "type": "person",
+    "attributes": {
+      "affiliation": "清华大学航天航空学院",
+      "research": "天问二号目标小行星起源研究"
+    }
+  },
+  {
+    "id": "e280",
+    "name": "布鲁诺撞击坑",
+    "type": "body",
+    "attributes": {
+      "location": "月球背面",
+      "significance": "可能是小行星2016HO3的起源地"
+    }
   }
 ]

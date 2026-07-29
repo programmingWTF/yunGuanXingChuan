@@ -517,11 +517,14 @@ class Pipeline:
 
             all_results = fact_results + hyp_results
 
-            # 生成报告
-            report = self.report_generator.generate_verification_report(
-                all_results, topic=science_facts.get("topic", "")
-            )
-            self.state["verification_report"] = report
+            # 生成报告（失败不影响结果返回）
+            try:
+                report = self.report_generator.generate_verification_report(
+                    all_results, topic=science_facts.get("topic", "")
+                )
+                self.state["verification_report"] = report
+            except Exception as e:
+                logger.warning(f"校验报告生成失败（不影响结果）: {e}")
 
             return all_results
         except Exception as e:
@@ -757,9 +760,9 @@ class CognitiveParliament:
         from src.schemas import DeliberationTranscript
 
         logger.info(f"\n{'='*60}")
-        logger.info(f"认知议会召集: {topic}")
+        logger.info(f"AI Scientist 工作流启动: {topic}")
         logger.info(f"{'='*60}")
-        self._report("parliament", "running", f"认知议会召集: {topic}")
+        self._report("parliament", "running", f"AI Scientist 工作流启动: {topic}")
 
         # 1. 开幕（debate_engine 内部已上报 scientist/humanist 进度）
         logger.info("\n[开幕] 生成初始动议...")
@@ -859,7 +862,7 @@ class CognitiveParliament:
         strategies = (fs.get("pipeline_strategies") or {}).get("strategies") or fs.get("strategies") or []
         evaluation = fs.get("pipeline_evaluation") or {}
 
-        user_prompt = f"""请基于以下认知议会完整结果，撰写一份面向决策者的最终总结报告。
+        user_prompt = f"""请基于以下 AI Scientist 工作流完整结果，撰写一份面向决策者的最终总结报告。
 
 ## 议题
 {topic}
@@ -897,7 +900,7 @@ class CognitiveParliament:
         try:
             report = self.speaker.llm_client.chat_json(
                 system_prompt=(
-                    "你是认知议会的总结报告撰写人，擅长把多Agent辩论+策略+评分结果提炼成"
+                    "你是 AI Scientist 工作流的总结报告撰写人，擅长把多Agent辩论+策略+评分结果提炼成"
                     "决策者能直接使用的结构化报告。只输出 JSON。"
                 ),
                 user_prompt=user_prompt,
@@ -995,7 +998,7 @@ def build_fallback_final_report(topic: str, passed_motions: List[str],
 
     scores = [v for v in evaluation.values() if isinstance(v, (int, float))]
     avg = round(sum(scores) / len(scores), 1) if scores else None
-    conclusion_parts = [f"议题「{topic}」经 {total_rounds} 轮认知议会辩论，"]
+    conclusion_parts = [f"议题「{topic}」经 {total_rounds} 轮 AI Scientist 工作流辩论，"]
     if passed_motions:
         conclusion_parts.append(f"共通过 {len(passed_motions)} 条动议，核心共识：{passed_motions[0][:80]}。")
     else:

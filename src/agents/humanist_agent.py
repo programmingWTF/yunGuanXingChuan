@@ -1,5 +1,5 @@
 """
-云观星传 - 人文学者 Agent（认知议会成员）
+云观星传 - 人文学者 Agent（AI Scientist 工作流成员）
 职责：跨文化传播审查、受众心理分析、国际关系风险评估、文化适配建议
 """
 import json
@@ -41,7 +41,7 @@ class HumanistAgent(BaseAgent):
         science_facts = input_data.get("science_facts", {})
         context_analysis = input_data.get("context_analysis", {})
 
-        return f"""作为认知议会的人文学者，请对以下科技议题进行开场文化敏感性分析。
+        return f"""作为 AI Scientist 工作流的人文学者（Reasoner），请对以下科技议题进行开场文化敏感性分析。
 
 ## 议题
 {topic}
@@ -82,7 +82,7 @@ class HumanistAgent(BaseAgent):
         for s in previous_speeches:
             speeches_text += f"\n【{s.get('speaker', '?')}】({s.get('stance', '?')}): {s.get('content', '')[:300]}"
 
-        prompt = f"""你是认知议会中的人文学者，现在进入第 {round_num} 轮辩论。
+        prompt = f"""你是 AI Scientist 工作流中的人文学者（Reasoner），现在进入第 {round_num} 轮辩论。
 
 ## 当前议题
 {topic}
