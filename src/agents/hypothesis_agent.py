@@ -141,10 +141,20 @@ class HypothesisAgent(BaseAgent):
     def _build_vote_prompt(self, input_data: Dict[str, Any]) -> str:
         motion = input_data.get("current_motion", {})
         debate_summary = input_data.get("debate_summary", "")
-        return f"""你现在是在投票表决，不是在辩论。请只输出 yes/no/abstain 加一行理由。
-动议: {json.dumps(motion, ensure_ascii=False)[:500]}
-摘要: {debate_summary[:500]}
-## 严格 JSON: {{"vote": "yes/no/abstain", "reason": "理由"}}"""
+        return f"""你是证据校验者（Verifier），正在投票表决。你是最严格的审查者。
+
+## 你的投票标准（严格执行）
+- 投 yes：动议逻辑自洽、证据链完整、结论可证伪、无逻辑跳跃
+- 投 no：存在逻辑漏洞、证据不足以支撑结论、假设不可证伪、或以偏概全
+- 投 abstain：动议不涉及可验证命题
+
+注意：你的职责是挑毛病。除非证据链完整且逻辑无懈可击，否则倾向于投 no。"大概正确"不等于"通过"。至少 30% 的动议应该被你否决。
+
+## 待表决动议
+{json.dumps(motion, ensure_ascii=False)[:500]}
+## 辩论摘要
+{debate_summary[:500]}
+## 严格 JSON: {{"vote": "yes/no/abstain", "reason": "一句话理由"}}"""
 
     def get_agent_info(self) -> Dict:
         return {

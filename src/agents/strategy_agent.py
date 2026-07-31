@@ -142,10 +142,20 @@ class StrategyAgent(BaseAgent):
     def _build_vote_prompt(self, input_data: Dict[str, Any]) -> str:
         motion = input_data.get("current_motion", {})
         debate_summary = input_data.get("debate_summary", "")
-        return f"""你现在是在投票表决，不是在辩论。请只输出 yes/no/abstain 加一行理由。
-动议: {json.dumps(motion, ensure_ascii=False)[:500]}
-摘要: {debate_summary[:500]}
-## 严格 JSON: {{"vote": "yes/no/abstain", "reason": "理由"}}"""
+        return f"""你是传播策略师（Communicator），正在投票表决。
+
+## 你的投票标准（严格执行）
+- 投 yes：动议具有可操作性、目标受众明确、传播渠道可行、预期效果可量化
+- 投 no：动议过于笼统无法落地、缺乏具体受众定位、传播路径不清晰、或资源投入产出比不合理
+- 投 abstain：动议不涉及传播策略或可操作性判断
+
+注意：你关注的是"这个方案能不能真正落地执行"。如果动议只是正确的废话（如"应该加强传播"）而缺乏具体路径，应投 no。
+
+## 待表决动议
+{json.dumps(motion, ensure_ascii=False)[:500]}
+## 辩论摘要
+{debate_summary[:500]}
+## 严格 JSON: {{"vote": "yes/no/abstain", "reason": "一句话理由"}}"""
 
     def get_agent_info(self) -> Dict:
         return {

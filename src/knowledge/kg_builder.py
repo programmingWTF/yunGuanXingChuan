@@ -406,6 +406,80 @@ class KnowledgeGraph:
             "relation_types": relation_types,
         }
 
+    def get_connected_components(self) -> List[Dict]:
+        """
+        获取所有弱连通分量（分区浏览用）
+
+        Returns:
+            按节点数降序排列的连通分量列表，每个包含 id/label/node_count/edge_count/nodes
+        """
+        components = []
+        # 使用弱连通分量（忽略方向）
+        for idx, component_nodes in enumerate(nx.weakly_connected_components(self.G)):
+            node_list = list(component_nodes)
+            subgraph = self.G.subgraph(node_list)
+            edge_count = subgraph.number_of_edges()
+
+            # 找“枢纽”节点（度数最高）作为标签
+            hub = max(node_list, key=lambda n: self.G.degree(n))
+            hub_type = self.G.nodes[hub].get("entity_type", "unknown")
+
+            components.append({
+                "id": idx,
+                "label": hub,
+                "hub_type": hub_type,
+                "node_count": len(node_list),
+                "edge_count": edge_count,
+                "nodes": node_list,
+            })
+
+        # 按节点数降序
+        components.sort(key=lambda c: c["node_count"], reverse=True)
+        # 重新编号
+        for i, comp in enumerate(components):
+            comp["id"] = i
+        return components
+
+    def get_component_graph_data(self, component_id: int) -> Dict:
+        """
+        获取指定连通分量的图谱数据
+
+        Args:
+            component_id: 连通分量 ID
+
+        Returns:
+            子图数据（nodes + edges）
+        """
+        components = list(nx.weakly_connected_components(self.G))
+        # 按节点数降序排列以匹配 get_connected_components 的编号
+        components.sort(key=len, reverse=True)
+
+        if component_id < 0 or component_id >= len(components):
+            return {"nodes": [], "edges": []}
+
+        node_set = components[component_id]
+        subgraph = self.G.subgraph(node_set)
+
+        nodes = []
+        for node in subgraph.nodes():
+            node_data = subgraph.nodes[node]
+            nodes.append({
+                "name": node,
+                "type": node_data.get("entity_type", "unknown"),
+                "attributes": node_data.get("attributes", {}),
+            })
+
+        edges = []
+        for u, v, data in subgraph.edges(data=True):
+            edges.append({
+                "source": u,
+                "target": v,
+                "predicate": data.get("predicate", ""),
+                "confidence": data.get("confidence", 1.0),
+            })
+
+        return {"nodes": nodes, "edges": edges}
+
 
 # 全局单例
 _kg: Optional[KnowledgeGraph] = None

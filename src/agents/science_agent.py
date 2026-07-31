@@ -158,15 +158,23 @@ class ScienceAgent(BaseAgent):
         return prompt
 
     def _build_vote_prompt(self, input_data: Dict[str, Any]) -> str:
-        """投票 prompt"""
+        """投票 prompt - 科学视角"""
         motion = input_data.get("current_motion", {})
         debate_summary = input_data.get("debate_summary", "")
-        return f"""你现在是在投票表决，不是在辩论。请只输出 yes/no/abstain 加一行理由。
+        return f"""你是科学检索专家（Retriever），正在投票表决。
+
+## 你的投票标准（严格执行）
+- 投 yes：动议中的科学事实准确、有可靠数据源支撑、不存在夸大或误导
+- 投 no：存在未经验证的科学断言、数据源不可靠、因果关系不成立、或样本/证据不足
+- 投 abstain：动议不涉及科学事实判断，超出你的专业范围
+
+注意：你是科学家，对事实准确性零容忍。如果动议中有任何模糊表述（"可能"、"据说"、"大约"）作为确定性结论出现，应投 no。
+
 ## 待表决动议
 {json.dumps(motion, ensure_ascii=False)[:600]}
 ## 辩论摘要
 {debate_summary[:600]}
-## 严格 JSON: {{"vote": "yes/no/abstain", "reason": "理由"}}"""
+## 严格 JSON: {{"vote": "yes/no/abstain", "reason": "一句话理由"}}"""
 
     def get_agent_info(self) -> Dict:
         return {

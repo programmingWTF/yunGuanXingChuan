@@ -112,11 +112,18 @@ class HumanistAgent(BaseAgent):
         return prompt
 
     def _build_vote_prompt(self, input_data: Dict[str, Any]) -> str:
-        """投票 prompt"""
+        """投票 prompt - 人文视角"""
         motion = input_data.get("current_motion", {})
         debate_summary = input_data.get("debate_summary", "")
 
-        return f"""你现在是在投票表决，不是在辩论。请只输出 yes/no/abstain 加一行理由。
+        return f"""你是人文学者（Reasoner），正在投票表决。
+
+## 你的投票标准（严格执行）
+- 投 yes：动议尊重文化多样性、无伦理风险、价值导向正面、不会引发国际争议
+- 投 no：动议存在文化冒犯风险、伦理边界模糊、可能加剧偏见、或忽视弱势群体视角
+- 投 abstain：动议纯粹是技术/数据问题，与人文价值无关
+
+注意：你是人文守护者。即使动议在科学上正确，如果传播方式可能引发文化冲突或伦理争议，你也应该投 no。不要因为是"共识"就放弃审视。
 
 ## 待表决动议
 {json.dumps(motion, ensure_ascii=False, indent=2)[:600]}
@@ -125,7 +132,7 @@ class HumanistAgent(BaseAgent):
 {debate_summary[:800]}
 
 ## 输出格式（严格 JSON）
-{{"vote": "yes/no/abstain", "reason": "一行理由"}}"""
+{{"vote": "yes/no/abstain", "reason": "一句话理由"}}"""
 
     def _build_cultural_review_prompt(self, input_data: Dict[str, Any]) -> str:
         """通用文化审查 prompt"""

@@ -23,10 +23,10 @@ class DataLoader:
     def load_science_facts(self, topic: Optional[str] = None) -> List[Dict]:
         """
         加载科学事实数据
-
+    
         Args:
-            topic: 议题名称（如"嫦娥六号"），为 None 则加载全部
-
+            topic: 议题名称（如“嫦娥七号”），为 None 则加载全部
+    
         Returns:
             科学事实数据列表
         """
@@ -39,7 +39,19 @@ class DataLoader:
                     facts.append(data)
             except Exception as e:
                 logger.warning(f"加载科学数据 {json_file} 失败: {e}")
-
+    
+        # 模糊匹配兜底：如果精确匹配无结果，尝试包含匹配
+        if not facts and topic:
+            for json_file in SCIENCE_DIR.glob("*.json"):
+                try:
+                    with open(json_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    file_topic = data.get("topic", "")
+                    if topic in file_topic or file_topic in topic:
+                        facts.append(data)
+                except Exception:
+                    pass
+    
         logger.info(f"加载 {len(facts)} 个科学数据集")
         return facts
 

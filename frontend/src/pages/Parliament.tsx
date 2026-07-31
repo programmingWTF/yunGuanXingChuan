@@ -26,7 +26,7 @@ const STANCE_ICONS: Record<string, string> = {
 export default function Parliament() {
   const [transcript, setTranscript] = useState<DeliberationTranscript | null>(null)
   const [progressSnapshot, setProgressSnapshot] = useState<{ phases: any[]; current_round: number; total_rounds: number; pipeline_round?: number } | null>(null)
-  const [expandedRound, setExpandedRound] = useState<number | null>(1)
+  const [collapsedRounds, setCollapsedRounds] = useState<Set<number>>(new Set())
   const [expandedSpeaker, setExpandedSpeaker] = useState<string | null>(null)
 
   useEffect(() => {
@@ -56,17 +56,17 @@ export default function Parliament() {
       {progressSnapshot && progressSnapshot.phases && (
         <ProgressTree progress={progressSnapshot} readonly />
       )}
-      <ResultView transcript={transcript} expandedRound={expandedRound} expandedSpeaker={expandedSpeaker}
-        onToggleRound={r => setExpandedRound(expandedRound === r ? null : r)}
+      <ResultView transcript={transcript} collapsedRounds={collapsedRounds} expandedSpeaker={expandedSpeaker}
+        onToggleRound={r => setCollapsedRounds(prev => { const s = new Set(prev); s.has(r) ? s.delete(r) : s.add(r); return s })}
         onToggleSpeaker={s => { if (s === null || s === expandedSpeaker) setExpandedSpeaker(null); else setExpandedSpeaker(s) }} />
     </div>
   )
 }
 
 /* ═══════════ 结果视图 ═══════════ */
-function ResultView({ transcript: t, expandedRound, expandedSpeaker, onToggleRound, onToggleSpeaker }: {
+function ResultView({ transcript: t, collapsedRounds, expandedSpeaker, onToggleRound, onToggleSpeaker }: {
   transcript: DeliberationTranscript
-  expandedRound: number | null; expandedSpeaker: string | null
+  collapsedRounds: Set<number>; expandedSpeaker: string | null
   onToggleRound: (r: number) => void; onToggleSpeaker: (s: string | null) => void
 }) {
   const votes = t.votes; const rounds = t.rounds; const minority = t.minority_opinions; const fs = t.final_strategies
@@ -142,7 +142,7 @@ function ResultView({ transcript: t, expandedRound, expandedSpeaker, onToggleRou
         <section className="panel p-5">
           <h3 className="text-xs font-bold text-slate-400 mb-3">🌐 联网搜索来源 <span className="font-mono text-slate-600">({fs.search_sources.length})</span></h3>
           <div className="flex flex-wrap gap-2">
-            {fs.search_sources.slice(0, 10).map((s, i) => (
+            {fs.search_sources.map((s, i) => (
               <a key={i} href={s.url} target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] hover:bg-astro-500/[0.08] border border-white/[0.07] hover:border-astro-500/30 transition-all text-[11px] text-slate-300 max-w-[300px] group">
                 <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${s.source === 'TavilySearch' ? 'bg-astro-400' : 'bg-purple-400'}`} />
@@ -170,9 +170,9 @@ function ResultView({ transcript: t, expandedRound, expandedSpeaker, onToggleRou
                   <div className="text-[10px] text-slate-500 mt-0.5 font-mono">{r.speeches.length} 条发言 · 权重 {Object.entries(r.speaker_weights).map(([k, v]) => `${AGENT_META[k]?.label || k} ${(v * 100).toFixed(0)}%`).join(' / ')}</div>
                 </div>
               </div>
-              <span className="text-slate-600 text-xs">{expandedRound === r.round_id ? '▲ 收起' : '▼ 展开'}</span>
+              <span className="text-slate-600 text-xs">{collapsedRounds.has(r.round_id) ? '▼ 展开' : '▲ 收起'}</span>
             </button>
-            {expandedRound === r.round_id && (
+            {!collapsedRounds.has(r.round_id) && (
               <div className="px-5 pb-5 space-y-3 border-t border-white/[0.05] animate-fade-in">
                 {r.speaker_rationale && (
                   <div className="mt-4 p-3 rounded-lg bg-astro-500/[0.06] border border-astro-500/20">
@@ -198,8 +198,8 @@ function ResultView({ transcript: t, expandedRound, expandedSpeaker, onToggleRou
                           {expandedSpeaker === key ? '收起' : '查看全文'}
                         </button>
                       </div>
-                      <p className="text-sm text-slate-300 leading-relaxed">
-                        {expandedSpeaker === key ? s.content : s.content.slice(0, 160) + (s.content.length > 160 ? '...' : '')}
+                      <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+                        {expandedSpeaker === key ? s.content : s.content.length > 400 ? s.content.slice(0, 400) + '...' : s.content}
                       </p>
                     </div>
                   )

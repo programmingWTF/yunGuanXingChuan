@@ -230,7 +230,9 @@ def run_parliament_task(task_id: str, topic: str, max_rounds: Optional[int], max
         science_facts = None
         try:
             from src.knowledge.data_loader import get_data_loader
-            science_facts = get_data_loader().load_science_facts(topic)
+            facts_list = get_data_loader().load_science_facts(topic)
+            if facts_list:
+                science_facts = facts_list[0]  # load_science_facts 返回 List[Dict]，取第一个
         except Exception:
             pass
 

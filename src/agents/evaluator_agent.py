@@ -159,10 +159,20 @@ class EvaluatorAgent(BaseAgent):
     def _build_vote_prompt(self, input_data: Dict[str, Any]) -> str:
         motion = input_data.get("current_motion", {})
         debate_summary = input_data.get("debate_summary", "")
-        return f"""你现在是在投票表决，不是在辩论。请只输出 yes/no/abstain 加一行理由。
-动议: {json.dumps(motion, ensure_ascii=False)[:500]}
-摘要: {debate_summary[:500]}
-## 严格 JSON: {{"vote": "yes/no/abstain", "reason": "理由"}}"""
+        return f"""你是研究规划者（Planner），正在投票表决。
+
+## 你的投票标准（严格执行）
+- 投 yes：动议目标明确可衡量、与整体研究规划一致、资源分配合理、有清晰的迭代路径
+- 投 no：动议目标模糊、与已有研究重复、优先级不合理、或缺乏评估指标
+- 投 abstain：动议不涉及研究规划或资源分配问题
+
+注意：你关注的是"这个动议在整体研究框架中是否值得投入"。即使动议本身正确，如果优先级不高或与已有工作重复，应投 no 或 abstain。
+
+## 待表决动议
+{json.dumps(motion, ensure_ascii=False)[:500]}
+## 辩论摘要
+{debate_summary[:500]}
+## 严格 JSON: {{"vote": "yes/no/abstain", "reason": "一句话理由"}}"""
 
     def get_agent_info(self) -> Dict:
         return {

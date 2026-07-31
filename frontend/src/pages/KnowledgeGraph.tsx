@@ -1,12 +1,12 @@
 /**
  * 云观星传 V2.0 — 知识图谱
- * 三库知识中心 · 实体关系图谱 · 力导向可视化
+ * 三库知识中心 · 实体关系图谱 · 力导向可视化 · 分区浏览
  */
 import { useState, useEffect, useCallback, useRef } from 'react'
 import ReactECharts from 'echarts-for-react'
 import type { ECharts } from 'echarts'
 import { useStore } from '../store'
-import { getKnowledgeGraph, getKGStats, searchEntities } from '../api'
+import { getKnowledgeGraph, getKGStats, searchEntities, getKGComponents, getKGComponentGraph } from '../api'
 
 const typeColors: Record<string, string> = {
   mission: '#38d4f8',
@@ -24,6 +24,7 @@ const typeNames: Record<string, string> = {
 
 interface KGNode { name: string; type: string; attributes?: Record<string, unknown> }
 interface KGEdge { source: string; target: string; predicate?: string; relation?: string; confidence?: number }
+interface ComponentInfo { id: number; label: string; hub_type: string; node_count: number; edge_count: number }
 
 function KnowledgeGraph() {
   const { state } = useStore()
@@ -35,26 +36,40 @@ function KnowledgeGraph() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<{ name: string; type: string }[]>([])
 
-  const loadKG = useCallback(async () => {
+  // 分区浏览状态
+  const [components, setComponents] = useState<ComponentInfo[]>([])
+  const [selectedComponent, setSelectedComponent] = useState<number | 'all'>(0)
+
+  // 加载连通分量列表
+  const loadComponents = useCallback(async () => {
+    try {
+      const data = await getKGComponents()
+      setComponents(data.components || [])
+    } catch {
+      // 后端不支持时静默降级
+    }
+  }, [])
+
+  // 加载指定分区的图谱数据
+  const loadComponentGraph = useCallback(async (componentId: number | 'all') => {
     setLoading(true)
     setError('')
     try {
-      const [graphData, statsData] = await Promise.all([
-        getKnowledgeGraph(),
-        getKGStats(),
-      ])
+      let graphData: { nodes: KGNode[]; edges: KGEdge[] }
+      if (componentId === 'all') {
+        graphData = await getKnowledgeGraph()
+      } else {
+        graphData = await getKGComponentGraph(componentId)
+      }
       setNodes(graphData.nodes || [])
       setEdges(graphData.edges || [])
-      const s = statsData as Record<string, unknown>
-      setStats({ node_count: (s.total_entities as number) ?? (s.node_count as number) ?? 0, edge_count: (s.total_relations as number) ?? (s.edge_count as number) ?? 0 })
     } catch {
       const result = state.result
       if (result?.science_facts) {
         const entities = result.science_facts.entities || []
         const relations = result.science_facts.relations || []
-        setNodes(entities.map(e => ({ name: e.name, type: e.entity_type, attributes: e.attributes })))
-        setEdges(relations.map(r => ({ source: r.subject, target: r.object, predicate: r.predicate, confidence: r.confidence })))
-        setStats({ node_count: entities.length, edge_count: relations.length })
+        setNodes(entities.map((e: { name: string; entity_type: string; attributes?: Record<string, unknown> }) => ({ name: e.name, type: e.entity_type, attributes: e.attributes })))
+        setEdges(relations.map((r: { subject: string; object: string; predicate: string; confidence: number }) => ({ source: r.subject, target: r.object, predicate: r.predicate, confidence: r.confidence })))
       } else {
         setError('无法加载知识图谱数据，请确认后端已启动或先运行分析')
       }
@@ -63,7 +78,33 @@ function KnowledgeGraph() {
     }
   }, [state.result])
 
-  useEffect(() => { loadKG() }, [loadKG])
+  // 初始加载：统计 + 分量列表 + 默认第一个分量
+  useEffect(() => {
+    (async () => {
+      try {
+        const statsData = await getKGStats()
+        const s = statsData as Record<string, unknown>
+        setStats({ node_count: (s.total_entities as number) ?? 0, edge_count: (s.total_relations as number) ?? 0 })
+      } catch { /* ignore */ }
+      await loadComponents()
+    })()
+  }, [loadComponents])
+
+  // 分量列表加载后，默认加载第一个分量
+  useEffect(() => {
+    if (components.length > 0) {
+      loadComponentGraph(selectedComponent)
+    } else if (components.length === 0) {
+      // 可能后端没有分量接口，降级加载全量
+      loadComponentGraph('all')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [components])
+
+  const handleSelectComponent = (id: number | 'all') => {
+    setSelectedComponent(id)
+    loadComponentGraph(id)
+  }
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) { setSearchResults([]); return }
@@ -80,7 +121,6 @@ function KnowledgeGraph() {
   const handleChartReady = useCallback((instance: ECharts) => { chartRef.current = instance }, [])
 
   const graphOption = {
-    stateAnimation: { duration: 800, easing: 'cubicInOut' },
     tooltip: {
       backgroundColor: 'rgba(6,13,28,0.95)',
       borderColor: 'rgba(56,212,248,0.3)',
@@ -105,12 +145,11 @@ function KnowledgeGraph() {
       draggable: true,
       animationDuration: 1200,
       animationEasing: 'cubicInOut',
-      animationDelay: (idx: number) => idx * 60,
-      stateAnimation: { duration: 800, easing: 'cubicInOut' },
+      animationDelay: (idx: number) => idx * 30,
       force: {
-        repulsion: 400,
-        edgeLength: [80, 200],
-        gravity: 0.1,
+        repulsion: nodes.length > 60 ? 250 : 400,
+        edgeLength: nodes.length > 60 ? [50, 120] : [80, 200],
+        gravity: nodes.length > 60 ? 0.15 : 0.1,
         friction: 0.9,
         layoutAnimation: true,
         initSpeed: 3,
@@ -133,9 +172,9 @@ function KnowledgeGraph() {
         value: e.predicate || e.relation || '',
         lineStyle: { width: 2, opacity: 0.5 },
       })),
-      label: { show: true, color: '#cbd5e1', fontSize: 10, position: 'right', distance: 5 },
+      label: { show: nodes.length <= 80, color: '#cbd5e1', fontSize: 10, position: 'right', distance: 5 },
       edgeLabel: {
-        show: true, fontSize: 9, color: '#64748b',
+        show: nodes.length <= 50, fontSize: 9, color: '#64748b',
         formatter: (params: { data: { value?: string } }) => params.data.value || '',
       },
       lineStyle: { color: 'source', curveness: 0.2, opacity: 0.5, width: 2 },
@@ -164,9 +203,9 @@ function KnowledgeGraph() {
         <div>
           <p className="sec-label mb-1">Knowledge Graph</p>
           <h2 className="font-display text-2xl font-bold text-white">知识图谱</h2>
-          <p className="text-xs text-slate-500 mt-1.5">三库知识中心 · 实体关系网络 · 力导向布局</p>
+          <p className="text-xs text-slate-500 mt-1.5">三库知识中心 · 实体关系网络 · 分区浏览</p>
         </div>
-        <button onClick={loadKG} className="btn-ghost text-sm">⟳ 刷新数据</button>
+        <button onClick={() => { loadComponents(); loadComponentGraph(selectedComponent) }} className="btn-ghost text-sm">⟳ 刷新数据</button>
       </div>
 
       {/* 搜索栏 */}
@@ -176,7 +215,7 @@ function KnowledgeGraph() {
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSearch()}
-          placeholder="搜索实体（如：嫦娥六号、CNSA、JWST）..."
+          placeholder="搜索实体（如：嫦娥七号、CNSA、JWST）..."
           className="input-field flex-1"
         />
         <button onClick={handleSearch} className="btn-primary text-sm">搜索</button>
@@ -210,23 +249,69 @@ function KnowledgeGraph() {
           <div className="stat-num text-3xl text-nova-400">{stats?.edge_count ?? edges.length}</div>
           <div className="text-xs text-slate-500 mt-1">关系总数</div>
         </div>
-        {Object.entries(typeCounts).slice(0, 2).map(([type, count]) => (
-          <div key={type} className="panel p-5 text-center">
-            <div className="stat-num text-3xl" style={{ color: typeColors[type] || '#94a3b8' }}>{count}</div>
-            <div className="text-xs text-slate-500 mt-1">{typeNames[type] || type}</div>
-          </div>
-        ))}
+        <div className="panel p-5 text-center">
+          <div className="stat-num text-3xl text-emerald-400">{components.length || '-'}</div>
+          <div className="text-xs text-slate-500 mt-1">连通分区</div>
+        </div>
+        <div className="panel p-5 text-center">
+          <div className="stat-num text-3xl text-amber-400">{nodes.length}</div>
+          <div className="text-xs text-slate-500 mt-1">当前显示</div>
+        </div>
       </div>
+
+      {/* 分区选择器 */}
+      {components.length > 0 && (
+        <div className="panel p-4">
+          <h3 className="text-[11px] font-bold text-astro-300 mb-3">
+            选择浏览分区
+            <span className="ml-2 text-slate-500 font-normal">（共 {components.length} 个连通子图，点击切换）</span>
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {/* 全量按钮 */}
+            <button
+              onClick={() => handleSelectComponent('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs border transition-all ${
+                selectedComponent === 'all'
+                  ? 'bg-astro-300/20 border-astro-300 text-astro-300 shadow-[0_0_8px_rgba(56,212,248,0.3)]'
+                  : 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-300'
+              }`}
+            >
+              🌐 全部（{stats?.node_count ?? '...'}节点）
+            </button>
+            {/* 各分量 */}
+            {components.map(comp => (
+              <button
+                key={comp.id}
+                onClick={() => handleSelectComponent(comp.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs border transition-all ${
+                  selectedComponent === comp.id
+                    ? 'bg-astro-300/20 border-astro-300 text-astro-300 shadow-[0_0_8px_rgba(56,212,248,0.3)]'
+                    : 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-300'
+                }`}
+              >
+                <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: typeColors[comp.hub_type] || '#64748b' }} />
+                {comp.label}
+                <span className="ml-1 text-slate-500">{comp.node_count}节点</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 图谱可视化 */}
       {nodes.length > 0 ? (
         <div className="panel p-4">
+          {selectedComponent === 'all' && nodes.length > 100 && (
+            <div className="mb-3 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs">
+              ⚠️ 当前显示全量图谱（{nodes.length} 个节点），渲染可能较慢。建议选择单个分区浏览。
+            </div>
+          )}
           <ReactECharts
             option={graphOption}
             style={{ height: 600 }}
             onChartReady={handleChartReady}
             opts={{ renderer: 'canvas' }}
-            notMerge={false}
+            notMerge={true}
           />
         </div>
       ) : (

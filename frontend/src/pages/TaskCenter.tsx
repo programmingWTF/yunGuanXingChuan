@@ -396,8 +396,8 @@ export function ProgressTree({ progress, readonly }: { progress: { phases: Phase
                                 {ss.detail && <span className="text-[10px] text-slate-600">{ss.detail}</span>}
                               </div>
                               {ss.status === 'completed' && ss.full_content && (
-                                <p className="mt-1.5 text-[11px] text-slate-400 leading-relaxed line-clamp-3 pl-5">
-                                  {ss.full_content.length > 200 ? ss.full_content.slice(0, 200) + '...' : ss.full_content}
+                                <p className={`mt-1.5 text-[11px] text-slate-400 leading-relaxed pl-5 whitespace-pre-wrap ${readonly ? '' : 'line-clamp-3'}`}>
+                                  {readonly ? ss.full_content : (ss.full_content.length > 200 ? ss.full_content.slice(0, 200) + '...' : ss.full_content)}
                                 </p>
                               )}
                             </div>

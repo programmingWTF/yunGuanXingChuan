@@ -190,6 +190,18 @@ export async function getSubgraph(topic: string) {
   return res.data
 }
 
+/** 获取连通分量列表（分区浏览） */
+export async function getKGComponents() {
+  const res = await api.get('/kg/components')
+  return res.data as { total_components: number; components: { id: number; label: string; hub_type: string; node_count: number; edge_count: number }[] }
+}
+
+/** 获取指定连通分量的图谱数据 */
+export async function getKGComponentGraph(componentId: number) {
+  const res = await api.get(`/kg/component/${componentId}`)
+  return res.data as KGData
+}
+
 // ============ 校验接口 ============
 
 /** 校验单条断言 */

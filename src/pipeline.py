@@ -323,6 +323,9 @@ class Pipeline:
             search_content = json.dumps([s.to_dict() for s in search_sources], ensure_ascii=False, indent=2)[:5000]
             self._report("pipeline.search", "completed", f"获取{len(search_sources)}条来源", full_content=search_content)
 
+        # 防御性处理：如果传入的是列表（load_science_facts 返回 List[Dict]），取第一个
+        if isinstance(science_facts, list):
+            science_facts = science_facts[0] if science_facts else None
         science_facts = science_facts or {"topic": topic, "key_facts": []}
         context_analysis = context_analysis or {"topic": topic}
         minority_opinions = minority_opinions or []

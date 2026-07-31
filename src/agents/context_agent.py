@@ -113,10 +113,20 @@ class ContextAgent(BaseAgent):
     def _build_vote_prompt(self, input_data: Dict[str, Any]) -> str:
         motion = input_data.get("current_motion", {})
         debate_summary = input_data.get("debate_summary", "")
-        return f"""你现在是在投票表决，不是在辩论。请只输出 yes/no/abstain 加一行理由。
-动议: {json.dumps(motion, ensure_ascii=False)[:500]}
-摘要: {debate_summary[:500]}
-## 严格 JSON: {{"vote": "yes/no/abstain", "reason": "理由"}}"""
+        return f"""你是语境分析专家（Retriever-Context），正在投票表决。
+
+## 你的投票标准（严格执行）
+- 投 yes：动议充分考虑了国际传播语境、媒体框架差异、受众认知背景
+- 投 no：动议忽略了文化差异、存在单一视角偏见、未考虑目标受众的接受语境、或传播时机不当
+- 投 abstain：动议纯粹是技术/事实问题，与传播语境无关
+
+注意：你关注的是"这个结论在不同文化语境下是否站得住脚"。如果动议只从单一国家视角出发而忽略国际受众感受，应投 no。
+
+## 待表决动议
+{json.dumps(motion, ensure_ascii=False)[:500]}
+## 辩论摘要
+{debate_summary[:500]}
+## 严格 JSON: {{"vote": "yes/no/abstain", "reason": "一句话理由"}}"""
 
     def get_agent_info(self) -> Dict:
         return {

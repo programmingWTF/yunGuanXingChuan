@@ -73,3 +73,31 @@ async def search_entities(
                     "attributes": node_data.get("attributes", {}),
                 })
     return {"query": q, "count": len(results), "results": results}
+
+
+@router.get("/components")
+async def get_components():
+    """获取所有连通分量（分区浏览用）"""
+    kg = get_knowledge_graph()
+    components = kg.get_connected_components()
+    # 返回时不包含 nodes 列表（太大），只返回摘要
+    return {
+        "total_components": len(components),
+        "components": [
+            {
+                "id": c["id"],
+                "label": c["label"],
+                "hub_type": c["hub_type"],
+                "node_count": c["node_count"],
+                "edge_count": c["edge_count"],
+            }
+            for c in components
+        ],
+    }
+
+
+@router.get("/component/{component_id}")
+async def get_component_graph(component_id: int):
+    """获取指定连通分量的图谱数据"""
+    kg = get_knowledge_graph()
+    return kg.get_component_graph_data(component_id)
