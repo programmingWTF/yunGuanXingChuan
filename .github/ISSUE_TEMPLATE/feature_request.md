@@ -2,7 +2,6 @@
 name: 功能请求
 description: 有新的想法或建议？告诉我们
 title: "[Feat] <模块>：<简短描述>"
-labels: ["enhancement"]
 body:
   - type: markdown
     attributes:

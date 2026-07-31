@@ -2,7 +2,6 @@
 name: Bug 报告
 description: 发现了一个 Bug，来报告吧
 title: "[Bug] <模块/页面>：<简短描述>"
-labels: ["bug"]
 body:
   - type: markdown
     attributes:

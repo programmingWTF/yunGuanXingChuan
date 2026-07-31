@@ -1,7 +1,6 @@
 ---
 name: Pull Request
 title: "<type>: <简短描述>"
-labels: []
 ---
 
 <!--

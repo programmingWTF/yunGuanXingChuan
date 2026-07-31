@@ -42,7 +42,7 @@
 | ③ | **[docs/github-guide.md](docs/github-guide.md)** ⭐ | 学会 Git/GitHub：建分支、提交、PR、Review |
 | ④ | **[CONTRIBUTING.md](CONTRIBUTING.md)** | 掌握团队规范：分支命名、提交格式、PR 要求 |
 | ⑤ | **[docs/team.md](docs/team.md)** | 了解三个方向的职责边界与交接 |
-| ⑥ | **[docs/labels.md](docs/labels.md)** | 提 Issue / PR 时选对标签 |
+| ⑥ | **[docs/labels.md](docs/labels.md)** | 了解 Issue / PR 标签体系（组长会用 AI 统一添加） |
 | ⑦ | **[docs/architecture-invocation.md](docs/architecture-invocation.md)** | （技术同学）理解多智能体完整调用链路 |
 
 > ⭐ = **不会用 Git 的成员必读**。会用的也建议扫一遍——里面有针对本项目私有仓库的注意事项。
