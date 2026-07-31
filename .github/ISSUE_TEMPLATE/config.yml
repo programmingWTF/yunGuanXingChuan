@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 查看团队协作规范（CONTRIBUTING.md）
+    url: https://github.com/programmingWTF/yunGuanXingChuan/blob/main/CONTRIBUTING.md
+    about: 提交 Issue 前请先阅读分支、提交与 PR 规范
+  - name: GitHub 协作入门指南
+    url: https://github.com/programmingWTF/yunGuanXingChuan/blob/main/docs/github-guide.md
+    about: 还不会用 Git/GitHub？从这里从零开始学

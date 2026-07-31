@@ -3,7 +3,7 @@
 > 🌟 **AI Scientist 范式**：假设生成 → 验证 → 迭代
 > 🔍 **RAG + 知识图谱双校验**：确保科学事实准确性
 > 📊 **五维评分 + 自迭代闭环**：自动评估与改进
-> 🤖 **多智能体协作**：五个专职 Agent 互相校验
+> 🤖 **多智能体协作**：六个专职 Agent + 议会辩论引擎（Parliament）互相校验
 
 ---
 
@@ -28,6 +28,26 @@
 - **云** = 阿里云 / 云计算
 - **观星** = 观测星空（航天、天文议题）
 - **传** = 传播
+
+---
+
+## 📚 文档导航（新手按这个顺序读）
+
+> 不用一次读完，**按顺序读到"能跑起来、能提交代码"** 就够了，等熟悉了再回头细看。
+
+| 顺序 | 文档 | 看完能做什么 |
+|------|------|-------------|
+| ① | **[README.md](README.md)**（本文档） | 知道项目是什么、能做什么 |
+| ② | **[SETUP_GUIDE.md](SETUP_GUIDE.md)** | 配好环境、拿到 API Key、把项目跑起来 |
+| ③ | **[docs/github-guide.md](docs/github-guide.md)** ⭐ | 学会 Git/GitHub：建分支、提交、PR、Review |
+| ④ | **[CONTRIBUTING.md](CONTRIBUTING.md)** | 掌握团队规范：分支命名、提交格式、PR 要求 |
+| ⑤ | **[docs/team.md](docs/team.md)** | 了解三个方向的职责边界与交接 |
+| ⑥ | **[docs/labels.md](docs/labels.md)** | 提 Issue / PR 时选对标签 |
+| ⑦ | **[docs/architecture-invocation.md](docs/architecture-invocation.md)** | （技术同学）理解多智能体完整调用链路 |
+
+> ⭐ = **不会用 Git 的成员必读**。会用的也建议扫一遍——里面有针对本项目私有仓库的注意事项。
+>
+> 还没拿到仓库协作者权限？找组长把你的 GitHub 账号添加进去。
 
 ---
 
@@ -96,9 +116,10 @@
 
 **方法 A：用 Git 克隆（推荐）**
 ```bash
-git clone <仓库地址>
+git clone https://github.com/programmingWTF/yunGuanXingChuan.git
 cd yunGuanXingChuan
 ```
+> 这是**私有仓库**，首次 clone 需要登录你的 GitHub 账号；还没有权限？先让组长把账号加进协作者列表。
 
 **方法 B：下载 ZIP**
 1. 在 GitHub 仓库页面点击绿色的 "Code" 按钮
@@ -213,14 +234,52 @@ uvicorn api.main:app --port 8000
 
 ---
 
+## 🤝 团队协作（标准流程）
+
+不会用 GitHub 也没关系，跟着这套标准流程走，**每一步都在仓库里留痕，队友能看见你在做什么**：
+
+```
+① 提 Issue → ② 认领 → ③ 开分支 → ④ 改代码 → ⑤ 提交 → ⑥ 推送 → ⑦ 开 PR → ⑧ Review → ⑨ 合并
+```
+
+| 步骤 | 做什么 | 在哪操作 |
+|------|--------|---------|
+| ① 提 Issue | 把要做的事写成任务单（用模板） | GitHub → **Issues** → New issue |
+| ② 认领 | 把自己设成 Assignee，说"我来做" | Issue 右侧 **Assignees** |
+| ③ 开分支 | `git checkout -b feat/xxx` | 本地终端 |
+| ④ 改代码 | 编辑文件 | VS Code |
+| ⑤ 提交 | `git add .` → `git commit -m "<type>: <描述>"` | 本地终端 |
+| ⑥ 推送 | `git push origin feat/xxx` | 本地终端 |
+| ⑦ 开 PR | 申请合并，描述里写 `Closes #编号` | GitHub → **Pull requests** |
+| ⑧ Review | 等至少一位队友 Approve | GitHub PR 页面 |
+| ⑨ 合并 | Merge 进 `main` | GitHub PR 页面 |
+
+**三个最重要的规矩**：
+
+1. **永远不要在 `main` 上直接改代码** — 先开自己的分支，做完 PR 合并
+2. **开工前先 `git pull origin main`** — 拉最新代码，别在旧代码上改（会把队友的工作覆盖掉）
+3. **提交信息用 `<type>: <描述>`** — `feat`（新功能）/ `fix`（修bug）/ `docs`（文档）/ `data`（数据）/ `style`（样式）...
+
+> 📖 每一步具体怎么操作、遇到报错怎么办，看 **[docs/github-guide.md](docs/github-guide.md)**；完整规范见 **[CONTRIBUTING.md](CONTRIBUTING.md)**。
+
+---
+
 ## 📁 项目结构（给技术同学看）
 
 ```
 yunGuanXingChuan/
 ├── README.md                   # 项目说明（你正在看）
+├── CONTRIBUTING.md             # 团队协作规范（分支/提交/PR）
 ├── SETUP_GUIDE.md              # API Key 获取详细指南
+├── .github/                    # GitHub 模板（Issue / PR）
 ├── .env.example                # 配置模板（复制为 .env 后填写）
 ├── requirements.txt            # Python 依赖列表
+│
+├── docs/                       # 📚 文档
+│   ├── github-guide.md         # GitHub 协作入门（新手必读）
+│   ├── team.md                 # 团队分工与职责
+│   ├── labels.md               # Issue/PR 标签规范
+│   └── architecture-invocation.md  # 多智能体调用链路（技术）
 │
 ├── config/                     # 配置文件
 │   ├── settings.py             # 全局配置（读取 .env）
@@ -243,13 +302,15 @@ yunGuanXingChuan/
 │   └── kg/                     # 知识图谱数据
 │
 ├── src/                        # 核心代码
-│   ├── agents/                 # 5 个 AI Agent
+│   ├── agents/                 # 6 个 AI Agent
 │   │   ├── base_agent.py       # Agent 基类
 │   │   ├── science_agent.py    # 科学理解
 │   │   ├── context_agent.py    # 语境分析
 │   │   ├── hypothesis_agent.py # 假设生成
 │   │   ├── strategy_agent.py   # 策略转译
-│   │   └── evaluator_agent.py  # 评测迭代
+│   │   ├── evaluator_agent.py  # 评测迭代
+│   │   └── humanist_agent.py   # 人文审查（文化/伦理）
+│   ├── parliament/             # 议会辩论引擎（Speaker + 辩论循环）
 │   ├── verification/           # 校验层
 │   │   ├── rag_checker.py      # RAG 向量检索校验
 │   │   ├── kg_checker.py       # 知识图谱校验
@@ -275,6 +336,8 @@ yunGuanXingChuan/
 ├── frontend/                   # React 前端
 │   ├── src/pages/
 │   │   ├── Dashboard.tsx       # 数据驾驶舱
+│   │   ├── TaskCenter.tsx      # 任务中心（启动议会）
+│   │   ├── Parliament.tsx      # 议会辩论结果页
 │   │   ├── Hypotheses.tsx      # 假设浏览
 │   │   ├── Strategy.tsx        # 策略推演
 │   │   ├── KnowledgeGraph.tsx  # 知识图谱可视化
@@ -290,7 +353,7 @@ yunGuanXingChuan/
 
 ---
 
-## 🤖 五个 Agent 详解
+## 🤖 多智能体系统详解
 
 | Agent | 中文名 | 做什么 | 输出 |
 |-------|--------|--------|------|
@@ -299,6 +362,9 @@ yunGuanXingChuan/
 | Hypothesis Agent | 假设生成 | 基于科学事实 + 语境分析，生成可验证的传播学假设 | `HypothesisSet`（JSON） |
 | Strategy Agent | 策略转译 | 针对不同受众生成具体传播策略（渠道、人设、文案） | `StrategySet`（JSON） |
 | Evaluator Agent | 评测迭代 | 五维评分 + 迭代反馈，驱动自改进闭环 | `EvaluationResult`（JSON） |
+| Humanist Agent | 人文审查 | 审查文化敏感性与伦理风险，在议会中担任人文守护者 | `CulturalReview`（JSON） |
+
+> 除上述六位 Agent 外，系统还有 **议会辩论引擎（Parliament）**：由 Speaker 主持多轮辩论与加权投票，先通过辩论筛出有价值的动议，再交给 Pipeline 做四路事实校验与策略评测。完整的调用链路见 **[docs/architecture-invocation.md](docs/architecture-invocation.md)**。
 
 ---
 
