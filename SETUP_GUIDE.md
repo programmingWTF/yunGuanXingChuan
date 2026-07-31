@@ -138,10 +138,7 @@ TAVILY_API_KEY=tvly-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 - [ ] Node.js 已安装（在终端运行 `node --version` 验证）
 - [ ] 已运行 `pip install -r requirements.txt`
 
-全部打勾后，就可以运行了：
-```bash
-python scripts/run_demo.py --topic "嫦娥六号"
-```
+全部打勾后，就可以使用了。打开前端网页，在**任务中心**输入议题（如"嫦娥六号"）点击启动即可，全程不需要写代码（具体打开方式见 README 的「第四步：运行项目」）。
 
 ---
 
