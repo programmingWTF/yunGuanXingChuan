@@ -1,6 +1,6 @@
 ---
 name: Pull Request
-title: "<type>: <简短描述>"
+title: "<type>(<scope>): <简短描述>"
 ---
 
 <!--
@@ -8,9 +8,9 @@ title: "<type>: <简短描述>"
 - CONTRIBUTING.md  https://github.com/programmingWTF/yunGuanXingChuan/blob/main/CONTRIBUTING.md
 - GitHub 协作入门   https://github.com/programmingWTF/yunGuanXingChuan/blob/main/docs/github-guide.md
 
-标题格式：<type>: <简短描述>，例如：
-  feat: 知识图谱增加连通分量分区浏览
-  fix: 修复辩论发言全文换行显示
+标题格式：<type>(<scope>): <简短描述>，例如：
+  feat(kg): 知识图谱增加连通分量分区浏览
+  fix(parliament): 修复辩论发言全文换行显示
 -->
 
 ## 关联 Issue
@@ -59,7 +59,7 @@ Closes #编号
 ## 检查清单
 
 - [ ] 已从 `main` 拉取最新代码
-- [ ] 提交信息符合 `<type>: <描述>` 规范
+- [ ] 提交信息符合 `<type>(<scope>): <描述>` 规范（scope 必填）
 - [ ] `git status` 确认未夹带 `.env`、`node_modules`、临时文件
 - [ ] 未提交任何 API Key / 敏感信息
 - [ ] 至少一人 Review 通过后再合并

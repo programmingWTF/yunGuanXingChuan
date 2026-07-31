@@ -248,7 +248,7 @@ uvicorn api.main:app --port 8000
 | ② 认领 | 把自己设成 Assignee，说"我来做" | Issue 右侧 **Assignees** |
 | ③ 开分支 | `git checkout -b feat/xxx` | 本地终端 |
 | ④ 改代码 | 编辑文件 | VS Code |
-| ⑤ 提交 | `git add .` → `git commit -m "<type>: <描述>"` | 本地终端 |
+| ⑤ 提交 | `git add .` → `git commit -m "<type>(<scope>): <描述>"` | 本地终端 |
 | ⑥ 推送 | `git push origin feat/xxx` | 本地终端 |
 | ⑦ 开 PR | 申请合并，描述里写 `Closes #编号` | GitHub → **Pull requests** |
 | ⑧ Review | 等至少一位队友 Approve | GitHub PR 页面 |
@@ -258,7 +258,7 @@ uvicorn api.main:app --port 8000
 
 1. **永远不要在 `main` 上直接改代码** — 先开自己的分支，做完 PR 合并
 2. **开工前先 `git pull origin main`** — 拉最新代码，别在旧代码上改（会把队友的工作覆盖掉）
-3. **提交信息用 `<type>: <描述>`** — `feat`（新功能）/ `fix`（修bug）/ `docs`（文档）/ `data`（数据）/ `style`（样式）...
+3. **提交信息用 `<type>(<scope>): <描述>`** — 例如 `fix(parliament): 修复辩论显示`；类型：`feat`（新功能）/ `fix`（修bug）/ `docs`（文档）/ `data`（数据）/ `style`（样式）...
 
 > 📖 每一步具体怎么操作、遇到报错怎么办，看 **[docs/github-guide.md](docs/github-guide.md)**；完整规范见 **[CONTRIBUTING.md](CONTRIBUTING.md)**。
 

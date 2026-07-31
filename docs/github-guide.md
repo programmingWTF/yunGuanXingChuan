@@ -194,23 +194,25 @@ git add src/ api/     # 添加某些目录
 ### 5.4 提交（commit）
 
 ```bash
-git commit -m "<type>: <简短描述>"
+git commit -m "<type>(<scope>): <简短描述>"
 ```
 
 **格式**（完整规范见 [CONTRIBUTING.md](../CONTRIBUTING.md)）：
 
 ```
-<类型>: <一句话说清楚做了什么>
+<类型>(<模块>): <一句话说清楚做了什么>
 ```
 
 **类型**：`feat`（新功能）、`fix`（修 bug）、`docs`（文档）、`data`（数据）、`style`（样式）、`refactor`（重构）、`chore`（杂项）
 
+**模块（scope）**：`agents`（智能体）、`parliament`（议会辩论）、`pipeline`（流程编排）、`api`（后端接口）、`frontend`（前端）、`kg`（知识图谱）、`data`（数据）、`docs`（文档）、`scripts`（脚本）
+
 **示例**：
 ```bash
-git commit -m "feat: 知识图谱增加连通分量分区浏览"
-git commit -m "fix: 修复辩论发言全文换行显示"
-git commit -m "data: 添加法国媒体嫦娥六号报道语料"
-git commit -m "docs: 更新项目文档导航"
+git commit -m "feat(kg): 知识图谱增加连通分量分区浏览"
+git commit -m "fix(parliament): 修复辩论发言全文换行显示"
+git commit -m "data(media): 添加法国媒体嫦娥六号报道语料"
+git commit -m "docs(collab): 更新团队协作文档"
 ```
 
 > [!TIP]
@@ -258,7 +260,7 @@ PR（Pull Request，拉取请求）是 Git 协作的核心：**把你分支上�
    - **base**: `main`（代码合并到哪）
    - **compare**: 你的分支（从哪来）
 5. 填写标题和描述：
-   - 标题遵循提交信息格式：`<type>: <描述>`
+   - 标题遵循提交信息格式：`<type>(<scope>): <描述>`
    - 描述里说清楚：做了什么、为什么这样做、怎么测试的
    - **重要**：如果这个改动在解决某个 Issue，在描述第一行写 `Closes #编号`（如 `Closes #58`），合并后 GitHub 会自动关闭对应 Issue
 6. 点 **Create pull request**
@@ -273,7 +275,7 @@ PR（Pull Request，拉取请求）是 Git 协作的核心：**把你分支上�
 - 等**至少一个人**在你的 PR 页面点 **Approve**
 - 如果 Review 的人提了修改意见：
   1. 在本地改代码
-  2. `git add .` → `git commit -m "fix: 按 review 意见修改..."` → `git push`
+  2. `git add .` → `git commit -m "fix(<scope>): 按 review 意见修改..."` → `git push`
   3. **PR 会自动更新**，Reviewer 能立刻看到新改动
 - 全部通过后，点绿色的 **Merge pull request** 合并进 `main`
 - 合并后**删掉这个分支**（网页上点 Delete branch），保持仓库整洁
@@ -303,7 +305,7 @@ git diff
 
 # 5. 暂存 + 提交（先 git status 确认没夹带敏感文件）
 git add .
-git commit -m "feat: xxx"
+git commit -m "feat(parliament): xxx"
 
 # 6. 推送
 git push origin feat/xxx
@@ -429,7 +431,7 @@ git push origin 你的分支名
 3. 保存后：
    ```bash
    git add .
-   git commit -m "fix: 解决合并冲突"
+   git commit -m "fix(merge): 解决合并冲突"
    git push origin 你的分支名
    ```
 

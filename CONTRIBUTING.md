@@ -44,19 +44,19 @@ main  ← 主分支（所有代码最终合并到这里）
 | `chore` | 杂项（构建、依赖、CI） |
 | `test` | 测试 |
 
-**scope（可选）**：`agents` / `pipeline` / `parliament` / `api` / `frontend` / `kg` / `data` / `docs` / `scripts`
+**scope（必填）**：`agents`（智能体）/ `parliament`（议会辩论）/ `pipeline`（流程编排）/ `verification`（校验层）/ `api`（后端接口）/ `frontend`（前端）/ `kg`（知识图谱）/ `data`（数据）/ `docs`（文档）/ `scripts`（脚本）
 
 **示例**：
 ```
 feat(kg): 知识图谱增加连通分量分区浏览
 fix(parliament): 修复辩论发言全文换行显示
-data: 添加法国媒体嫦娥六号报道语料
-docs: 更新项目文档导航
+data(media): 添加法国媒体嫦娥六号报道语料
+docs(collab): 更新项目文档导航
 style(frontend): 调整星空背景动画
 refactor(pipeline): 抽取验证层公共逻辑
 ```
 
-> 描述用**中文**，一句话说清"做了什么"。历史提交没有 scope 是可以的，scope 只是锦上添花。
+> 描述用**中文**，一句话说清"做了什么"。**scope（模块）必填**，统一用 `fix(parliament)` 这种格式，方便按模块检索提交历史。
 
 ---
 
@@ -72,7 +72,7 @@ refactor(pipeline): 抽取验证层公共逻辑
 
 ### Pull Request 要求
 
-- **标题**遵循提交信息规范：`<type>: <描述>`
+- **标题**遵循提交信息规范：`<type>(<scope>): <描述>`
 - **描述**说清楚：做了什么、为什么这么做、怎么测试的
 - **关联 Issue**：在描述第一行写 `Closes #编号`（如 `Closes #58`），合并后自动关闭 Issue
 - **涉及 UI 改动**：附截图（贴进 PR 描述即可）
@@ -198,7 +198,7 @@ yunGuanXingChuan/
 
 - [ ] 已从 `main` 拉取最新代码
 - [ ] 分支命名符合 `<type>/<描述>` 规范
-- [ ] 提交信息符合 `<type>: <描述>` 规范
+- [ ] 提交信息符合 `<type>(<scope>): <描述>` 规范（scope 必填）
 - [ ] `git status` 确认**没有** `.env`、`node_modules`、临时文件
 - [ ] 改动能在本地跑起来（后端 `uvicorn` 能起、前端 `npm run build` 能过）
 - [ ] 相关测试通过（`python -m pytest tests/`）
