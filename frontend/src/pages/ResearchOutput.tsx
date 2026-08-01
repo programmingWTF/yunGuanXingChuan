@@ -235,6 +235,7 @@ export default function ResearchOutput() {
   const [result, setResult] = useState<OutputGenerateResult | null>(null)
   const [error, setError] = useState('')
   const [history, setHistory] = useState<OutputHistoryItem[]>([])
+  const [viewing, setViewing] = useState<string | null>(null)
   const pollingRef = useRef<number | null>(null)
 
   const loadTypes = async () => {
@@ -279,6 +280,23 @@ export default function ResearchOutput() {
   }
 
   const resetForm = () => { setSelected(null); setTopic(''); setResult(null); setError('') }
+
+  /** 点击历史记录：加载对应历史成果并展示到结果区 */
+  const handleViewHistory = async (h: OutputHistoryItem) => {
+    setViewing(h.task_id)
+    setError('')
+    try {
+      const r = await getOutputResult(h.task_id)
+      setResult(r)
+      // 切换到对应生成器面板，确保结果展示区可见
+      const t = types.find(x => x.generator_type === h.generator_type)
+      if (t) setSelected(t)
+    } catch (e) {
+      setError(`加载历史成果失败：${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setViewing(null)
+    }
+  }
 
   return (
     <div className="space-y-7">
@@ -454,7 +472,13 @@ export default function ResearchOutput() {
           </div>
           <div className="space-y-2">
             {history.map(h => (
-              <div key={h.task_id} className="flex items-center gap-4 p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:border-white/10 transition-colors">
+              <button
+                key={h.task_id}
+                type="button"
+                onClick={() => handleViewHistory(h)}
+                disabled={viewing === h.task_id}
+                className="group w-full text-left flex items-center gap-4 p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:border-white/10 transition-colors cursor-pointer disabled:cursor-wait"
+              >
                 <span className="text-sm text-astro-400">▤</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white truncate">{h.name} · {h.topic}</div>
@@ -464,7 +488,10 @@ export default function ResearchOutput() {
                 <span className={`text-[10px] px-2 py-0.5 rounded-md ${h.status === 'completed' ? 'bg-aurora-400/10 text-aurora-400 border border-aurora-400/20' : 'bg-white/[0.04] text-slate-500 border border-white/[0.06]'}`}>
                   {h.status}
                 </span>
-              </div>
+                <span className={`text-[10px] whitespace-nowrap ${viewing === h.task_id ? 'text-aurora-400 animate-pulse' : 'text-astro-400 opacity-0 group-hover:opacity-100 transition-opacity'}`}>
+                  {viewing === h.task_id ? '加载中...' : '查看 →'}
+                </span>
+              </button>
             ))}
           </div>
         </section>
