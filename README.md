@@ -5,8 +5,8 @@
 > 🌟 **AI Scientist 范式**：假设生成 → 验证 → 迭代
 > 🔍 **RAG + 知识图谱双校验**：确保科学事实准确性
 > 📊 **五维评分 + 自迭代闭环**：自动评估与改进
-> 🤖 **多智能体协作**：六个专职 Agent + 议会辩论引擎（Parliament）互相校验
-> 📦 **成果中心**：研究计划 / 策略报告 / 新闻建议稿 / 论文大纲 / 科普脚本 / KG 报告一键生成与导出
+> 🤖 **多智能体协作**：六个核心 Agent + 议会辩论引擎（Parliament）+ 成果生成 Agent 互相配合
+> 📦 **成果中心**：研究计划 / 策略报告 / 新闻建议稿 / 论文大纲 / 科普脚本 / KG 报告 / 表达适配，一键生成与多格式导出（JSON/MD/HTML/PDF/Word/KG-PNG）
 
 ---
 
@@ -333,14 +333,21 @@ yunGuanXingChuan/
 │   └── kg/                     # 知识图谱数据
 │
 ├── src/                        # 核心代码
-│   ├── agents/                 # 6 个 AI Agent
+│   ├── agents/                 # AI Agent（核心分析 + 成果生成）
 │   │   ├── base_agent.py       # Agent 基类
 │   │   ├── science_agent.py    # 科学理解
 │   │   ├── context_agent.py    # 语境分析
 │   │   ├── hypothesis_agent.py # 假设生成
 │   │   ├── strategy_agent.py   # 策略转译
 │   │   ├── evaluator_agent.py  # 评测迭代
-│   │   └── humanist_agent.py   # 人文审查（文化/伦理）
+│   │   ├── humanist_agent.py   # 人文审查（文化/伦理）
+│   │   ├── research_plan_agent.py        # 研究计划生成
+│   │   ├── strategy_report_agent.py      # 国际传播策略报告生成
+│   │   ├── press_release_agent.py        # 新闻传播建议稿生成
+│   │   ├── paper_outline_agent.py        # 论文大纲生成
+│   │   ├── science_script_agent.py       # 科普视频脚本生成
+│   │   ├── expression_adaptation_agent.py  # 表达适配（中英对照术语/隐喻）
+│   │   └── kg_report_generator.py        # 知识图谱报告（数据驱动）
 │   ├── parliament/             # 议会辩论引擎（Speaker + 辩论循环）
 │   ├── verification/           # 校验层
 │   │   ├── rag_checker.py      # RAG 向量检索校验
@@ -357,12 +364,20 @@ yunGuanXingChuan/
 │   │   └── tavily_search.py    # Tavily 搜索
 │   ├── pipeline.py             # 编排器（核心流程控制）
 │   ├── evaluation.py           # 评测引擎
+│   ├── export_service.py       # 成果多格式导出（JSON/MD/HTML/PDF/Word/KG-PNG）
 │   ├── schemas.py              # 数据模型定义
 │   └── llm_client.py           # LLM 客户端封装
 │
 ├── api/                        # FastAPI 后端接口
-│   ├── main.py                 # 入口
+│   ├── main.py                 # 入口（含 SPA 静态托管）
 │   └── routes/                 # 各模块 API 路由
+│       ├── analyze.py          # 分析任务（Pipeline）
+│       ├── parliament.py       # 认知议会
+│       ├── outputs.py          # 成果生成与导出
+│       ├── verify.py           # 四路交叉校验
+│       ├── hypotheses.py       # 假设
+│       ├── strategies.py       # 策略
+│       └── knowledge_graph.py  # 知识图谱
 │
 ├── frontend/                   # React 前端
 │   ├── src/pages/
@@ -372,7 +387,9 @@ yunGuanXingChuan/
 │   │   ├── Hypotheses.tsx      # 假设浏览
 │   │   ├── Strategy.tsx        # 策略推演
 │   │   ├── KnowledgeGraph.tsx  # 知识图谱可视化
-│   │   └── VerifyReport.tsx    # 校验报告
+│   │   ├── VerifyReport.tsx    # 校验报告
+│   │   ├── ResearchOutput.tsx  # 成果中心（生成与多格式导出）
+│   │   └── CrossCultural.tsx   # 跨文化对照（术语/隐喻/表达建议）
 │   └── src/components/
 │       └── StarfieldBackground.tsx  # 星空背景动画
 │
@@ -396,6 +413,8 @@ yunGuanXingChuan/
 | Humanist Agent | 人文审查 | 审查文化敏感性与伦理风险，在议会中担任人文守护者 | `CulturalReview`（JSON） |
 
 > 除上述六位 Agent 外，系统还有 **议会辩论引擎（Parliament）**：由 Speaker 主持多轮辩论与加权投票，先通过辩论筛出有价值的动议，再交给 Pipeline 做四路事实校验与策略评测。完整的调用链路见 **[docs/architecture-invocation.md](docs/architecture-invocation.md)**。
+
+> 此外，**成果中心（Research Output Center）** 还包含一组面向交付的成果生成器：研究计划、国际传播策略报告、新闻传播建议稿、论文大纲、科普视频脚本、知识图谱报告、中英表达适配建议——统一走异步任务 + 多格式导出（详见 `src/agents/` 与 `api/routes/outputs.py`）。
 
 ---
 
