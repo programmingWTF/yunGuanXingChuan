@@ -310,3 +310,62 @@ class CommunicationStrategyReport(BaseModel):
     risk_warnings: List[str] = Field(default_factory=list)          # 风险提醒
     china_media_differences: List[str] = Field(default_factory=list)  # 中外媒体差异（结合 Context Agent 框架分析）
     evidence_sources: List[str] = Field(default_factory=list)       # 引用来源
+
+
+class PressReleaseDraft(BaseModel):
+    """新闻传播建议稿生成器输出（助传定位：建议稿，非 AI 代写新闻）"""
+    topic: str                                # 议题
+    communication_goals: List[str] = Field(default_factory=list)    # 传播目标
+    recommended_titles: List[str] = Field(default_factory=list)     # 推荐标题
+    lead_suggestions: List[str] = Field(default_factory=list)       # 导语建议
+    body_framework: List[str] = Field(default_factory=list)         # 正文框架
+    interview_subjects: List[str] = Field(default_factory=list)     # 推荐采访对象
+    image_suggestions: List[str] = Field(default_factory=list)      # 配图建议
+    platform_suggestions: List[str] = Field(default_factory=list)   # 传播平台建议
+    evidence_sources: List[str] = Field(default_factory=list)       # 引用来源
+    note: str = ""                            # 助传说明
+
+
+class PaperOutline(BaseModel):
+    """论文大纲生成器输出（助研定位：仅框架与要点提示，不含正文）"""
+    topic: str                                # 研究主题
+    paper_title: str = ""                     # Title（用 paper_title 避免与前端 title 过滤冲突）
+    abstract_framework: str = ""              # Abstract 框架+要点
+    introduction_framework: str = ""          # Introduction 框架+要点
+    literature_review_framework: str = ""     # Literature Review 框架+要点
+    method_framework: str = ""                # Method 框架+要点
+    result_framework: str = ""                # Result 框架+要点
+    discussion_framework: str = ""            # Discussion 框架+要点
+    future_work_framework: str = ""           # Future Work 框架+要点
+    research_questions: List[str] = Field(default_factory=list)     # 研究问题/创新点
+    evidence_sources: List[str] = Field(default_factory=list)       # 引用来源
+    note: str = ""                            # 助研说明
+
+
+class KGNodeStat(BaseModel):
+    """图谱节点统计（热点节点/关键人物/机构共用）"""
+    name: str
+    type: str = ""
+    degree: int = 0
+    top_relation: str = ""
+
+
+class KGRelation(BaseModel):
+    """图谱关系三元组（含证据来源）"""
+    subject: str
+    predicate: str
+    object: str
+    confidence: float = 1.0
+    source: str = ""
+
+
+class KGReport(BaseModel):
+    """知识图谱报告生成器输出（数据驱动：从知识图谱统计组装）"""
+    topic: str                                # 主题
+    kg_summary: str = ""                      # 知识图谱总览（一段话）
+    hot_nodes: List[KGNodeStat] = Field(default_factory=list)       # 热点节点
+    key_persons: List[KGNodeStat] = Field(default_factory=list)     # 关键人物
+    organizations: List[KGNodeStat] = Field(default_factory=list)   # 机构
+    relations: List[KGRelation] = Field(default_factory=list)       # 关系（围绕 topic）
+    evidence_sources: List[str] = Field(default_factory=list)       # 证据来源（可追溯）
+    note: str = ""                            # 说明

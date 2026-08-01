@@ -46,13 +46,13 @@ OUTPUT_TYPES = {
         "name": "新闻传播建议稿",
         "module": "智能体",
         "description": "生成传播目标/推荐标题/导语建议/正文框架/采访对象/配图建议",
-        "real": False,
+        "real": True,
     },
     "paper_outline": {
         "name": "论文大纲",
         "module": "智能体",
         "description": "生成 Title/Abstract/Introduction/Literature Review/Method/Result/Discussion/Future Work 框架",
-        "real": False,
+        "real": True,
     },
     "science_script": {
         "name": "科普视频脚本",
@@ -64,7 +64,7 @@ OUTPUT_TYPES = {
         "name": "知识图谱报告",
         "module": "知识图谱",
         "description": "生成基于知识图谱的分析报告",
-        "real": False,
+        "real": True,
     },
     "expression_adaptation": {
         "name": "表达适配建议",
@@ -92,13 +92,23 @@ class OutputGenerateResponse(BaseModel):
 # ==========================================================================
 
 def _run_real_generator(generator_type: str, input_data: Dict) -> dict:
-    """调用真实 Agent 生成成果"""
+    """调用真实生成器生成成果（Agent 或数据驱动函数）"""
     if generator_type == "research_plan":
         from src.agents.research_plan_agent import ResearchPlanAgent
         result = ResearchPlanAgent().run(input_data)
     elif generator_type == "strategy_report":
         from src.agents.strategy_report_agent import StrategyReportAgent
         result = StrategyReportAgent().run(input_data)
+    elif generator_type == "press_release":
+        from src.agents.press_release_agent import PressReleaseAgent
+        result = PressReleaseAgent().run(input_data)
+    elif generator_type == "paper_outline":
+        from src.agents.paper_outline_agent import PaperOutlineAgent
+        result = PaperOutlineAgent().run(input_data)
+    elif generator_type == "kg_report":
+        # 数据驱动纯函数分支（不走 Agent/LLM，从知识图谱统计组装）
+        from src.agents.kg_report_generator import generate_kg_report
+        result = generate_kg_report(input_data)
     else:
         raise ValueError(f"未知生成器: {generator_type}")
     return result

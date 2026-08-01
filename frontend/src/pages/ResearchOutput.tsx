@@ -24,6 +24,9 @@ const TYPE_META: Record<string, { icon: string; color: string }> = {
 const REAL_FIELDS: Record<string, { label: string; placeholder: string }> = {
   research_plan: { label: '研究主题', placeholder: '如：嫦娥六号月球背面采样返回任务的国际传播效果研究' },
   strategy_report: { label: '议题', placeholder: '如：嫦娥六号' },
+  press_release: { label: '议题', placeholder: '如：嫦娥六号' },
+  paper_outline: { label: '研究主题', placeholder: '如：嫦娥六号月球样品研究' },
+  kg_report: { label: '议题', placeholder: '如：嫦娥六号' },
 }
 
 /** 将成果结果渲染为结构化区块列表（供页面展示） */
@@ -47,6 +50,28 @@ function resultToSections(data: Record<string, unknown>) {
     risk_warnings: '风险提醒',
     china_media_differences: '中外媒体差异',
     message: '提示',
+    // #6 新闻传播建议稿
+    lead_suggestions: '导语建议',
+    body_framework: '正文框架',
+    interview_subjects: '推荐采访对象',
+    image_suggestions: '配图建议',
+    platform_suggestions: '传播平台建议',
+    // #7 论文大纲
+    paper_title: '论文标题',
+    abstract_framework: '摘要框架',
+    introduction_framework: '引言框架',
+    literature_review_framework: '文献综述框架',
+    method_framework: '研究方法框架',
+    result_framework: '结果框架',
+    discussion_framework: '讨论框架',
+    future_work_framework: '未来工作',
+    research_questions: '研究问题',
+    // #8 知识图谱报告
+    kg_summary: '知识图谱总览',
+    hot_nodes: '热点节点',
+    key_persons: '关键人物',
+    organizations: '机构',
+    relations: '关系三元组',
   }
   const listOnly: Record<string, string> = {
     existing_research: '已有研究',
@@ -62,16 +87,33 @@ function resultToSections(data: Record<string, unknown>) {
     keywords: '关键词',
     risk_warnings: '风险提醒',
     china_media_differences: '中外媒体差异',
+    lead_suggestions: '导语建议',
+    body_framework: '正文框架',
+    interview_subjects: '推荐采访对象',
+    image_suggestions: '配图建议',
+    platform_suggestions: '传播平台建议',
+    research_questions: '研究问题',
+    hot_nodes: '热点节点',
+    key_persons: '关键人物',
+    organizations: '机构',
+    relations: '关系三元组',
   }
   return Object.entries(data)
     .filter(([k, v]) => v !== undefined && v !== null && v !== '' && !['evidence_sources', 'status', 'title'].includes(k))
     .map(([k, v]) => {
       const label = labelMap[k] || k
+      // 对象数组（如 KG 报告的 hot_nodes / relations）——需对象渲染
+      if (Array.isArray(v) && v.length > 0 && typeof v[0] === 'object' && v[0] !== null) {
+        return { key: k, label, kind: 'objectList' as const, items: v as Record<string, unknown>[] }
+      }
       if (Array.isArray(v)) {
         return {
           key: k, label, kind: 'list' as const, items: v as string[],
           note: listOnly[k] ? '' : `${v.length} 项`,
         }
+      }
+      if (typeof v === 'object' && v !== null) {
+        return { key: k, label, kind: 'object' as const, value: v as Record<string, unknown> }
       }
       return { key: k, label, kind: 'text' as const, value: String(v) }
     })
@@ -95,10 +137,27 @@ function exportMarkdown(result: OutputGenerateResult) {
       note: '助研说明', target_countries: '目标国家', target_audiences: '目标受众',
       communication_goals: '传播目标', narrative_frameworks: '叙事框架', recommended_titles: '推荐标题',
       keywords: '关键词', risk_warnings: '风险提醒', china_media_differences: '中外媒体差异',
+      lead_suggestions: '导语建议', body_framework: '正文框架', interview_subjects: '推荐采访对象',
+      image_suggestions: '配图建议', platform_suggestions: '传播平台建议',
+      paper_title: '论文标题', abstract_framework: '摘要框架', introduction_framework: '引言框架',
+      literature_review_framework: '文献综述框架', method_framework: '研究方法框架', result_framework: '结果框架',
+      discussion_framework: '讨论框架', future_work_framework: '未来工作', research_questions: '研究问题',
+      kg_summary: '知识图谱总览', hot_nodes: '热点节点', key_persons: '关键人物',
+      organizations: '机构', relations: '关系三元组',
     }[k] || k
     lines.push(`## ${label}`, '')
     if (Array.isArray(v)) {
-      v.forEach((item: unknown) => lines.push(`- ${String(item)}`))
+      v.forEach((item: unknown) => {
+        if (typeof item === 'object' && item !== null) {
+          // 对象数组项（如 KG 报告的 hot_nodes/relations）——展开键值
+          const kv = Object.entries(item as Record<string, unknown>)
+            .filter(([, vv]) => vv !== undefined && vv !== null && vv !== '')
+            .map(([kk, vv]) => `${kk}: ${String(vv)}`).join(' ｜ ')
+          lines.push(`- ${kv}`)
+        } else {
+          lines.push(`- ${String(item)}`)
+        }
+      })
     } else {
       lines.push(String(v))
     }
@@ -176,8 +235,8 @@ export default function ResearchOutput() {
           <p className="text-xs text-slate-500 mt-1.5">7 类研究成果统一生成 —— 助研助传，不做代写</p>
         </div>
         <div className="flex items-center gap-3 text-[11px] text-slate-500">
-          <span className="chip">真实生成器 ×2</span>
-          <span className="chip">占位待实现 ×5</span>
+          <span className="chip">真实生成器 ×{types.filter(t => t.real).length}</span>
+          <span className="chip">占位待实现 ×{types.length - types.filter(t => t.real).length}</span>
         </div>
       </div>
 
@@ -289,7 +348,7 @@ export default function ResearchOutput() {
               <h3 className="text-base font-bold text-white mb-2">「{selected.name}」即将上线</h3>
               <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
                 成果中心架构已就绪（统一接口 + 生成器注册表），该成果生成器正在按议题逐个填充。
-                本次已实现：科学假设与研究计划、国际传播策略报告。
+                本次已实现：科学假设与研究计划、国际传播策略报告、新闻传播建议稿、论文大纲、知识图谱报告。
               </p>
             </div>
           )}
@@ -356,6 +415,33 @@ function ResultSections({ data }: { data: Record<string, unknown> }) {
                 </li>
               ))}
             </ul>
+          ) : s.kind === 'objectList' ? (
+            <div className="space-y-2">
+              {s.items.map((obj, i) => (
+                <div key={i} className="rounded-lg bg-white/[0.02] border border-white/[0.05] px-3 py-2">
+                  <div className="text-sm font-medium text-white mb-0.5">
+                    {String(obj.name || obj.subject || obj.media || `#${i + 1}`)}
+                    {typeof obj.degree === 'number' && <span className="ml-2 text-[10px] text-nova-400">热度 {obj.degree}</span>}
+                    {typeof obj.type === 'string' && obj.type && <span className="ml-2 text-[10px] font-mono text-slate-500">{obj.type}</span>}
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+                    {Object.entries(obj).filter(([kk, vv]) => !['name', 'subject', 'media', 'degree', 'type'].includes(kk) && vv !== undefined && vv !== null && vv !== '').map(([kk, vv]) => (
+                      <span key={kk} className="text-[11px] text-slate-400">
+                        <span className="text-slate-600">{kk}:</span> {String(vv)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : s.kind === 'object' ? (
+            <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+              {Object.entries(s.value).filter(([, vv]) => vv !== undefined && vv !== null && vv !== '').map(([kk, vv]) => (
+                <span key={kk} className="text-[11px] text-slate-400">
+                  <span className="text-slate-600">{kk}:</span> {String(vv)}
+                </span>
+              ))}
+            </div>
           ) : (
             <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{s.value}</p>
           )}
