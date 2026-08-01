@@ -277,8 +277,8 @@ PR（Pull Request，拉取请求）是 Git 协作的核心：**把你分支上�
   1. 在本地改代码
   2. `git add .` → `git commit -m "fix(<scope>): 按 review 意见修改..."` → `git push`
   3. **PR 会自动更新**，Reviewer 能立刻看到新改动
-- 全部通过后，点绿色的 **Merge pull request** 合并进 `main`
-- 合并后**删掉这个分支**（网页上点 Delete branch），保持仓库整洁
+- 全部通过后，点绿色的 **Squash and merge** 合并进 `main`（仓库已开启保护 + Squash 合并，PR 会压缩成**一条**提交，`main` 历史干净）
+- 分支会在合并后**自动删除**（仓库已开启"合并后删除分支"），无需手动清理
 
 > [!TIP]
 > 合并进 `main` 的代码，就是"最终成果"。下次别人 `git pull` 就能拿到你的代码。所以合并前一定要确保它**能跑**。
@@ -470,8 +470,8 @@ git reset --soft HEAD~1    # 撤销提交但保留改动（可重新提交）
 git reset --hard HEAD~1    # 撤销提交并丢弃改动（⚠️ 慎用）
 ```
 
-### Q: push 提示 "Unprotected branch" 之类
-我们仓库目前**没有**开启 main 保护分支，任何人都能直接推 main——但这**不代表你应该直接推**。请遵守"分支 + PR"的流程，这是纪律问题，不是权限问题。
+### Q: 直接 push main 被拒绝（"protected branch"）
+我们仓库**已经开启 main 保护分支**：任何改动（包括组长的）都必须走 **分支 → PR → 至少一人 Approve** 才能合并，直接 push `main` 会被 GitHub 拒绝。这是仓库的**硬性规则**，不是建议——别尝试绕开它，让流程替你把关。
 
 ---
 
