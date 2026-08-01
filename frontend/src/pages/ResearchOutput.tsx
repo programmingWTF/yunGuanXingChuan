@@ -28,6 +28,7 @@ const REAL_FIELDS: Record<string, { label: string; placeholder: string }> = {
   paper_outline: { label: '研究主题', placeholder: '如：嫦娥六号月球样品研究' },
   kg_report: { label: '议题', placeholder: '如：嫦娥六号' },
   science_script: { label: '科普主题', placeholder: '如：嫦娥六号月球背面采样返回' },
+  expression_adaptation: { label: '议题', placeholder: '如：嫦娥六号' },
 }
 
 /** 科普视频脚本的目标平台 */
@@ -90,6 +91,17 @@ function resultToSections(data: Record<string, unknown>) {
     caption: '字幕',
     narration: '旁白',
     visual_suggestion: '配图建议',
+    // expression_adaptation（表达适配建议）字段
+    terms: '术语对照',
+    metaphors: '隐喻/表达对照',
+    suggestions: '场景化表达建议',
+    chinese: '中文',
+    english: '英文',
+    context: '适用语境',
+    scenario: '场景/媒体',
+    recommended: '推荐表达',
+    avoid: '不建议表达',
+    reason: '原因',
   }
   const listOnly: Record<string, string> = {
     existing_research: '已有研究',
@@ -123,6 +135,14 @@ function resultToSections(data: Record<string, unknown>) {
       // 分镜数组（对象数组）专用渲染
       if (k === 'shots' && Array.isArray(v)) {
         return { key: k, label, kind: 'shots' as const, shots: v as Record<string, unknown>[] }
+      }
+      // 中英对照表（terms / metaphors）——左右对照渲染
+      if ((k === 'terms' || k === 'metaphors') && Array.isArray(v)) {
+        return { key: k, label, kind: 'comparison' as const, items: v as Record<string, unknown>[] }
+      }
+      // 场景化建议（suggestions）——卡片渲染
+      if (k === 'suggestions' && Array.isArray(v)) {
+        return { key: k, label, kind: 'suggestions' as const, items: v as Record<string, unknown>[] }
       }
       // 对象数组（如 KG 报告的 hot_nodes / relations）——需对象渲染
       if (Array.isArray(v) && v.length > 0 && typeof v[0] === 'object' && v[0] !== null) {
@@ -495,6 +515,39 @@ function ResultSections({ data }: { data: Record<string, unknown> }) {
                   <ShotRow label="字幕" value={String(shot.caption || '')} />
                   <ShotRow label="旁白" value={String(shot.narration || '')} />
                   <ShotRow label="配图" value={String(shot.visual_suggestion || '')} />
+                </div>
+              ))}
+            </div>
+          ) : s.kind === 'comparison' ? (
+            <div className="space-y-2">
+              {s.items.map((item, i) => (
+                <div key={i} className="grid grid-cols-2 gap-3 rounded-lg bg-white/[0.02] border border-white/[0.05] p-3">
+                  <div>
+                    <p className="text-[10px] text-slate-500 mb-0.5">中文</p>
+                    <p className="text-sm text-slate-200 font-medium">{String(item.chinese || '')}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 mb-0.5">English</p>
+                    <p className="text-sm text-aurora-300 font-medium">{String(item.english || '')}</p>
+                  </div>
+                  {Boolean(item.context || item.note) && (
+                    <div className="col-span-2 mt-1 pt-1 border-t border-white/[0.04]">
+                      <p className="text-[11px] text-slate-500">💡 {String(item.context || item.note)}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : s.kind === 'suggestions' ? (
+            <div className="space-y-3">
+              {s.items.map((item, i) => (
+                <div key={i} className="rounded-lg bg-white/[0.02] border border-white/[0.05] p-3">
+                  <p className="text-xs font-bold text-nova-300 mb-2">🌐 {String(item.scenario || `场景 ${i + 1}`)}</p>
+                  <div className="space-y-1">
+                    <p className="text-sm text-emerald-300">✅ 推荐：{String(item.recommended || '')}</p>
+                    {Boolean(item.avoid) && <p className="text-sm text-red-300/80">⛔ 不建议：{String(item.avoid)}</p>}
+                    {Boolean(item.reason) && <p className="text-[11px] text-slate-500 mt-1">原因：{String(item.reason)}</p>}
+                  </div>
                 </div>
               ))}
             </div>

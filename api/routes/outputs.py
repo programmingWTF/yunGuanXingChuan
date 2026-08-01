@@ -68,9 +68,9 @@ OUTPUT_TYPES = {
     },
     "expression_adaptation": {
         "name": "表达适配建议",
-        "module": "前端",
+        "module": "智能体",
         "description": "生成中英对照术语/隐喻/表达建议表",
-        "real": False,
+        "real": True,
     },
 }
 
@@ -113,6 +113,9 @@ def _run_real_generator(generator_type: str, input_data: Dict) -> dict:
         # 数据驱动纯函数分支（不走 Agent/LLM，从知识图谱统计组装）
         from src.agents.kg_report_generator import generate_kg_report
         result = generate_kg_report(input_data)
+    elif generator_type == "expression_adaptation":
+        from src.agents.expression_adaptation_agent import ExpressionAdaptationAgent
+        result = ExpressionAdaptationAgent().run(input_data)
     else:
         raise ValueError(f"未知生成器: {generator_type}")
     return result
