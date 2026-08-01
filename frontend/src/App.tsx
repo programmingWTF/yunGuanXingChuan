@@ -14,6 +14,7 @@ import KnowledgeGraph from './pages/KnowledgeGraph'
 import VerifyReport from './pages/VerifyReport'
 import Parliament from './pages/Parliament'
 import ResearchOutput from './pages/ResearchOutput'
+import CrossCultural from './pages/CrossCultural'
 
 /* ── 导航定义 ── */
 const NAV_ITEMS = [
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { to: '/strategy', icon: '▤', label: '传播策略', en: 'STRATEGY' },
   { to: '/kg', icon: '✦', label: '知识图谱', en: 'KNOWLEDGE' },
   { to: '/verify', icon: '◇', label: '证据校验', en: 'EVIDENCE' },
+  { to: '/cross-cultural', icon: '⇌', label: '跨文化对照', en: 'CROSS-CULT' },
 ]
 
 /* ── 实时时钟 ── */
@@ -149,6 +151,7 @@ function AppLayout() {
               <Route path="/strategy" element={<Strategy />} />
               <Route path="/kg" element={<KnowledgeGraph />} />
               <Route path="/verify" element={<VerifyReport />} />
+              <Route path="/cross-cultural" element={<CrossCultural />} />
             </Routes>
           </div>
         </main>
