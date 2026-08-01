@@ -139,7 +139,7 @@ class EvaluatorAgent(BaseAgent):
         previous_speeches = input_data.get("previous_speeches", [])
         round_num = input_data.get("round_num", 1)
         search_context = input_data.get("search_context", "")
-        speeches_text = "\\n".join(
+        speeches_text = "\n".join(
             f"【{s.get('speaker', '?')}】({s.get('stance', '?')}): {s.get('content', '')[:200]}"
             for s in previous_speeches
         )

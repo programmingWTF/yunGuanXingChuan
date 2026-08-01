@@ -31,6 +31,13 @@ from src.search.unified_search import get_unified_search_service
 logger = logging.getLogger(__name__)
 
 
+def _safe_name(name: str, max_len: int = 20) -> str:
+    """清洗文件名：替换 Windows 非法字符（<>:\"/\\|?* 及控制字符），避免写盘失败"""
+    import re
+    cleaned = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name)
+    return cleaned.strip(" ._").replace(" ", "_")[:max_len]
+
+
 class Pipeline:
     """
     完整 Pipeline 编排器
@@ -119,7 +126,7 @@ class Pipeline:
             # 保存到 data/science/
             science_dir = Path(__file__).parent.parent / "data" / "science"
             science_dir.mkdir(parents=True, exist_ok=True)
-            safe_name = topic.replace(" ", "_").replace("/", "_")[:20]
+            safe_name = _safe_name(topic)
             file_path = science_dir / f"{safe_name}_facts.json"
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(result, f, ensure_ascii=False, indent=2)
@@ -698,12 +705,14 @@ class CognitiveParliament:
     输出：完整的议会记录 (DeliberationTranscript)
     """
 
-    def __init__(self, max_rounds: int = None, max_pipeline_rounds: int = None, progress_callback=None):
+    def __init__(self, max_rounds: int = None, max_pipeline_rounds: int = None, progress_callback=None,
+                 stop_check=None):
         """
         Args:
             max_rounds: 最大辩论轮次（默认从配置读取）
             max_pipeline_rounds: Pipeline 评测最大轮次（默认从配置读取）
             progress_callback: 进度回调
+            stop_check: 可选的可调用对象 () -> bool，返回 True 时提前停止辩论循环
         """
         from config.settings import PARLIAMENT_MAX_ROUNDS, MAX_ITERATION_ROUNDS
         from src.parliament.speaker import SpeakerAgent
@@ -713,6 +722,7 @@ class CognitiveParliament:
         self.max_rounds = max_rounds or PARLIAMENT_MAX_ROUNDS
         self.max_pipeline_rounds = max_pipeline_rounds or MAX_ITERATION_ROUNDS
         self.progress_callback = progress_callback
+        self.stop_check = stop_check
 
         # 议长
         self.speaker = SpeakerAgent()
@@ -781,6 +791,11 @@ class CognitiveParliament:
         # 2. 辩论循环
         round_num = 0
         while not self.debate_engine.should_close():
+            # 支持外部停止（/api/parliament/stop）
+            if self.stop_check and self.stop_check():
+                logger.info("[议会] 收到停止请求，提前结束辩论")
+                self._report("debate", "completed", "任务已由用户停止")
+                break
             round_num += 1
             logger.info(f"\n[辩论轮次 {round_num}/{self.max_rounds}]")
             self._report("debate", "running", f"第{round_num}轮辩论中...")

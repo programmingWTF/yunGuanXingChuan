@@ -78,8 +78,14 @@ if frontend_dist.exists():
     @app.get("/{full_path:path}")
     async def serve_frontend(request: Request, full_path: str):
         """SPA fallback：非 /api 路径返回 index.html"""
-        file_path = frontend_dist / full_path
-        if full_path and file_path.exists() and file_path.is_file():
+        # 防路径穿越：解析后必须仍在 frontend_dist 内，否则回退 index.html
+        # （否则 /../../.env 可读取 API Key 等敏感文件）
+        try:
+            file_path = (frontend_dist / full_path).resolve()
+            file_path.relative_to(frontend_dist.resolve())
+        except (ValueError, OSError):
+            file_path = None
+        if file_path is not None and file_path.exists() and file_path.is_file():
             return FileResponse(file_path)
         return FileResponse(frontend_dist / "index.html")
 
