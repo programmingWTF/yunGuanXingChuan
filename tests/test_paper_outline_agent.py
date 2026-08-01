@@ -63,6 +63,25 @@ class TestPaperOutlineAgent:
         assert "key_facts" in prompt
         assert "不写正文" in prompt  # 助研定位：提示不写正文
 
+    def test_build_user_prompt_with_kg_and_hypotheses(self, agent):
+        """user prompt 应包含知识图谱实体与假设"""
+        a, _ = agent
+        mock_kg = MagicMock()
+        mock_kg.find_related_entities.return_value = [
+            {"entity": "嫦娥六号", "relation": "belongs_to"},
+            {"entity": "月球采样", "relation": "task_type"},
+        ]
+        with patch('src.agents.paper_outline_agent.get_knowledge_graph', return_value=mock_kg):
+            prompt = a._build_user_prompt({
+                "topic": "嫦娥六号",
+                "science_facts": {"key_facts": ["test"]},
+                "hypotheses": ["假设A：月背采样提升国际关注度"],
+            })
+        assert "知识图谱相关实体" in prompt
+        assert "嫦娥六号" in prompt
+        assert "月球采样" in prompt
+        assert "假设A" in prompt
+
     def test_run_with_mock_llm(self, agent):
         """mock LLM 返回合法 JSON 时应成功解析为 schema"""
         a, mock_client = agent
