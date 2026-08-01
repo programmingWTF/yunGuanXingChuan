@@ -314,6 +314,38 @@ class ScienceScript(BaseModel):
     evidence_sources: List[str] = Field(default_factory=list)  # 依据的科学事实来源
 
 
+class TermPair(BaseModel):
+    """中英对照术语对"""
+    chinese: str                              # 中文术语
+    english: str                              # 英文对应
+    context: str = ""                         # 适用语境/媒体说明
+
+
+class MetaphorPair(BaseModel):
+    """中英对照隐喻/表达对"""
+    chinese: str                              # 中文表达/隐喻
+    english: str                              # 英文对应表达
+    note: str = ""                            # 使用建议/注意事项
+
+
+class ExpressionSuggestion(BaseModel):
+    """表达适配建议（场景化）"""
+    scenario: str                             # 场景/媒体类型（如“欧美媒体”“国际期刊”）
+    recommended: str                          # 推荐表达
+    avoid: str = ""                           # 不建议使用的表达
+    reason: str = ""                          # 原因说明
+
+
+class ExpressionAdaptation(BaseModel):
+    """表达适配建议生成器输出（中英对照术语/隐喻/表达建议）"""
+    topic: str                                # 议题
+    terms: List[TermPair] = Field(default_factory=list)            # 术语对照
+    metaphors: List[MetaphorPair] = Field(default_factory=list)    # 隐喻/表达对照
+    suggestions: List[ExpressionSuggestion] = Field(default_factory=list)  # 场景化表达建议
+    evidence_sources: List[str] = Field(default_factory=list)      # 引用来源
+    note: str = ""                            # 说明（传播学视角）
+
+
 class MediaRecommendation(BaseModel):
     """推荐的媒体与标题建议"""
     media: str

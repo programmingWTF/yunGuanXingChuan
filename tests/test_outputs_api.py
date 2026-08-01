@@ -37,15 +37,15 @@ class TestOutputTypes:
         """应注册 7 类成果"""
         assert len(outputs_module.OUTPUT_TYPES) == 7
 
-    def test_six_real_generators(self, outputs_module):
-        """6 个生成器应为真实生成器（#3/#4/#6/#7/#8/#9）"""
-        for key in ["research_plan", "strategy_report", "press_release", "paper_outline", "science_script", "kg_report"]:
+    def test_seven_real_generators(self, outputs_module):
+        """7 个生成器全部为真实生成器"""
+        for key in ["research_plan", "strategy_report", "press_release", "paper_outline", "science_script", "kg_report", "expression_adaptation"]:
             assert outputs_module.OUTPUT_TYPES[key]["real"] is True
 
-    def test_remaining_one_placeholder(self, outputs_module):
-        """expression_adaptation 仍为占位生成器"""
-        for key in ["expression_adaptation"]:
-            assert outputs_module.OUTPUT_TYPES[key]["real"] is False
+    def test_no_placeholder_remaining(self, outputs_module):
+        """无占位生成器"""
+        placeholders = [k for k, v in outputs_module.OUTPUT_TYPES.items() if not v["real"]]
+        assert placeholders == []
 
 
 class TestPlaceholder:
@@ -99,24 +99,28 @@ class TestOutputTask:
     """后台任务执行测试"""
 
     def test_placeholder_task_completes(self, outputs_module, tmp_path):
-        """占位生成任务应同步完成并落盘"""
+        """占位生成任务应同步完成并落盘（模拟临时占位类型）"""
         outputs_module.RESULTS_DIR = tmp_path
+        # 临时注入一个占位类型
+        outputs_module.OUTPUT_TYPES["_test_placeholder"] = {"name": "测试占位", "module": "测试", "description": "", "real": False}
+        try:
+            outputs_module.run_output_task("out_test_1", "_test_placeholder", "嫦娥六号", None)
+            assert outputs_module.outputs_status["out_test_1"] == "completed"
+            assert "out_test_1" in outputs_module.outputs_results
 
-        outputs_module.run_output_task("out_test_1", "expression_adaptation", "嫦娥六号", None)
-        assert outputs_module.outputs_status["out_test_1"] == "completed"
-        assert "out_test_1" in outputs_module.outputs_results
+            payload = outputs_module.outputs_results["out_test_1"]
+            assert payload["generator_type"] == "_test_placeholder"
+            assert payload["status"] == "completed"
+            assert payload["data"]["status"] == "placeholder"
 
-        payload = outputs_module.outputs_results["out_test_1"]
-        assert payload["generator_type"] == "expression_adaptation"
-        assert payload["status"] == "completed"
-        assert payload["data"]["status"] == "placeholder"
-
-        # 磁盘持久化
-        files = list(tmp_path.glob("output_*.json"))
-        assert len(files) == 1
-        with open(files[0], "r", encoding="utf-8") as fp:
-            disk_data = json.load(fp)
-        assert disk_data["task_id"] == "out_test_1"
+            # 磁盘持久化
+            files = list(tmp_path.glob("output_*.json"))
+            assert len(files) == 1
+            with open(files[0], "r", encoding="utf-8") as fp:
+                disk_data = json.load(fp)
+            assert disk_data["task_id"] == "out_test_1"
+        finally:
+            del outputs_module.OUTPUT_TYPES["_test_placeholder"]
 
     def test_unknown_type_errors(self, outputs_module, tmp_path):
         """未知成果类型应记录 error 状态"""
