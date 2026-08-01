@@ -37,14 +37,14 @@ class TestOutputTypes:
         """应注册 7 类成果"""
         assert len(outputs_module.OUTPUT_TYPES) == 7
 
-    def test_two_real_generators(self, outputs_module):
-        """research_plan 与 strategy_report 应为真实生成器"""
-        assert outputs_module.OUTPUT_TYPES["research_plan"]["real"] is True
-        assert outputs_module.OUTPUT_TYPES["strategy_report"]["real"] is True
+    def test_five_real_generators(self, outputs_module):
+        """5 个生成器应为真实生成器（#3/#4/#6/#7/#8）"""
+        for key in ["research_plan", "strategy_report", "press_release", "paper_outline", "kg_report"]:
+            assert outputs_module.OUTPUT_TYPES[key]["real"] is True
 
-    def test_other_five_placeholder(self, outputs_module):
-        """其余 5 类应为占位生成器"""
-        for key in ["press_release", "paper_outline", "science_script", "kg_report", "expression_adaptation"]:
+    def test_remaining_two_placeholder(self, outputs_module):
+        """science_script 与 expression_adaptation 仍为占位生成器"""
+        for key in ["science_script", "expression_adaptation"]:
             assert outputs_module.OUTPUT_TYPES[key]["real"] is False
 
 
@@ -53,10 +53,10 @@ class TestPlaceholder:
 
     def test_placeholder_structure(self, outputs_module):
         """占位结果应包含 status=placeholder 与标题"""
-        result = outputs_module._placeholder_result("paper_outline", "嫦娥六号")
+        result = outputs_module._placeholder_result("science_script", "嫦娥六号")
         assert result["status"] == "placeholder"
         assert result["topic"] == "嫦娥六号"
-        assert result["title"] == "论文大纲"
+        assert result["title"] == "科普视频脚本"
         assert "sections" in result
 
     def test_unknown_type_placeholder(self, outputs_module):
@@ -102,12 +102,12 @@ class TestOutputTask:
         """占位生成任务应同步完成并落盘"""
         outputs_module.RESULTS_DIR = tmp_path
 
-        outputs_module.run_output_task("out_test_1", "paper_outline", "嫦娥六号", None)
+        outputs_module.run_output_task("out_test_1", "science_script", "嫦娥六号", None)
         assert outputs_module.outputs_status["out_test_1"] == "completed"
         assert "out_test_1" in outputs_module.outputs_results
 
         payload = outputs_module.outputs_results["out_test_1"]
-        assert payload["generator_type"] == "paper_outline"
+        assert payload["generator_type"] == "science_script"
         assert payload["status"] == "completed"
         assert payload["data"]["status"] == "placeholder"
 
@@ -136,6 +136,37 @@ class TestOutputTask:
             assert outputs_module.outputs_status["out_real_1"] == "completed"
             payload = outputs_module.outputs_results["out_real_1"]
             assert payload["data"]["research_background"] == "mock"
+
+    def test_press_release_agent_dispatched(self, outputs_module, tmp_path):
+        """press_release 应调用 PressReleaseAgent"""
+        outputs_module.RESULTS_DIR = tmp_path
+        mock_agent = MagicMock()
+        mock_agent.run.return_value = {"topic": "嫦娥六号", "lead_suggestions": ["mock"]}
+
+        with patch('src.agents.press_release_agent.PressReleaseAgent', return_value=mock_agent):
+            outputs_module.run_output_task("out_pr", "press_release", "嫦娥六号", None)
+            assert outputs_module.outputs_status["out_pr"] == "completed"
+            assert outputs_module.outputs_results["out_pr"]["data"]["lead_suggestions"] == ["mock"]
+
+    def test_paper_outline_agent_dispatched(self, outputs_module, tmp_path):
+        """paper_outline 应调用 PaperOutlineAgent"""
+        outputs_module.RESULTS_DIR = tmp_path
+        mock_agent = MagicMock()
+        mock_agent.run.return_value = {"topic": "嫦娥六号", "paper_title": "mock"}
+
+        with patch('src.agents.paper_outline_agent.PaperOutlineAgent', return_value=mock_agent):
+            outputs_module.run_output_task("out_po", "paper_outline", "嫦娥六号", None)
+            assert outputs_module.outputs_status["out_po"] == "completed"
+            assert outputs_module.outputs_results["out_po"]["data"]["paper_title"] == "mock"
+
+    def test_kg_report_generator_dispatched(self, outputs_module, tmp_path):
+        """kg_report 应调用数据驱动生成函数（不走 Agent/LLM）"""
+        outputs_module.RESULTS_DIR = tmp_path
+
+        with patch('src.agents.kg_report_generator.generate_kg_report', return_value={"topic": "嫦娥六号", "kg_summary": "mock"}):
+            outputs_module.run_output_task("out_kg", "kg_report", "嫦娥六号", None)
+            assert outputs_module.outputs_status["out_kg"] == "completed"
+            assert outputs_module.outputs_results["out_kg"]["data"]["kg_summary"] == "mock"
 
 
 class TestStatusResult:
