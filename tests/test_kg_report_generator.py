@@ -59,6 +59,26 @@ class TestKGReportGenerator:
         for src in report["evidence_sources"]:
             assert src != "wikidata"
 
+    def test_evidence_sources_topic_specific(self):
+        """topic 存在时应收集其出入边来源（而非全图来源）——回归 Copilot 指出的 bug"""
+        from src.agents.kg_report_generator import _evidence_sources
+        from src.knowledge.kg_builder import get_knowledge_graph
+        kg = get_knowledge_graph()
+
+        topic_sources = _evidence_sources(kg, "嫦娥六号")
+        all_sources = _evidence_sources(kg, None)
+
+        # topic 相关来源应非空，且数量少于等于全图来源（之前 bug：两者相等）
+        assert topic_sources, "topic 相关来源不应为空"
+        assert len(topic_sources) <= len(all_sources)
+        # topic 相关来源必须是嫦娥六号出入边的子集
+        direct = set()
+        for _, _, data in list(kg.G.edges("嫦娥六号", data=True)) + list(kg.G.in_edges("嫦娥六号", data=True)):
+            src = data.get("source", "")
+            if src and src != "wikidata":
+                direct.add(src)
+        assert set(topic_sources).issubset(direct) or not direct, "topic 来源应来自其出入边"
+
     def test_kg_summary_nonempty(self):
         """图谱总览段落非空且含关键词"""
         from src.agents.kg_report_generator import generate_kg_report

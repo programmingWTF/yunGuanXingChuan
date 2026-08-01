@@ -26,7 +26,8 @@ def _is_noise_node(name: str, node_type: str) -> bool:
     """判断是否为 Wikidata 噪声节点（基因名等科研术语）"""
     if any(k.lower() in name.lower() for k in _NOISE_KEYWORDS):
         return True
-    # technology 类型但仅通过 wikidata 边连接、且不在原始 entities.json 中
+    # TODO: 尚未实现"technology 类型但仅通过 wikidata 边连接、且不在原始 entities.json 中"
+    #       的更严格过滤规则，目前仅按关键词匹配（见 _NOISE_KEYWORDS）
     return False
 
 
@@ -107,21 +108,18 @@ def _topic_triples(kg, topic: str, limit: int = 15) -> List[Dict[str, Any]]:
 
 
 def _evidence_sources(kg, topic: Optional[str] = None, limit: int = 12) -> List[str]:
-    """去重的证据来源（排除 wikidata），优先 topic 相关"""
+    """去重的证据来源（排除 wikidata）；topic 存在时优先收集其出入边来源，否则收集全图来源"""
     sources = set()
 
-    def _collect_edges(node_a, node_b=None):
-        if node_b is not None:
-            edges = list(kg.G.edges(node_a, data=True)) + list(kg.G.in_edges(node_a, data=True))
-        else:
-            edges = list(kg.G.edges(data=True))
-        for _, _, data in edges:
+    def _collect_node_edges(node: str):
+        """收集指定节点出入边上的非 wikidata 来源"""
+        for _, _, data in list(kg.G.edges(node, data=True)) + list(kg.G.in_edges(node, data=True)):
             src = data.get("source", "")
             if src and src != WIKIDATA_SOURCE:
                 sources.add(src)
 
     if topic and topic in kg.G:
-        _collect_edges(topic)
+        _collect_node_edges(topic)
     else:
         # 全图收集非 wikidata 来源
         for _, _, data in kg.G.edges(data=True):
