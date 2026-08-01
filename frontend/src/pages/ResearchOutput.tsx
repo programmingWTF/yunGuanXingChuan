@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  getOutputTypes, generateOutput, getOutputStatus, getOutputResult, getOutputHistory,
+  getOutputTypes, generateOutput, getOutputStatus, getOutputResult, getOutputHistory, getExportUrl,
   type OutputType, type OutputGenerateResult, type OutputHistoryItem,
 } from '../api'
 
@@ -369,9 +369,26 @@ export default function ResearchOutput() {
                 <div className="mt-5 space-y-4 animate-fade-in">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-bold text-white">生成结果</h4>
-                    <button onClick={() => exportMarkdown(result)} className="btn-ghost px-4 py-1.5 text-xs">
-                      ⬇ 导出 Markdown
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => exportMarkdown(result)} className="btn-ghost px-3 py-1.5 text-xs">
+                        ⬇ MD
+                      </button>
+                      {(['pdf', 'word', 'html', 'json'] as const).map(fmt => (
+                        <a
+                          key={fmt}
+                          href={getExportUrl(result.task_id, fmt)}
+                          className="btn-ghost px-3 py-1.5 text-xs no-underline"
+                          download
+                        >
+                          {fmt.toUpperCase()}
+                        </a>
+                      ))}
+                      {result.generator_type === 'kg_report' && (
+                        <a href={getExportUrl(result.task_id, 'kg_png')} className="btn-ghost px-3 py-1.5 text-xs no-underline" download>
+                          PNG
+                        </a>
+                      )}
+                    </div>
                   </div>
                   <ResultSections data={result.data} />
                   {(() => {
