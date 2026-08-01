@@ -13,11 +13,13 @@ import Strategy from './pages/Strategy'
 import KnowledgeGraph from './pages/KnowledgeGraph'
 import VerifyReport from './pages/VerifyReport'
 import Parliament from './pages/Parliament'
+import ResearchOutput from './pages/ResearchOutput'
 
 /* ── 导航定义 ── */
 const NAV_ITEMS = [
   { to: '/', icon: '◈', label: '研究工作台', en: 'RESEARCH' },
   { to: '/parliament', icon: '⬡', label: 'AI 工作流', en: 'WORKFLOW' },
+  { to: '/outputs', icon: '▤', label: '成果中心', en: 'OUTPUT' },
   { to: '/dashboard', icon: '◉', label: '传播分析', en: 'ANALYSIS' },
   { to: '/hypotheses', icon: '△', label: '研究假设', en: 'HYPOTHESES' },
   { to: '/strategy', icon: '▤', label: '传播策略', en: 'STRATEGY' },
@@ -141,6 +143,7 @@ function AppLayout() {
             <Routes location={location}>
               <Route path="/" element={<TaskCenter />} />
               <Route path="/parliament" element={<Parliament />} />
+              <Route path="/outputs" element={<ResearchOutput />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/hypotheses" element={<Hypotheses />} />
               <Route path="/strategy" element={<Strategy />} />

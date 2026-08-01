@@ -269,3 +269,44 @@ class DeliberationTranscript(BaseModel):
     final_report: dict = Field(default_factory=dict)  # 结构化最终总结报告（核心结论/TOP3策略/风险/受众建议）
     started_at: str = ""              # ISO时间
     completed_at: str = ""            # ISO时间
+
+
+# ==========================================================================
+# 成果生成 (Research Output) 相关 Schema
+# ==========================================================================
+
+
+class ResearchPlan(BaseModel):
+    """科学假设与研究计划生成器输出（AI Scientist 核心，助研而非代写）"""
+    topic: str                                # 研究主题
+    research_background: str                  # 研究背景
+    existing_research: List[str] = Field(default_factory=list)   # 已有研究
+    research_gap: str                         # 研究空白
+    scientific_hypotheses: List[str] = Field(default_factory=list)  # AI提出的科学假设
+    suggested_methods: List[str] = Field(default_factory=list)     # 建议研究方法
+    suggested_data_sources: List[str] = Field(default_factory=list)  # 建议数据来源
+    experiment_steps: List[str] = Field(default_factory=list)       # 建议实验步骤
+    feasibility_analysis: str                 # 可行性分析
+    evidence_sources: List[str] = Field(default_factory=list)  # 引用校验来源（三库证据）
+    note: str = ""                            # 助研说明（非代写声明）
+
+
+class MediaRecommendation(BaseModel):
+    """推荐的媒体与标题建议"""
+    media: str
+    reason: str = ""
+
+
+class CommunicationStrategyReport(BaseModel):
+    """国际传播策略报告生成器输出"""
+    topic: str                                # 议题
+    target_countries: List[str] = Field(default_factory=list)       # 目标国家
+    target_audiences: List[str] = Field(default_factory=list)       # 目标受众
+    communication_goals: List[str] = Field(default_factory=list)    # 传播目标
+    narrative_frameworks: List[str] = Field(default_factory=list)   # 叙事框架
+    recommended_media: List[MediaRecommendation] = Field(default_factory=list)  # 推荐媒体
+    recommended_titles: List[str] = Field(default_factory=list)     # 推荐标题
+    keywords: List[str] = Field(default_factory=list)               # 关键词
+    risk_warnings: List[str] = Field(default_factory=list)          # 风险提醒
+    china_media_differences: List[str] = Field(default_factory=list)  # 中外媒体差异（结合 Context Agent 框架分析）
+    evidence_sources: List[str] = Field(default_factory=list)       # 引用来源
