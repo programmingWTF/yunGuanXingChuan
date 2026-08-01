@@ -291,6 +291,29 @@ class ResearchPlan(BaseModel):
     note: str = ""                            # 助研说明（非代写声明）
 
 
+class SceneShot(BaseModel):
+    """科普视频脚本中的单个镜头"""
+    scene_no: int = 0                    # 第几镜头
+    scene_description: str               # 画面/镜头描述
+    duration_seconds: int = 0            # 建议时长（秒）
+    caption: str = ""                   # 字幕（屏幕文字）
+    narration: str = ""                 # 旁白（口播文案）
+    visual_suggestion: str = ""         # 配图/画面建议
+
+
+class ScienceScript(BaseModel):
+    """科普视频脚本生成器输出（多平台）"""
+    topic: str                                # 科普主题
+    platform: str                             # 目标平台（短视频/公众号/微博/B站/小红书）
+    title: str                                # 建议标题
+    opening_hook: str = ""                    # 开场钩子（前3秒抓住注意力）
+    shots: List[SceneShot] = Field(default_factory=list)   # 分镜列表（第一镜头、第二镜头...）
+    bgm_suggestion: str = ""                  # BGM 建议
+    hashtags: List[str] = Field(default_factory=list)      # 话题标签
+    author_notes: str = ""                    # 发布/运营提示（贴合平台风格）
+    evidence_sources: List[str] = Field(default_factory=list)  # 依据的科学事实来源
+
+
 class MediaRecommendation(BaseModel):
     """推荐的媒体与标题建议"""
     media: str

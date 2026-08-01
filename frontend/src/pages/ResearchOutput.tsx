@@ -27,7 +27,11 @@ const REAL_FIELDS: Record<string, { label: string; placeholder: string }> = {
   press_release: { label: '议题', placeholder: '如：嫦娥六号' },
   paper_outline: { label: '研究主题', placeholder: '如：嫦娥六号月球样品研究' },
   kg_report: { label: '议题', placeholder: '如：嫦娥六号' },
+  science_script: { label: '科普主题', placeholder: '如：嫦娥六号月球背面采样返回' },
 }
+
+/** 科普视频脚本的目标平台 */
+const SCRIPT_PLATFORMS = ['短视频', '公众号', '微博', 'B站', '小红书']
 
 /** 将成果结果渲染为结构化区块列表（供页面展示） */
 function resultToSections(data: Record<string, unknown>) {
@@ -72,6 +76,20 @@ function resultToSections(data: Record<string, unknown>) {
     key_persons: '关键人物',
     organizations: '机构',
     relations: '关系三元组',
+    // science_script（科普视频脚本）字段
+    platform: '目标平台',
+    title: '脚本标题',
+    opening_hook: '开场钩子',
+    shots: '分镜脚本',
+    bgm_suggestion: 'BGM 建议',
+    hashtags: '话题标签',
+    author_notes: '发布/运营提示',
+    scene_no: '镜头序号',
+    scene_description: '画面/镜头描述',
+    duration_seconds: '建议时长',
+    caption: '字幕',
+    narration: '旁白',
+    visual_suggestion: '配图建议',
   }
   const listOnly: Record<string, string> = {
     existing_research: '已有研究',
@@ -99,9 +117,13 @@ function resultToSections(data: Record<string, unknown>) {
     relations: '关系三元组',
   }
   return Object.entries(data)
-    .filter(([k, v]) => v !== undefined && v !== null && v !== '' && !['evidence_sources', 'status', 'title'].includes(k))
+    .filter(([k, v]) => v !== undefined && v !== null && v !== '' && !['evidence_sources', 'status'].includes(k))
     .map(([k, v]) => {
       const label = labelMap[k] || k
+      // 分镜数组（对象数组）专用渲染
+      if (k === 'shots' && Array.isArray(v)) {
+        return { key: k, label, kind: 'shots' as const, shots: v as Record<string, unknown>[] }
+      }
       // 对象数组（如 KG 报告的 hot_nodes / relations）——需对象渲染
       if (Array.isArray(v) && v.length > 0 && typeof v[0] === 'object' && v[0] !== null) {
         return { key: k, label, kind: 'objectList' as const, items: v as Record<string, unknown>[] }
@@ -147,21 +169,33 @@ function exportMarkdown(result: OutputGenerateResult) {
     }[k] || k
     lines.push(`## ${label}`, '')
     if (Array.isArray(v)) {
-      v.forEach((item: unknown) => {
-        if (typeof item === 'object' && item !== null) {
-          // 对象数组项（如 KG 报告的 hot_nodes/relations）——展开键值
-          const kv = Object.entries(item as Record<string, unknown>)
-            .filter(([, vv]) => vv !== undefined && vv !== null && vv !== '')
-            .map(([kk, vv]) => `${kk}: ${String(vv)}`).join(' ｜ ')
-          lines.push(`- ${kv}`)
-        } else {
-          lines.push(`- ${String(item)}`)
-        }
-      })
+      if (k === 'shots') {
+        ;(v as Record<string, unknown>[]).forEach((shot, idx) => {
+          lines.push(`### 第 ${shot.scene_no || idx + 1} 镜头`, '')
+          if (shot.scene_description) lines.push(`- 画面：${shot.scene_description}`)
+          if (shot.duration_seconds) lines.push(`- 时长：${shot.duration_seconds}s`)
+          if (shot.caption) lines.push(`- 字幕：${shot.caption}`)
+          if (shot.narration) lines.push(`- 旁白：${shot.narration}`)
+          if (shot.visual_suggestion) lines.push(`- 配图建议：${shot.visual_suggestion}`)
+          lines.push('')
+        })
+      } else {
+        v.forEach((item: unknown) => {
+          if (typeof item === 'object' && item !== null) {
+            // 对象数组项（如 KG 报告的 hot_nodes/relations）——展开键值
+            const kv = Object.entries(item as Record<string, unknown>)
+              .filter(([, vv]) => vv !== undefined && vv !== null && vv !== '')
+              .map(([kk, vv]) => `${kk}: ${String(vv)}`).join(' ｜ ')
+            lines.push(`- ${kv}`)
+          } else {
+            lines.push(`- ${String(item)}`)
+          }
+        })
+      }
     } else {
       lines.push(String(v))
+      lines.push('')
     }
-    lines.push('')
   }
   const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/markdown;charset=utf-8' })
   const url = URL.createObjectURL(blob)
@@ -176,6 +210,7 @@ export default function ResearchOutput() {
   const [types, setTypes] = useState<OutputType[]>([])
   const [selected, setSelected] = useState<OutputType | null>(null)
   const [topic, setTopic] = useState('')
+  const [platform, setPlatform] = useState('短视频')
   const [running, setRunning] = useState<{ taskId: string; name: string } | null>(null)
   const [result, setResult] = useState<OutputGenerateResult | null>(null)
   const [error, setError] = useState('')
@@ -202,7 +237,7 @@ export default function ResearchOutput() {
     if (!selected || !topic.trim()) return
     setError(''); setResult(null); setRunning({ taskId: '', name: selected.name })
     try {
-      const { task_id } = await generateOutput(selected.generator_type, topic.trim())
+      const { task_id } = await generateOutput(selected.generator_type, topic.trim(), undefined, selected.generator_type === 'science_script' ? platform : undefined)
       setRunning({ taskId: task_id, name: selected.name })
 
       // 轮询：真实生成器异步完成，占位生成器立即完成
@@ -288,6 +323,21 @@ export default function ResearchOutput() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                {selected.generator_type === 'science_script' && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[11px] text-slate-500">平台</span>
+                    <select
+                      value={platform}
+                      onChange={e => setPlatform(e.target.value)}
+                      className="input-field py-3 px-3 text-sm bg-[#0b1230]"
+                      style={{ width: 110 }}
+                    >
+                      {SCRIPT_PLATFORMS.map(p => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <input
                   value={topic}
                   onChange={e => setTopic(e.target.value)}
@@ -406,6 +456,7 @@ function ResultSections({ data }: { data: Record<string, unknown> }) {
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-bold text-astro-300">{s.label}</p>
             {s.kind === 'list' && s.note && <span className="text-[10px] text-slate-600">{s.note}</span>}
+            {s.kind === 'shots' && <span className="text-[10px] text-slate-600">{s.shots.length} 个镜头</span>}
           </div>
           {s.kind === 'list' ? (
             <ul className="space-y-1.5">
@@ -434,6 +485,19 @@ function ResultSections({ data }: { data: Record<string, unknown> }) {
                 </div>
               ))}
             </div>
+          ) : s.kind === 'shots' ? (
+            <div className="space-y-3">
+              {s.shots.map((shot, i) => (
+                <div key={i} className="rounded-lg bg-white/[0.02] border border-white/[0.05] p-3">
+                  <p className="text-xs font-bold text-aurora-400 mb-2">第 {String(shot.scene_no || i + 1)} 镜头</p>
+                  <ShotRow label="画面" value={String(shot.scene_description || '')} />
+                  <ShotRow label="时长" value={shot.duration_seconds ? `${String(shot.duration_seconds)}s` : ''} />
+                  <ShotRow label="字幕" value={String(shot.caption || '')} />
+                  <ShotRow label="旁白" value={String(shot.narration || '')} />
+                  <ShotRow label="配图" value={String(shot.visual_suggestion || '')} />
+                </div>
+              ))}
+            </div>
           ) : s.kind === 'object' ? (
             <div className="flex flex-wrap gap-x-4 gap-y-0.5">
               {Object.entries(s.value).filter(([, vv]) => vv !== undefined && vv !== null && vv !== '').map(([kk, vv]) => (
@@ -447,6 +511,16 @@ function ResultSections({ data }: { data: Record<string, unknown> }) {
           )}
         </div>
       ))}
+    </div>
+  )
+}
+
+function ShotRow({ label, value }: { label: string; value: string }) {
+  if (!value) return null
+  return (
+    <div className="mb-1.5">
+      <span className="text-[10px] text-slate-500 mr-2">{label}</span>
+      <span className="text-sm text-slate-300 leading-relaxed">{value}</span>
     </div>
   )
 }
