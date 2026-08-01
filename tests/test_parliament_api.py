@@ -26,10 +26,12 @@ def parliament_module():
         mod.parliament_results.clear()
         mod.parliament_status.clear()
         mod.parliament_progress.clear()
+        mod.parliament_stop_flags.clear()
         yield mod
         mod.parliament_results.clear()
         mod.parliament_status.clear()
         mod.parliament_progress.clear()
+        mod.parliament_stop_flags.clear()
 
 
 class TestParliamentCallback:
@@ -40,7 +42,7 @@ class TestParliamentCallback:
         callback = parliament_module.make_parliament_callback("test_task_001")
         progress = parliament_module.parliament_progress["test_task_001"]
 
-        assert len(progress["phases"]) == 3
+        assert len(progress["phases"]) == 4
         assert progress["current_round"] == 0
         assert progress["total_rounds"] == 0
 
@@ -169,6 +171,27 @@ class TestParliamentResultRetrieval:
         finally:
             parliament_module.RESULTS_DIR = original_dir
 
+    def test_disk_fallback_exact_task_id(self, parliament_module, tmp_path):
+        """多个文件 task_id 前 8 位相同但内容不同，应精确取对应任务（防 endswith 误匹配）"""
+        data_a = {"task_id": "parl_20260101120000", "topic": "议题A",
+                  "total_rounds": 1, "votes": [], "motions": []}
+        data_b = {"task_id": "parl_20260102120000", "topic": "议题B",
+                  "total_rounds": 2, "votes": [], "motions": []}
+        (tmp_path / "parliament_议题A_parl_2026.json").write_text(
+            json.dumps(data_a, ensure_ascii=False), encoding="utf-8")
+        (tmp_path / "parliament_议题B_parl_2026.json").write_text(
+            json.dumps(data_b, ensure_ascii=False), encoding="utf-8")
+
+        original_dir = parliament_module.RESULTS_DIR
+        parliament_module.RESULTS_DIR = tmp_path
+        try:
+            import asyncio
+            result = asyncio.run(parliament_module.get_parliament_result("parl_20260101120000"))
+            assert result["topic"] == "议题A"
+            assert result["total_rounds"] == 1
+        finally:
+            parliament_module.RESULTS_DIR = original_dir
+
 
 class TestParliamentHistory:
     """历史记录列表测试"""
@@ -276,3 +299,55 @@ class TestParliamentStatus:
         result = asyncio.run(parliament_module.get_parliament_status("unknown"))
         assert result["status"] == "not_found"
         assert result["has_result"] is False
+
+
+class TestParliamentStop:
+    """议会停止机制测试"""
+
+    def test_stop_marks_flag_and_status(self, parliament_module):
+        """stop 接口应标记 stopped 并记录 stop_flag（后台任务据此中断辩论）"""
+        parliament_module.parliament_status["t_stop"] = "running"
+        import asyncio
+        result = asyncio.run(parliament_module.stop_parliament("t_stop"))
+        assert result["status"] == "stopped"
+        assert "t_stop" in parliament_module.parliament_stop_flags
+
+    def test_stop_non_running_task(self, parliament_module):
+        """不在运行中的任务不应标记停止"""
+        import asyncio
+        result = asyncio.run(parliament_module.stop_parliament("t_done"))
+        assert result["status"] == "not_found"
+        assert "t_done" not in parliament_module.parliament_stop_flags
+
+    def test_run_task_keeps_stopped_after_stop(self, parliament_module, tmp_path):
+        """后台任务被标记停止后 → 完成时状态应保留 stopped 而非覆盖为 completed"""
+        parliament_module.RESULTS_DIR = tmp_path
+        parliament_module.parliament_status["t_keep"] = "running"
+        parliament_module.parliament_stop_flags.add("t_keep")
+
+        transcript = MagicMock()
+        transcript.model_dump.return_value = {
+            "topic": "嫦娥六号", "motions": [], "votes": [],
+            "minority_opinions": [], "total_rounds": 1,
+            "final_strategies": {}, "completed_at": "2026-01-01T12:00:00",
+        }
+        with patch("src.pipeline.CognitiveParliament") as MockParl:
+            MockParl.return_value.convene.return_value = transcript
+            parliament_module.run_parliament_task("t_keep", "嫦娥六号", None, None)
+
+        assert parliament_module.parliament_status["t_keep"] == "stopped"
+        assert parliament_module.parliament_results["t_keep"]["task_status"] == "stopped"
+
+    def test_stop_check_passed_to_parliament(self, parliament_module):
+        """stop_check 回调应传入 CognitiveParliament（供辩论循环轮询）"""
+        transcript = MagicMock()
+        transcript.model_dump.return_value = {
+            "topic": "x", "motions": [], "votes": [],
+            "minority_opinions": [], "total_rounds": 1,
+            "final_strategies": {}, "completed_at": "x",
+        }
+        with patch("src.pipeline.CognitiveParliament") as MockParl:
+            MockParl.return_value.convene.return_value = transcript
+            parliament_module.run_parliament_task("t_cb", "嫦娥六号", None, None)
+            kwargs = MockParl.call_args.kwargs
+            assert callable(kwargs.get("stop_check"))

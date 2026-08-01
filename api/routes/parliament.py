@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional, Dict
 from datetime import datetime
+from uuid import uuid4
 
 router = APIRouter()
 
@@ -21,6 +22,14 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 parliament_results: Dict[str, dict] = {}
 parliament_status: Dict[str, str] = {}
 parliament_progress: Dict[str, dict] = {}
+parliament_stop_flags: set = set()  # 记录被用户请求停止的 task_id
+
+
+def _safe_name(name: str, max_len: int = 20) -> str:
+    """清洗文件名：替换 Windows 非法字符（<>:\"/\\|?* 及控制字符），避免写盘失败"""
+    import re
+    cleaned = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name)
+    return cleaned.strip(" ._").replace(" ", "_")[:max_len]
 
 # 议会阶段定义（完整声明，含子步骤——前端据此显示精细化进度条）
 PARLIAMENT_PHASES: list[dict] = [
@@ -240,6 +249,7 @@ def run_parliament_task(task_id: str, topic: str, max_rounds: Optional[int], max
             max_rounds=max_rounds,
             max_pipeline_rounds=max_pipeline_rounds,
             progress_callback=make_parliament_callback(task_id),
+            stop_check=lambda: task_id in parliament_stop_flags,
         )
         transcript = parliament.convene(
             topic=topic,
@@ -248,18 +258,22 @@ def run_parliament_task(task_id: str, topic: str, max_rounds: Optional[int], max
 
         result = transcript.model_dump()
         result["task_id"] = task_id
-        result["task_status"] = "completed"
+        result["task_status"] = "stopped" if task_id in parliament_stop_flags else "completed"
         # 保存进度数据（供历史任务加载时显示流程图）
         result["progress_snapshot"] = parliament_progress.get(task_id)
 
-        parliament_results[task_id] = result
-        parliament_status[task_id] = "completed"
-
-        # 持久化到磁盘
-        safe_name = topic.replace(" ", "_").replace("/", "_")[:20]
+        # 持久化到磁盘（成功后再置状态，避免写盘失败时状态错乱）
+        safe_name = _safe_name(topic)
         out_path = RESULTS_DIR / f"parliament_{safe_name}_{task_id[:8]}.json"
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(result, f, ensure_ascii=False, indent=2)
+
+        parliament_results[task_id] = result
+        # 若用户请求过停止，保留 stopped 状态而不是覆盖为 completed
+        if task_id in parliament_stop_flags:
+            parliament_status[task_id] = "stopped"
+        else:
+            parliament_status[task_id] = "completed"
 
     except Exception as e:
         parliament_status[task_id] = f"error: {e}"
@@ -268,7 +282,7 @@ def run_parliament_task(task_id: str, topic: str, max_rounds: Optional[int], max
 @router.post("/convene", response_model=ParliamentResponse)
 async def convene_parliament(req: ParliamentRequest, background_tasks: BackgroundTasks):
     """异步召集认知议会"""
-    task_id = f"parl_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    task_id = f"parl_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid4().hex[:6]}"
     background_tasks.add_task(run_parliament_task, task_id, req.topic, req.max_rounds, req.max_pipeline_rounds)
     return ParliamentResponse(
         task_id=task_id,
@@ -282,7 +296,8 @@ async def stop_parliament(task_id: str):
     """停止运行中的议会任务"""
     if task_id in parliament_status and parliament_status[task_id] == "running":
         parliament_status[task_id] = "stopped"
-        return {"task_id": task_id, "status": "stopped", "message": "任务已标记停止"}
+        parliament_stop_flags.add(task_id)  # 后台任务据此提前中断辩论循环
+        return {"task_id": task_id, "status": "stopped", "message": "任务已标记停止，将提前结束"}
     return {"task_id": task_id, "status": parliament_status.get(task_id, "not_found"), "message": "任务不在运行中"}
 
 
@@ -305,13 +320,15 @@ async def get_parliament_result(task_id: str):
     if task_id in parliament_results:
         return parliament_results[task_id]
 
-    # 回退：从磁盘文件中查找（文件名含 task_id 前8位）
+    # 回退：从磁盘文件中查找（文件名含 task_id 前8位，但必须精确匹配 task_id）
+    # 注意：不能用 f.stem.endswith(prefix) 判断——task_id[:8] 对 parl_ 前缀任务恒相同，
+    #       会误匹配到同年的其他任务。必须读取文件内容精确比对 task_id。
     prefix = task_id[:8] if len(task_id) >= 8 else task_id
     for f in RESULTS_DIR.glob(f"parliament_*{prefix}*.json"):
         try:
             with open(f, "r", encoding="utf-8") as fp:
                 data = json.load(fp)
-            if data.get("task_id") == task_id or f.stem.endswith(prefix):
+            if data.get("task_id") == task_id:
                 # 缓存到内存
                 parliament_results[task_id] = data
                 return data

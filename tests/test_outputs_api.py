@@ -236,3 +236,43 @@ class TestStatusResult:
         with pytest.raises(HTTPException) as exc:
             asyncio.run(outputs_module.get_output_result("nope_12345678"))
         assert exc.value.status_code == 404
+
+
+class TestExportFilename:
+    """导出接口中文文件名编码测试"""
+
+    def test_chinese_filename_uses_rfc5987(self, outputs_module):
+        """中文文件名应走 filename*=UTF-8'' 编码，避免 latin-1 header 500"""
+        import asyncio
+        import re
+
+        outputs_module.outputs_results["task_cn"] = {
+            "task_id": "task_cn",
+            "generator_type": "paper_outline",
+            "name": "论文大纲",
+            "topic": "嫦娥六号",
+            "status": "completed",
+            "data": {"status": "placeholder", "topic": "嫦娥六号", "sections": []},
+        }
+        resp = asyncio.run(outputs_module.export_output("task_cn", "markdown"))
+        assert resp.status_code == 200
+        cd = resp.headers["Content-Disposition"]
+        assert "filename*=UTF-8''" in cd
+        # header 中不应出现裸中文（RFC 5987 会 percent-encode）
+        assert not re.search(r"[一-鿿]", cd)
+
+    def test_ascii_filename_still_works(self, outputs_module):
+        """ASCII 文件名正常导出"""
+        import asyncio
+
+        outputs_module.outputs_results["task_en"] = {
+            "task_id": "task_en",
+            "generator_type": "paper_outline",
+            "name": "Paper Outline",
+            "topic": "ChangE-6",
+            "status": "completed",
+            "data": {"status": "placeholder", "topic": "ChangE-6", "sections": []},
+        }
+        resp = asyncio.run(outputs_module.export_output("task_en", "markdown"))
+        assert resp.status_code == 200
+        assert "filename*=UTF-8''" in resp.headers["Content-Disposition"]

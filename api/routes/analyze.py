@@ -9,6 +9,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional, Dict, List
+from datetime import datetime
+from uuid import uuid4
 import asyncio
 
 from src.pipeline import Pipeline
@@ -101,7 +103,8 @@ async def run_analysis(request: AnalyzeRequest, background_tasks: BackgroundTask
     """
     启动分析任务（异步）
     """
-    task_id = f"task_{request.topic}_{len(pipeline_results)}"
+    # task_id 用随机后缀，避免 topic 含特殊字符导致写盘失败、以及并发 len 计数碰撞
+    task_id = f"task_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid4().hex[:6]}"
     pipeline_status[task_id] = "running"
     pipeline_progress[task_id] = {"rounds": []}
 
@@ -157,7 +160,8 @@ def _save_result(task_id: str, result_dict: dict):
 def _load_history() -> List[dict]:
     """加载所有历史结果摘要"""
     history = []
-    for f in sorted(RESULTS_DIR.glob("*.json"), reverse=True):
+    # 只匹配 task_*.json，避免混入 parliament_/output_ 结果
+    for f in sorted(RESULTS_DIR.glob("task_*.json"), reverse=True):
         try:
             with open(f, "r", encoding="utf-8") as fh:
                 data = json.load(fh)

@@ -71,8 +71,8 @@ class DebateEngine:
         self.started_at: str = ""
         self._previous_speakers: List[str] = []
         self._motion_amend_count: Dict[str, int] = {}  # 动议修正次数
-        self._consecutive_no_improvement: int = 0
-        self._last_score: float = 0.0
+        self._consecutive_no_improvement: int = 0  # 连续无提升轮次（提前闭幕启发式）
+        self._last_score: float = 0.0  # 最近一轮的通过率评分
 
     def open_parliament(self, topic: str, science_facts: Dict = None,
                         context_analysis: Dict = None) -> List[Motion]:
@@ -345,6 +345,16 @@ class DebateEngine:
         self.rounds.append(debate_round)
         self._previous_speakers = next_speakers
 
+        # 5. 更新"连续无提升"计数（提前闭幕启发式：通过率连续停滞则提前结束）
+        if self.votes:
+            passed = sum(1 for v in self.votes if v.result == "passed")
+            score = passed / len(self.votes)
+            if score > self._last_score:
+                self._last_score = score
+                self._consecutive_no_improvement = 0
+            else:
+                self._consecutive_no_improvement += 1
+
         return debate_round
 
     def vote_on_motion(self, motion: Motion, weights: Dict[str, float],
@@ -408,7 +418,7 @@ class DebateEngine:
                     why_overruled="",  # 待结果判定后填充
                 ))
 
-        # 判定结果（门槛 0.65）
+        # 判定结果（严格按 PARLIAMENT_PASS_THRESHOLD 门槛，与配置一致）
         if abs(diff) < self.deadlock_threshold:
             # 僵持 → Speaker 裁定
             ruling = self.speaker.rule_deadlock(
@@ -422,8 +432,6 @@ class DebateEngine:
             speaker_ruling = ruling.get("ruling_rationale", "")
             logger.info(f"  [议长裁定] {result}: {speaker_ruling[:100]}")
         elif weighted_yes >= PARLIAMENT_PASS_THRESHOLD:
-            result = "passed"
-        elif weighted_yes > weighted_no:
             result = "passed"
         else:
             result = "rejected"
@@ -510,7 +518,7 @@ class DebateEngine:
         ]
         if not pending:
             return True
-        # 连续2轮无提升
+        # 连续2轮无提升 → 提前闭幕
         if self._consecutive_no_improvement >= 2:
             return True
         return False
