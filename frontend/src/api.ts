@@ -367,6 +367,70 @@ export async function getPersonas() {
   return res.data
 }
 
+// ============ 成果中心接口 ============
+
+export interface OutputType {
+  generator_type: string
+  name: string
+  module: string
+  description: string
+  real: boolean
+}
+
+export interface OutputGenerateResult {
+  task_id: string
+  generator_type: string
+  name: string
+  topic: string
+  source_task_id: string | null
+  created_at: string
+  status: string
+  data: Record<string, unknown>
+}
+
+export interface OutputHistoryItem {
+  task_id: string
+  generator_type: string
+  name: string
+  topic: string
+  created_at: string
+  status: string
+}
+
+/** 列出所有成果类型 */
+export async function getOutputTypes() {
+  const res = await api.get('/outputs/types')
+  return res.data as { count: number; types: OutputType[] }
+}
+
+/** 异步生成成果 */
+export async function generateOutput(generatorType: string, topic: string, sourceTaskId?: string) {
+  const res = await api.post('/outputs/generate', {
+    generator_type: generatorType,
+    topic,
+    source_task_id: sourceTaskId || null,
+  })
+  return res.data as { task_id: string; status: string; message: string }
+}
+
+/** 查询成果生成状态 */
+export async function getOutputStatus(taskId: string) {
+  const res = await api.get(`/outputs/status/${taskId}`)
+  return res.data as { task_id: string; status: string; has_result: boolean; progress: Record<string, unknown> | null }
+}
+
+/** 获取成果生成结果 */
+export async function getOutputResult(taskId: string) {
+  const res = await api.get(`/outputs/result/${taskId}`)
+  return res.data as OutputGenerateResult
+}
+
+/** 获取成果历史记录 */
+export async function getOutputHistory() {
+  const res = await api.get('/outputs/history')
+  return res.data as { count: number; history: OutputHistoryItem[] }
+}
+
 /** 健康检查 */
 export async function healthCheck() {
   const res = await api.get('/health')
