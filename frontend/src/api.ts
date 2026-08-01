@@ -438,4 +438,9 @@ export async function healthCheck() {
   return res.data
 }
 
+/** 导出成果（返回下载 URL） */
+export function getExportUrl(taskId: string, format: string) {
+  return `/api/outputs/export/${taskId}?format=${format}`
+}
+
 export default api

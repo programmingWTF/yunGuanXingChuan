@@ -8,6 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Optional, Dict, List
 from datetime import datetime
@@ -312,3 +313,71 @@ async def get_output_history():
             continue
 
     return {"count": len(history), "history": history[:50]}
+
+
+@router.get("/export/{task_id}")
+async def export_output(task_id: str, format: str = "markdown"):
+    """多格式导出成果（JSON/Markdown/HTML/PDF/Word/KG-PNG）"""
+    from src.export_service import do_export, get_export_formats, EXPORT_FORMATS
+
+    # 查找结果（内存优先，回退磁盘）
+    result = outputs_results.get(task_id)
+    if not result:
+        result_file = RESULTS_DIR / f"output_{task_id}.json"
+        if result_file.exists():
+            try:
+                with open(result_file, "r", encoding="utf-8") as fp:
+                    result = json.load(fp)
+            except Exception:
+                pass
+    if not result:
+        raise HTTPException(status_code=404, detail=f"未找到任务 {task_id} 的结果")
+
+    generator_type = result.get("generator_type", "")
+    available = get_export_formats(generator_type)
+    if format not in available:
+        raise HTTPException(status_code=400, detail=f"格式 '{format}' 不可用，可选: {', '.join(available)}")
+
+    meta = {
+        "generator_type": generator_type,
+        "name": result.get("name", OUTPUT_TYPES.get(generator_type, {}).get("name", "")),
+        "topic": result.get("topic", ""),
+    }
+    data = result.get("data", {})
+
+    try:
+        content = do_export(data, meta, format)
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    fmt_info = EXPORT_FORMATS[format]
+    safe_topic = meta["topic"].replace(" ", "_").replace("/", "_")[:20]
+    filename = f"{meta['name']}_{safe_topic}{fmt_info['ext']}"
+
+    return Response(
+        content=content,
+        media_type=fmt_info["mime"],
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/export-formats/{task_id}")
+async def get_export_format_list(task_id: str):
+    """查询某成果可用的导出格式"""
+    from src.export_service import get_export_formats
+
+    result = outputs_results.get(task_id)
+    if not result:
+        result_file = RESULTS_DIR / f"output_{task_id}.json"
+        if result_file.exists():
+            try:
+                with open(result_file, "r", encoding="utf-8") as fp:
+                    result = json.load(fp)
+            except Exception:
+                pass
+    if not result:
+        raise HTTPException(status_code=404, detail=f"未找到任务 {task_id}")
+
+    generator_type = result.get("generator_type", "")
+    formats = get_export_formats(generator_type)
+    return {"task_id": task_id, "generator_type": generator_type, "formats": formats}
