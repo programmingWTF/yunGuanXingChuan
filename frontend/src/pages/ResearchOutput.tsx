@@ -8,6 +8,7 @@ import {
   getOutputTypes, generateOutput, getOutputStatus, getOutputResult, getOutputHistory,
   type OutputType, type OutputGenerateResult, type OutputHistoryItem,
 } from '../api'
+import { exportResult, FORMAT_META, type ExportFormat } from '../exportUtils'
 
 /* ── 成果卡片元信息（图标 + 配色） ── */
 const TYPE_META: Record<string, { icon: string; color: string }> = {
@@ -139,71 +140,6 @@ function resultToSections(data: Record<string, unknown>) {
       }
       return { key: k, label, kind: 'text' as const, value: String(v) }
     })
-}
-
-/** 导出为 Markdown 文件 */
-function exportMarkdown(result: OutputGenerateResult) {
-  const d = result.data as Record<string, unknown>
-  const lines = [
-    `# ${result.name}：${result.topic}`,
-    '',
-    `> 生成时间：${result.created_at} ｜ 生成器：${result.generator_type}`,
-    '',
-  ]
-  for (const [k, v] of Object.entries(d)) {
-    if (v === undefined || v === null || v === '' || ['status', 'title', 'message'].includes(k)) continue
-    const label = {
-      topic: '研究主题', research_background: '研究背景', existing_research: '已有研究',
-      research_gap: '研究空白', scientific_hypotheses: 'AI 科学假设', suggested_methods: '建议研究方法',
-      suggested_data_sources: '建议数据来源', experiment_steps: '建议实验步骤', feasibility_analysis: '可行性分析',
-      note: '助研说明', target_countries: '目标国家', target_audiences: '目标受众',
-      communication_goals: '传播目标', narrative_frameworks: '叙事框架', recommended_titles: '推荐标题',
-      keywords: '关键词', risk_warnings: '风险提醒', china_media_differences: '中外媒体差异',
-      lead_suggestions: '导语建议', body_framework: '正文框架', interview_subjects: '推荐采访对象',
-      image_suggestions: '配图建议', platform_suggestions: '传播平台建议',
-      paper_title: '论文标题', abstract_framework: '摘要框架', introduction_framework: '引言框架',
-      literature_review_framework: '文献综述框架', method_framework: '研究方法框架', result_framework: '结果框架',
-      discussion_framework: '讨论框架', future_work_framework: '未来工作', research_questions: '研究问题',
-      kg_summary: '知识图谱总览', hot_nodes: '热点节点', key_persons: '关键人物',
-      organizations: '机构', relations: '关系三元组',
-    }[k] || k
-    lines.push(`## ${label}`, '')
-    if (Array.isArray(v)) {
-      if (k === 'shots') {
-        ;(v as Record<string, unknown>[]).forEach((shot, idx) => {
-          lines.push(`### 第 ${shot.scene_no || idx + 1} 镜头`, '')
-          if (shot.scene_description) lines.push(`- 画面：${shot.scene_description}`)
-          if (shot.duration_seconds) lines.push(`- 时长：${shot.duration_seconds}s`)
-          if (shot.caption) lines.push(`- 字幕：${shot.caption}`)
-          if (shot.narration) lines.push(`- 旁白：${shot.narration}`)
-          if (shot.visual_suggestion) lines.push(`- 配图建议：${shot.visual_suggestion}`)
-          lines.push('')
-        })
-      } else {
-        v.forEach((item: unknown) => {
-          if (typeof item === 'object' && item !== null) {
-            // 对象数组项（如 KG 报告的 hot_nodes/relations）——展开键值
-            const kv = Object.entries(item as Record<string, unknown>)
-              .filter(([, vv]) => vv !== undefined && vv !== null && vv !== '')
-              .map(([kk, vv]) => `${kk}: ${String(vv)}`).join(' ｜ ')
-            lines.push(`- ${kv}`)
-          } else {
-            lines.push(`- ${String(item)}`)
-          }
-        })
-      }
-    } else {
-      lines.push(String(v))
-      lines.push('')
-    }
-  }
-  const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/markdown;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${result.name}_${result.topic}.md`
-  a.click()
-  URL.revokeObjectURL(url)
 }
 
 export default function ResearchOutput() {
@@ -369,9 +305,7 @@ export default function ResearchOutput() {
                 <div className="mt-5 space-y-4 animate-fade-in">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-bold text-white">生成结果</h4>
-                    <button onClick={() => exportMarkdown(result)} className="btn-ghost px-4 py-1.5 text-xs">
-                      ⬇ 导出 Markdown
-                    </button>
+                    <ExportMenu result={result} />
                   </div>
                   <ResultSections data={result.data} />
                   {(() => {
@@ -521,6 +455,54 @@ function ShotRow({ label, value }: { label: string; value: string }) {
     <div className="mb-1.5">
       <span className="text-[10px] text-slate-500 mr-2">{label}</span>
       <span className="text-sm text-slate-300 leading-relaxed">{value}</span>
+    </div>
+  )
+}
+
+/* ═══════════ 多格式导出下拉菜单 ═══════════ */
+function ExportMenu({ result }: { result: OutputGenerateResult }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const formats: ExportFormat[] = ['pdf', 'word', 'markdown', 'html', 'json', 'png']
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-medium border border-astro-500/30 bg-astro-500/10 text-astro-300 hover:bg-astro-500/20 transition-colors"
+      >
+        ⬇ 导出
+        <span className="text-[9px] opacity-60">▾</span>
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[180px] py-1.5 rounded-xl border border-white/[0.08] bg-[#0a1630]/95 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.6)]">
+          <p className="px-4 py-1.5 text-[9px] font-mono tracking-widest text-slate-600 uppercase">Export Format</p>
+          {formats.map(fmt => {
+            const meta = FORMAT_META[fmt]
+            return (
+              <button
+                key={fmt}
+                onClick={() => { exportResult(result, fmt); setOpen(false) }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-300 hover:bg-white/[0.06] hover:text-white transition-colors text-left"
+              >
+                <span className="w-5 text-center text-xs opacity-70">{meta.icon}</span>
+                <span className="flex-1">{meta.label}</span>
+                <span className="text-[9px] font-mono text-slate-600">.{meta.ext}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
