@@ -68,7 +68,7 @@ refactor(pipeline): 抽取验证层公共逻辑
 2. `git checkout -b feat/xxx`（开功能分支）
 3. 开发 + 提交（`git add` → `git commit`）
 4. `git push origin feat/xxx` → 创建 Pull Request
-5. **至少一人 Approve 后**合并回 `main`
+5. **李桂聿 审查后**合并回 `main`
 
 ### Pull Request 要求
 
@@ -78,7 +78,7 @@ refactor(pipeline): 抽取验证层公共逻辑
 - **涉及 UI 改动**：附截图（贴进 PR 描述即可）
 - **涉及数据改动**：说明数据来源
 - **涉及 API Key / 敏感信息**：一律不提交，用 `.env`（已被 gitignore）
-- **至少一人 Approve 后方可合并**（`main` 已开启分支保护，这是强制规则，不是建议）
+- **李桂聿 审查后合并**（在群里 @ 他即可）
 
 ### Issue 规范
 
