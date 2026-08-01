@@ -404,11 +404,12 @@ export async function getOutputTypes() {
 }
 
 /** 异步生成成果 */
-export async function generateOutput(generatorType: string, topic: string, sourceTaskId?: string) {
+export async function generateOutput(generatorType: string, topic: string, sourceTaskId?: string, platform?: string) {
   const res = await api.post('/outputs/generate', {
     generator_type: generatorType,
     topic,
     source_task_id: sourceTaskId || null,
+    platform: platform || null,
   })
   return res.data as { task_id: string; status: string; message: string }
 }

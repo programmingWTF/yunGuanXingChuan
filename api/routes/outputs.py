@@ -57,8 +57,8 @@ OUTPUT_TYPES = {
     "science_script": {
         "name": "科普视频脚本",
         "module": "前端",
-        "description": "生成多平台科普视频脚本（B站/抖音/YouTube）",
-        "real": False,
+        "description": "生成多平台科普视频脚本（短视频/公众号/微博/B站/小红书）",
+        "real": True,
     },
     "kg_report": {
         "name": "知识图谱报告",
@@ -79,6 +79,7 @@ class OutputGenerateRequest(BaseModel):
     generator_type: str = "research_plan"
     topic: str = "嫦娥六号"
     source_task_id: Optional[str] = None  # 可选：复用某次 parliament/pipeline 结果作为素材
+    platform: Optional[str] = None       # 可选：成果需要的平台参数（科普视频脚本等用到）
 
 
 class OutputGenerateResponse(BaseModel):
@@ -105,6 +106,9 @@ def _run_real_generator(generator_type: str, input_data: Dict) -> dict:
     elif generator_type == "paper_outline":
         from src.agents.paper_outline_agent import PaperOutlineAgent
         result = PaperOutlineAgent().run(input_data)
+    elif generator_type == "science_script":
+        from src.agents.science_script_agent import ScienceScriptAgent
+        result = ScienceScriptAgent().run(input_data)
     elif generator_type == "kg_report":
         # 数据驱动纯函数分支（不走 Agent/LLM，从知识图谱统计组装）
         from src.agents.kg_report_generator import generate_kg_report
@@ -173,7 +177,7 @@ def _load_source_material(source_task_id: Optional[str]) -> Dict:
     return material
 
 
-def run_output_task(task_id: str, generator_type: str, topic: str, source_task_id: Optional[str]):
+def run_output_task(task_id: str, generator_type: str, topic: str, source_task_id: Optional[str], platform: Optional[str] = None):
     """后台运行成果生成任务"""
     outputs_status[task_id] = "running"
     try:
@@ -183,6 +187,8 @@ def run_output_task(task_id: str, generator_type: str, topic: str, source_task_i
 
         # 组装素材
         input_data = {"topic": topic}
+        if platform:
+            input_data["platform"] = platform
         source_material = _load_source_material(source_task_id)
         input_data.update(source_material)
         input_data["topic"] = topic or input_data.get("topic", "")
@@ -241,7 +247,7 @@ async def generate_output(req: OutputGenerateRequest, background_tasks: Backgrou
     if req.generator_type not in OUTPUT_TYPES:
         raise HTTPException(status_code=400, detail=f"未知成果类型: {req.generator_type}")
     task_id = f"out_{req.generator_type}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
-    background_tasks.add_task(run_output_task, task_id, req.generator_type, req.topic, req.source_task_id)
+    background_tasks.add_task(run_output_task, task_id, req.generator_type, req.topic, req.source_task_id, req.platform)
     return OutputGenerateResponse(
         task_id=task_id,
         status="submitted",

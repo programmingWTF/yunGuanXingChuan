@@ -37,14 +37,14 @@ class TestOutputTypes:
         """应注册 7 类成果"""
         assert len(outputs_module.OUTPUT_TYPES) == 7
 
-    def test_five_real_generators(self, outputs_module):
-        """5 个生成器应为真实生成器（#3/#4/#6/#7/#8）"""
-        for key in ["research_plan", "strategy_report", "press_release", "paper_outline", "kg_report"]:
+    def test_six_real_generators(self, outputs_module):
+        """6 个生成器应为真实生成器（#3/#4/#6/#7/#8/#9）"""
+        for key in ["research_plan", "strategy_report", "press_release", "paper_outline", "science_script", "kg_report"]:
             assert outputs_module.OUTPUT_TYPES[key]["real"] is True
 
-    def test_remaining_two_placeholder(self, outputs_module):
-        """science_script 与 expression_adaptation 仍为占位生成器"""
-        for key in ["science_script", "expression_adaptation"]:
+    def test_remaining_one_placeholder(self, outputs_module):
+        """expression_adaptation 仍为占位生成器"""
+        for key in ["expression_adaptation"]:
             assert outputs_module.OUTPUT_TYPES[key]["real"] is False
 
 
@@ -53,10 +53,10 @@ class TestPlaceholder:
 
     def test_placeholder_structure(self, outputs_module):
         """占位结果应包含 status=placeholder 与标题"""
-        result = outputs_module._placeholder_result("science_script", "嫦娥六号")
+        result = outputs_module._placeholder_result("expression_adaptation", "嫦娥六号")
         assert result["status"] == "placeholder"
         assert result["topic"] == "嫦娥六号"
-        assert result["title"] == "科普视频脚本"
+        assert result["title"] == "表达适配建议"
         assert "sections" in result
 
     def test_unknown_type_placeholder(self, outputs_module):
@@ -102,12 +102,12 @@ class TestOutputTask:
         """占位生成任务应同步完成并落盘"""
         outputs_module.RESULTS_DIR = tmp_path
 
-        outputs_module.run_output_task("out_test_1", "science_script", "嫦娥六号", None)
+        outputs_module.run_output_task("out_test_1", "expression_adaptation", "嫦娥六号", None)
         assert outputs_module.outputs_status["out_test_1"] == "completed"
         assert "out_test_1" in outputs_module.outputs_results
 
         payload = outputs_module.outputs_results["out_test_1"]
-        assert payload["generator_type"] == "science_script"
+        assert payload["generator_type"] == "expression_adaptation"
         assert payload["status"] == "completed"
         assert payload["data"]["status"] == "placeholder"
 
@@ -167,6 +167,22 @@ class TestOutputTask:
             outputs_module.run_output_task("out_kg", "kg_report", "嫦娥六号", None)
             assert outputs_module.outputs_status["out_kg"] == "completed"
             assert outputs_module.outputs_results["out_kg"]["data"]["kg_summary"] == "mock"
+
+    def test_science_script_real_generator_dispatched(self, outputs_module, tmp_path):
+        """science_script 应调用真实 Agent 且透传 platform 给 input_data"""
+        outputs_module.RESULTS_DIR = tmp_path
+
+        mock_agent = MagicMock()
+        mock_agent.run.return_value = {"topic": "嫦娥六号", "platform": "B站", "shots": []}
+
+        with patch('src.agents.science_script_agent.ScienceScriptAgent', return_value=mock_agent):
+            outputs_module.run_output_task("out_script_1", "science_script", "嫦娥六号", None, "B站")
+            assert outputs_module.outputs_status["out_script_1"] == "completed"
+            payload = outputs_module.outputs_results["out_script_1"]
+            assert payload["data"]["platform"] == "B站"
+            # 校验 Agent 收到的 input_data 包含 platform
+            call_input = mock_agent.run.call_args[0][0]
+            assert call_input.get("platform") == "B站"
 
 
 class TestStatusResult:
