@@ -4,8 +4,9 @@ WORKDIR /app
 
 # 安装系统依赖
 # - libgomp1: faiss-cpu 运行时需要
+# - fonts-noto-cjk: PDF 导出中文字体需要
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libgomp1 \
+    && apt-get install -y --no-install-recommends libgomp1 fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装 Python 依赖
