@@ -1,0 +1,98 @@
+---
+name: Pull Request
+description: 提交代码变更，请完整填写此表单
+title: "<type>(<scope>): <简短描述>"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > [!NOTE]
+        > 提交前请阅读 [CONTRIBUTING.md](../../CONTRIBUTING.md) 与 [github-guide.md](../../docs/github-guide.md)。
+        > 标题格式：`<type>(<scope>): <简短描述>`，例如 `fix(parliament): 修复辩论发言全文换行显示`
+  - type: textarea
+    id: summary
+    attributes:
+      label: 变更摘要
+      description: 做了什么 + 为什么这样做
+      placeholder: |
+        做了什么：
+        -
+
+        为什么这样做：
+        -
+    validations:
+      required: true
+  - type: dropdown
+    id: type
+    attributes:
+      label: 变更类型（type）
+      description: 遵循 Conventional Commits
+      options:
+        - feat（新功能）
+        - fix（Bug 修复）
+        - docs（文档）
+        - data（数据、语料、受众画像）
+        - style（样式、UI、视觉）
+        - refactor（重构，行为不变）
+        - chore（构建、依赖、CI）
+        - test（测试）
+      default: 1
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: 变更范围（scope）
+      description: 模块必填
+      options:
+        - agents（智能体）
+        - parliament（议会辩论）
+        - pipeline（流程编排）
+        - verification（校验层）
+        - api（后端接口）
+        - frontend（前端）
+        - kg（知识图谱）
+        - data（数据）
+        - docs（文档）
+        - scripts（脚本）
+      default: 0
+    validations:
+      required: true
+  - type: textarea
+    id: related
+    attributes:
+      label: 关联 Issue
+      description: 有对应 Issue 请填写，合并后会自动关闭。格式：Closes #编号（可多个）
+      placeholder: "Closes #5"
+  - type: checkboxes
+    id: verification
+    attributes:
+      label: 如何验证
+      description: 请勾选已完成的项目
+      options:
+        - label: 后端：`python -m pytest tests/` 通过
+        - label: 前端：`npm run build` 通过（涉及前端改动时）
+        - label: 已手动测试关键路径
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 截图（涉及 UI 改动必填）
+      description: 改动前后对比图直接拖入
+  - type: textarea
+    id: data
+    attributes:
+      label: 数据说明（涉及 data/ 改动必填）
+      description: 数据来源、涉及文件
+      placeholder: |
+        数据来源：
+        涉及文件：
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 检查清单
+      options:
+        - label: "已从 `main` 拉取最新代码"
+        - label: "提交信息符合 `<type>(<scope>): <描述>` 规范（scope 必填）"
+        - label: "`git status` 确认未夹带 `.env`、`node_modules`、临时文件"
+        - label: "未提交任何 API Key / 敏感信息"
+        - label: "至少一人 Review 通过后再合并"
