@@ -7,13 +7,17 @@ on:
   pull_request:
     types: [opened, synchronize]
 
+# contents: read 用于读取 .github/labeler.yml 配置（checkout 后本地读取，也允许 API 兜底拉取）
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   label:
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
     steps:
-      - uses: actions/labeler@v5
+      - uses: actions/checkout@v7
+      - uses: actions/labeler@v7
         with:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
           sync-labels: false
