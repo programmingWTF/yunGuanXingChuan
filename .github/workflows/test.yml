@@ -19,6 +19,11 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: 安装中文字体（PDF 导出测试需要）
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+
       - name: 安装依赖
         run: |
           pip install -r requirements.txt
