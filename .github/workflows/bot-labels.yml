@@ -1,0 +1,19 @@
+# 自动打标签 — 根据修改文件路径自动添加中文标签
+# 无需 AI，纯确定性规则，PR 创建/更新时触发
+
+name: 自动打标签
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/labeler@v5
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          sync-labels: false
