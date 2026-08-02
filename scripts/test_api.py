@@ -1,7 +1,20 @@
 """快速验证 API Key + base_url 组合是否可用"""
+import os
+import sys
+
+# Windows 控制台默认 GBK，无法输出 ✓/✗，统一转 UTF-8 避免崩溃
+if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+from dotenv import load_dotenv
 from openai import OpenAI
 
-API_KEY = "sk-sp-H.EMRPD.qdIs.MEYCIQCILl9qVOzC0qrhbR9dx4o-BsKyoV_D6729MOK1vc0OtQIhANJds6u7OxzW1CDhqX0xx2aj6uYGyLKIyUwgb29mm83c"
+# 从 .env 读取 API Key（密钥不入库，配置参考 .env.example）
+load_dotenv()
+API_KEY = os.getenv("QWEN_API_KEY", "")
+
+if not API_KEY:
+    raise SystemExit("未设置 QWEN_API_KEY，请先在 .env 中配置（参考 .env.example）")
 
 # 尝试不同的 base_url
 endpoints = [
