@@ -20,7 +20,7 @@ const CONFIG = {
   BOT_LOGIN: "LiGuiyu-AI",
 
   DEEPSEEK_API: "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions",
-  DEEPSEEK_MODEL: "qwen3.8-max-preview",
+  DEEPSEEK_MODEL: "qwen3.8-max",
   DEEPSEEK_KEY: process.env.DEEPSEEK_KEY || "",
 
   STATE_FILE: join(__dirname, "state.json"),
@@ -616,7 +616,7 @@ const RANK_EXPLAIN = {
 function buildAckComment(item) {
   const typeStr = item.pull_request ? "PR" : "Issue";
   return [
-    "> 🤖 **LiGuiyu-AI** · 正在查看",
+    "> 🦞 **LiGuiyu-AI** · 正在查看",
     "",
     `👀 收到 ${typeStr} #${item.number}，正在分析……`,
     "",
@@ -631,7 +631,7 @@ function buildReviewComment(item, result) {
   const explain = RANK_EXPLAIN[rank] || "";
 
   const lines = [
-    "> 🤖 **LiGuiyu-AI** · 审查完成",
+    "> 🦞 **LiGuiyu-AI** · 审查完成",
     "",
     "### 📋 概要",
     result.summary || "(无法总结)",
@@ -687,7 +687,7 @@ function buildReviewComment(item, result) {
     "",
     "</details>",
     "",
-    `<sub>🤖 自动生成 · 有疑问请 @LiGuiyu-AI · [标签说明](https://github.com/${CONFIG.REPO}/blob/main/docs/labels.md)</sub>`,
+    `<sub>🦞 自动生成 · 有疑问请 @LiGuiyu-AI · [标签说明](https://github.com/${CONFIG.REPO}/blob/main/docs/labels.md)</sub>`,
   );
 
   return lines.join("\n");
