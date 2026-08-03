@@ -160,4 +160,4 @@ Bot 使用 `scripts/bot/state.json` 记录已处理的 Issue/PR，避免重复�
 
 ---
 
-<sub>🤖 Bot 由 @LiGuiyu-AI 运营 · 有问题请联系李桂聿</sub>
+<sub>🦞 Bot 由 @LiGuiyu-AI 运营 · 有问题请联系李桂聿</sub>
