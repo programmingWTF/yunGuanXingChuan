@@ -34,6 +34,7 @@ temp/
 .DS_Store
 Thumbs.db
 
-# Env（deploy 时分别处理）
+# Env（deploy 时分别处理；.env.* 覆盖 .env.bak/.env.production 等含密钥备份）
 .env
 .env.local
+.env.*

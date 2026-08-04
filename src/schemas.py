@@ -424,3 +424,194 @@ class KGReport(BaseModel):
     relations: List[KGRelation] = Field(default_factory=list)       # 关系（围绕 topic）
     evidence_sources: List[str] = Field(default_factory=list)       # 证据来源（可追溯）
     note: str = ""                            # 说明
+
+
+# ============================================================================
+# 科研流程工作流（AI Scientist Workflow）—— 7 智能体体系
+# 对应《智能体.docx》：①选题孵化 → ②文献综述 → ③研究设计 → ④方法推荐
+#               → ⑤数据分析 → ⑥论文写作 → ⑦评审修改
+# ============================================================================
+
+
+class TopicDirection(BaseModel):
+    """选题方向建议（①选题孵化器输出项）"""
+    title: str                                # 方向标题
+    summary: str = ""                         # 方向简介
+    research_value: int = Field(ge=0, le=100, default=0)        # 研究价值评分
+    existing_coverage: int = Field(ge=0, le=100, default=0)     # 既有研究覆盖度
+    innovation_potential: int = Field(ge=0, le=100, default=0)  # 创新潜力评分
+    reasons: List[str] = Field(default_factory=list)            # 推荐理由
+    keywords: List[str] = Field(default_factory=list)           # 关键词
+
+
+class InspirationResult(BaseModel):
+    """①选题孵化器输出"""
+    topic: str
+    directions: List[TopicDirection] = Field(default_factory=list)
+    selected_direction: str = ""              # 用户选定方向（默认推荐第 1 个）
+    discussion_summary: str = ""              # 多学者讨论纪要
+
+
+class LiteratureSection(BaseModel):
+    """文献综述章节（②文献综述助手输出项）"""
+    theme: str                                # 主题（按主题/时间/方法论维度归类）
+    content: str = ""
+
+
+class ResearchGap(BaseModel):
+    """研究空白（Gap）"""
+    description: str = ""
+    missing_perspectives: List[str] = Field(default_factory=list)  # 未覆盖的视角/方法/对象
+    suggestion: str = ""                      # 深入研究建议
+
+
+class LiteratureReference(BaseModel):
+    """文献引用条目"""
+    title: str
+    source: str = ""                          # 期刊/机构
+    year: str = ""
+
+
+class LiteratureReview(BaseModel):
+    """②文献综述助手输出"""
+    topic: str
+    sections: List[LiteratureSection] = Field(default_factory=list)
+    research_gap: ResearchGap = Field(default_factory=ResearchGap)
+    references: List[LiteratureReference] = Field(default_factory=list)
+
+
+class ResearchQuestion(BaseModel):
+    """研究问题（RQ）"""
+    id: str                                   # RQ1
+    text: str
+
+
+class ResearchHypothesis(BaseModel):
+    """研究假设（H）"""
+    id: str                                   # H1
+    statement: str
+    hypothesis_type: str = "quantitative"     # quantitative/qualitative
+
+
+class QuestionQualityReport(BaseModel):
+    """问题质量检验（对比顶刊论文范式）"""
+    clarity: int = Field(ge=0, le=100, default=0)        # 清晰度
+    innovativeness: int = Field(ge=0, le=100, default=0) # 创新性
+    operability: int = Field(ge=0, le=100, default=0)    # 可操作性
+    comments: List[str] = Field(default_factory=list)
+
+
+class ResearchDesignResult(BaseModel):
+    """③研究问题设计师输出"""
+    topic: str
+    research_questions: List[ResearchQuestion] = Field(default_factory=list)
+    hypotheses: List[ResearchHypothesis] = Field(default_factory=list)
+    quality_report: QuestionQualityReport = Field(default_factory=QuestionQualityReport)
+
+
+class MethodRecommendation(BaseModel):
+    """研究方法推荐（④方法顾问输出项）"""
+    name: str                                 # 方法名，如"内容分析"
+    method_type: str = "quantitative"         # quantitative/qualitative/mixed
+    fit_score: int = Field(ge=0, le=100, default=0)       # 方法适配度评分
+    representative_papers: List[str] = Field(default_factory=list)  # 范文/代表论文
+    operation_steps: List[str] = Field(default_factory=list)        # 操作步骤
+    rationale: str = ""                       # 推荐理由
+
+
+class MethodRecommendationResult(BaseModel):
+    """④方法顾问输出"""
+    topic: str
+    methods: List[MethodRecommendation] = Field(default_factory=list)
+
+
+class AnalysisCodingCategory(BaseModel):
+    """分析编码类目统计（⑤数据分析助手输出项）"""
+    category: str
+    count: int = 0
+
+
+class AnalysisFinding(BaseModel):
+    """分析发现"""
+    finding: str
+    evidence: str = ""
+    confidence: float = Field(ge=0, le=1, default=0.5)
+
+
+class AnalysisResult(BaseModel):
+    """⑤数据分析助手输出"""
+    topic: str
+    analysis_type: str = "content_analysis"   # content_analysis/text_analysis/framework_analysis
+    coding_table: List[AnalysisCodingCategory] = Field(default_factory=list)
+    findings: List[AnalysisFinding] = Field(default_factory=list)
+    interpretation: str = ""                  # 初步解读
+
+
+class PaperSection(BaseModel):
+    """论文章节（⑥论文写手输出项）"""
+    section: str                              # 摘要/引言/文献综述/方法/发现/讨论/结论
+    content: str
+
+
+class PaperDraft(BaseModel):
+    """⑥论文写手输出"""
+    topic: str
+    title: str = ""
+    sections: List[PaperSection] = Field(default_factory=list)
+    style_notes: List[str] = Field(default_factory=list)      # 风格蒸馏说明
+
+
+class ReviewerScores(BaseModel):
+    """审稿人评分（⑦评审模拟器输出项）"""
+    innovation: int = Field(ge=0, le=100, default=0)      # 创新性
+    methodology: int = Field(ge=0, le=100, default=0)     # 方法规范性
+    argumentation: int = Field(ge=0, le=100, default=0)   # 论证逻辑
+    literature: int = Field(ge=0, le=100, default=0)      # 文献覆盖度
+    language: int = Field(ge=0, le=100, default=0)        # 学术语言
+
+
+class ReviewerOpinion(BaseModel):
+    """单个审稿人意见"""
+    reviewer_id: str                          # Reviewer 1
+    perspective: str = ""                     # 方法专家/理论专家/实践专家
+    scores: ReviewerScores = Field(default_factory=ReviewerScores)
+    suggestions: List[str] = Field(default_factory=list)
+
+
+class ReviewerFeedback(BaseModel):
+    """⑦评审模拟器输出"""
+    topic: str
+    reviewers: List[ReviewerOpinion] = Field(default_factory=list)
+    revision_notes: str = ""                  # 一键修改说明
+
+
+class StageStatus(str, Enum):
+    """工作流阶段状态"""
+    PENDING = "pending"
+    RUNNING = "running"
+    AWAITING_REVIEW = "awaiting_review"       # 产出物待研究者确认
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class StageRecord(BaseModel):
+    """单阶段记录"""
+    stage: int
+    status: StageStatus = StageStatus.PENDING
+    output: Optional[Dict] = None             # 阶段产出物（对应阶段 Agent 输出 schema）
+    error: Optional[str] = None
+    run_count: int = 0
+    updated_at: str = ""
+
+
+class ResearchProject(BaseModel):
+    """科研项目（工作流状态机持久化模型）"""
+    id: str
+    title: str = ""
+    interest: str = ""                        # 初始研究兴趣/议题
+    current_stage: int = 1
+    status: str = "active"                    # active/completed
+    created_at: str = ""
+    updated_at: str = ""
+    stages: Dict[str, StageRecord] = Field(default_factory=dict)
+    history: List[Dict] = Field(default_factory=list)  # [{stage, action, timestamp, summary}]
