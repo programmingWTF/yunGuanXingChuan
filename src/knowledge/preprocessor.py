@@ -371,13 +371,15 @@ class DocumentPreprocessor:
         logger.info(f"预处理 {path} → {len(chunks)} 个文档块")
         return chunks
 
-    def ingest_chunks(self, chunks: List[DocumentChunk], vector_store=None) -> int:
+    def ingest_chunks(self, chunks: List[DocumentChunk], vector_store=None, library: str = "") -> int:
         """
-        将文档块写入向量库
+        将文档块写入向量库（合并现有索引，不覆盖其他库）
 
         Args:
             chunks: DocumentChunk 列表
             vector_store: 向量库实例；None 则用全局单例
+            library: 所属知识库（journal_article/theory/top_journal_example/method），
+                     空串表示普通用户上传
 
         Returns:
             成功写入的块数
@@ -395,13 +397,28 @@ class DocumentPreprocessor:
                 "source": c.source,
                 "title": c.section or Path(c.source).name,
                 "date": c.date,
-                "type": "user_upload",
+                "type": "library" if library else "user_upload",
+                "library": library,
             }
             for c in chunks
         ]
 
-        vector_store.build_index(documents)
-        logger.info(f"已入库 {len(documents)} 个文档块")
+        # 合并现有索引块（保留已入库内容，避免单索引下覆盖其他库/既有数据）
+        merged = []
+        for chunk in vector_store.documents:
+            md = chunk.get("metadata", {})
+            merged.append({
+                "text": chunk["text"],
+                "source": md.get("source", ""),
+                "title": md.get("title", ""),
+                "date": md.get("date", ""),
+                "type": md.get("type", ""),
+                "library": md.get("library", ""),
+            })
+        merged.extend(documents)
+
+        vector_store.build_index(merged)
+        logger.info(f"已入库 {len(documents)} 个文档块（索引总量 {vector_store.index.ntotal if vector_store.index else 0}）")
         return len(documents)
 
 

@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
 
-from api.routes import analyze, hypotheses, strategies, knowledge_graph, verify, parliament, outputs
+from api.routes import analyze, hypotheses, strategies, knowledge_graph, verify, parliament, outputs, knowledge
 
 # 创建 FastAPI 应用
 app = FastAPI(
@@ -39,6 +39,7 @@ app.include_router(knowledge_graph.router, prefix="/api/kg", tags=["知识图谱
 app.include_router(verify.router, prefix="/api/verify", tags=["校验"])
 app.include_router(parliament.router, prefix="/api/parliament", tags=["认知议会"])
 app.include_router(outputs.router, prefix="/api/outputs", tags=["成果"])
+app.include_router(knowledge.router, prefix="/api/knowledge", tags=["知识库"])
 
 
 @app.get("/api/health")

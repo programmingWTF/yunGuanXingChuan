@@ -48,6 +48,9 @@ def main():
     parser.add_argument("--chunk-min", type=int, default=300, help="每块最少字数（默认 300）")
     parser.add_argument("--chunk-max", type=int, default=500, help="每块最多字数（默认 500）")
     parser.add_argument("--overlap", type=int, default=50, help="相邻块重叠字数（默认 50）")
+    parser.add_argument("--library", type=str, default="",
+                        choices=["", "journal_article", "theory", "top_journal_example", "method"],
+                        help="入库到指定知识库（四库：journal_article/theory/top_journal_example/method）；默认普通上传")
     args = parser.parse_args()
 
     print("=" * 60)
@@ -96,7 +99,7 @@ def main():
                 if len(chunks) > 5:
                     print(f"    ... 其余 {len(chunks) - 5} 块省略")
             else:
-                preprocessor.ingest_chunks(chunks)
+                preprocessor.ingest_chunks(chunks, library=args.library)
                 total_chunks += len(chunks)
         except Exception as e:
             print(f"  ✗ 处理失败: {e}")
