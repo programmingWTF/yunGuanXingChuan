@@ -1,6 +1,6 @@
 """
 云观星传 - 统一搜索服务
-同时调用 Tavily AI Search 和阿里云百炼 WebSearch MCP，
+同时调用 Tavily AI Search、阿里云百炼 WebSearch MCP 与他山世界搜索，
 合并结果并标注每条来源引擎
 """
 import logging
@@ -13,20 +13,22 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.search.tavily_search import TavilySearchService, SearchSource, get_search_service
 from src.search.qwen_websearch import QwenWebSearchService
+from src.search.tashan_search import TashanSearchService, get_tashan_search_service
 
 logger = logging.getLogger(__name__)
 
 
 class UnifiedSearchService:
-    """统一搜索服务：合并 Tavily + 百炼 WebSearch 结果"""
+    """统一搜索服务：合并 Tavily + 百炼 WebSearch + 他山世界"""
 
-    def __init__(self):
+    def __init__(self, with_tashan: bool = True):
         self.tavily = get_search_service()
         self.qwen = QwenWebSearchService()
+        self.tashan = get_tashan_search_service() if with_tashan else None
 
     def search_for_topic(self, topic: str) -> List[SearchSource]:
         """
-        为科技议题执行双引擎并行搜索，合并去重
+        为科技议题执行三引擎并行搜索，合并去重
 
         Args:
             topic: 科技议题名称
@@ -37,9 +39,10 @@ class UnifiedSearchService:
         all_sources: List[SearchSource] = []
         seen_urls: set = set()
 
-        # 并行执行两个搜索引擎
+        # 并行执行三个搜索引擎（Tavily + 百炼 + 他山）
         tavily_sources: List[SearchSource] = []
         qwen_pages: List[Dict] = []
+        tashan_sources: List[SearchSource] = []
 
         def _run_tavily():
             try:
@@ -55,12 +58,23 @@ class UnifiedSearchService:
                 logger.warning(f"百炼 WebSearch 搜索失败（不影响整体）: {e}")
                 return []
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        def _run_tashan():
+            if not self.tashan:
+                return []
+            try:
+                return self.tashan.search_for_topic(topic)
+            except Exception as e:
+                logger.warning(f"他山搜索失败（不影响整体）: {e}")
+                return []
+
+        with ThreadPoolExecutor(max_workers=3) as executor:
             future_tavily = executor.submit(_run_tavily)
             future_qwen = executor.submit(_run_qwen)
+            future_tashan = executor.submit(_run_tashan)
 
             tavily_sources = future_tavily.result()
             qwen_pages = future_qwen.result()
+            tashan_sources = future_tashan.result()
 
         # 1. 处理 Tavily 结果
         for s in tavily_sources:
@@ -97,9 +111,22 @@ class UnifiedSearchService:
             all_sources.append(source)
         logger.info(f"百炼 WebSearch 获取 {len(qwen_pages)} 条结果")
 
+        # 3. 处理他山世界结果（第三个引擎）
+        for s in tashan_sources:
+            if s.url and s.url in seen_urls:
+                continue
+            if s.url:
+                seen_urls.add(s.url)
+            if not s.source:
+                s.source = "TashanSearch"
+            all_sources.append(s)
+        logger.info(f"他山世界获取 {len(tashan_sources)} 条结果")
+
+        tashan_count = sum(1 for s in all_sources if s.source in ("TashanAminer", "TashanSourceFeed", "TashanWorldWeave", "TashanSearch"))
         logger.info(f"统一搜索共获取 {len(all_sources)} 条去重结果 "
                     f"(Tavily: {sum(1 for s in all_sources if s.source == 'TavilySearch')}, "
-                    f"Qwen: {sum(1 for s in all_sources if s.source == 'QwenWebSearch')})")
+                    f"Qwen: {sum(1 for s in all_sources if s.source == 'QwenWebSearch')}, "
+                    f"Tashan: {tashan_count})")
         return all_sources
 
     def format_search_context(self, sources: List[SearchSource]) -> str:
