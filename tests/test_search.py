@@ -112,15 +112,18 @@ class TestUnifiedSearchMerge:
     def service(self):
         """创建带 Mock 搜索引擎的 UnifiedSearchService"""
         with patch('src.search.unified_search.get_search_service') as mock_get_tavily, \
-             patch('src.search.unified_search.QwenWebSearchService') as MockQwen:
+             patch('src.search.unified_search.QwenWebSearchService') as MockQwen, \
+             patch('src.search.unified_search.get_tashan_search_service') as MockTashan:
             mock_tavily_instance = MagicMock()
             mock_qwen_instance = MockQwen.return_value
+            mock_tashan_instance = MockTashan.return_value
             mock_get_tavily.return_value = mock_tavily_instance
 
             from src.search.unified_search import UnifiedSearchService
             svc = UnifiedSearchService()
             svc.tavily = mock_tavily_instance
             svc.qwen = mock_qwen_instance
+            svc.tashan = mock_tashan_instance
             return svc
 
     def test_merges_both_engines(self, service):
@@ -160,6 +163,7 @@ class TestUnifiedSearchMerge:
         service.qwen.search_for_topic.return_value = [
             {"url": "https://qwen.com/1", "title": "Qwen结果", "snippet": "q"},
         ]
+        service.tashan.search_for_topic.return_value = []
 
         results = service.search_for_topic("议题")
         assert len(results) == 1
@@ -172,15 +176,17 @@ class TestUnifiedSearchMerge:
             SearchSource(url="https://t.com", title="Tavily结果", content="t"),
         ]
         service.qwen.search_for_topic.side_effect = Exception("MCP连接失败")
+        service.tashan.search_for_topic.return_value = []
 
         results = service.search_for_topic("议题")
         assert len(results) == 1
         assert results[0].source == "TavilySearch"
 
     def test_both_fail_returns_empty(self, service):
-        """两个引擎都失败应返回空列表"""
+        """三个引擎都失败应返回空列表"""
         service.tavily.search_for_topic.side_effect = Exception("fail")
         service.qwen.search_for_topic.side_effect = Exception("fail")
+        service.tashan.search_for_topic.side_effect = Exception("fail")
 
         results = service.search_for_topic("议题")
         assert results == []
@@ -188,6 +194,7 @@ class TestUnifiedSearchMerge:
     def test_qwen_alternative_field_names(self, service):
         """Qwen 返回不同字段名时应兼容"""
         service.tavily.search_for_topic.return_value = []
+        service.tashan.search_for_topic.return_value = []
         service.qwen.search_for_topic.return_value = [
             {"link": "https://alt.com", "name": "替代标题", "description": "替代摘要"},
             {"url": "https://text.com", "title": "文本标题", "text": "text字段内容"},
@@ -198,3 +205,227 @@ class TestUnifiedSearchMerge:
         assert results[0].url == "https://alt.com"
         assert results[0].title == "替代标题"
         assert results[1].content == "text字段内容"
+
+    # ---- 新增：他山第三引擎相关测试 ----
+
+    def test_merges_three_engines(self, service):
+        """应合并三个引擎的结果（Tavily + Qwen + 他山）"""
+        from src.search.tavily_search import SearchSource
+        service.tavily.search_for_topic.return_value = [
+            SearchSource(url="https://tavily.com/1", title="Tavily结果1", content="t1"),
+        ]
+        service.qwen.search_for_topic.return_value = [
+            {"url": "https://qwen.com/1", "title": "Qwen结果1", "snippet": "q1"},
+        ]
+        service.tashan.search_for_topic.return_value = [
+            SearchSource(url="https://tashan.com/1", title="他山结果1",
+                         content="a1", source="TashanAminer"),
+        ]
+
+        results = service.search_for_topic("议题")
+        assert len(results) == 3
+        sources = {r.source for r in results}
+        assert "TavilySearch" in sources
+        assert "QwenWebSearch" in sources
+        assert "TashanAminer" in sources
+
+    def test_tashan_deduplicates_with_tavily(self, service):
+        """他山与 Tavily 相同 URL 应去重（Tavily 优先）"""
+        from src.search.tavily_search import SearchSource
+        service.tavily.search_for_topic.return_value = [
+            SearchSource(url="https://same.com", title="Tavily版", content="t"),
+        ]
+        service.qwen.search_for_topic.return_value = []
+        service.tashan.search_for_topic.return_value = [
+            SearchSource(url="https://same.com", title="他山版", content="a", source="TashanWorldWeave"),
+        ]
+
+        results = service.search_for_topic("议题")
+        assert len(results) == 1
+        assert results[0].source == "TavilySearch"
+
+    def test_tashan_failure_doesnt_break(self, service):
+        """他山失败不影响 Tavily + Qwen 结果"""
+        from src.search.tavily_search import SearchSource
+        service.tavily.search_for_topic.return_value = [
+            SearchSource(url="https://t.com", title="Tavily结果", content="t"),
+        ]
+        service.qwen.search_for_topic.return_value = [
+            {"url": "https://q.com", "title": "Qwen结果", "snippet": "q"},
+        ]
+        service.tashan.search_for_topic.side_effect = Exception("他山不可达")
+
+        results = service.search_for_topic("议题")
+        assert len(results) == 2
+        sources = {r.source for r in results}
+        assert "TavilySearch" in sources and "QwenWebSearch" in sources
+
+    def test_tashan_only_when_others_empty(self, service):
+        """仅他山有结果时也应正常返回"""
+        from src.search.tavily_search import SearchSource
+        service.tavily.search_for_topic.return_value = []
+        service.qwen.search_for_topic.return_value = []
+        service.tashan.search_for_topic.return_value = [
+            SearchSource(url="https://tashan.com/1", title="他山结果",
+                         content="a", source="TashanSourceFeed"),
+        ]
+
+        results = service.search_for_topic("议题")
+        assert len(results) == 1
+        assert results[0].source == "TashanSourceFeed"
+
+
+def _routed_get(aminer=None, source_feed=None, world_weave=None):
+    """构造按 URL 分发响应的 httpx.get side_effect。
+
+    每个参数传入对应接口的响应 dict；未提供者返回空结构。
+    """
+    def _side_effect(url, params=None):
+        if "aminer" in url:
+            resp = aminer if aminer is not None else {"data": {"list": []}}
+        elif "source-feed" in url:
+            resp = source_feed if source_feed is not None else {"list": []}
+        else:
+            resp = world_weave if world_weave is not None else {"signals": []}
+        return MagicMock(status_code=200, json=lambda r=resp: r)
+    return _side_effect
+
+
+class TestTashanSearch:
+    """TashanSearchService 第三引擎单元测试（mock 数据，不依赖真实网络）"""
+
+    @pytest.fixture
+    def service(self):
+        """创建 mock 掉 httpx 客户端的 TashanSearchService"""
+        from src.search.tashan_search import TashanSearchService
+        svc = TashanSearchService()
+        svc._http_client = MagicMock()
+        return svc
+
+    def test_aminer_parses_papers(self, service):
+        """AMiner 论文结果应正确解析"""
+        aminer_resp = {
+            "data": {
+                "list": [
+                    {
+                        "title": "A Survey on LLM Agents",
+                        "url": "https://paper.com/1",
+                        "authors": "张三, 李四",
+                        "venue": "ACL 2026",
+                        "year": "2026",
+                        "abstract": "This paper surveys LLM agents.",
+                    }
+                ]
+            }
+        }
+        service._http_client.get.side_effect = _routed_get(aminer=aminer_resp)
+        from src.search.tashan_search import SOURCE_AMINER
+        results = service.search_for_topic("LLM")
+        assert len(results) == 1
+        r = results[0]
+        assert r.source == SOURCE_AMINER
+        assert r.title == "A Survey on LLM Agents"
+        assert "张三" in r.content
+        assert "ACL 2026" in r.content
+
+    def test_source_feed_filters_by_keyword(self, service):
+        """信源文章应按关键词过滤（浏览式发现）"""
+        feed_resp = {
+            "list": [
+                {
+                    "title": "LLM 智能体新进展",
+                    "url": "https://feed.com/1",
+                    "source_feed_name": "新智元",
+                    "description": "报道了最新 LLM 研究",
+                },
+                {
+                    "title": "无关文章标题",
+                    "url": "https://feed.com/2",
+                    "source_feed_name": "某信源",
+                    "description": "与主题无关",
+                },
+            ]
+        }
+        service._http_client.get.side_effect = _routed_get(source_feed=feed_resp)
+        from src.search.tashan_search import SOURCE_SOURCE_FEED
+        results = service.search_for_topic("LLM")
+        assert len(results) == 1
+        assert results[0].source == SOURCE_SOURCE_FEED
+        assert results[0].url == "https://feed.com/1"
+        assert "新智元" in results[0].content
+
+    def test_world_weave_parses_signals(self, service):
+        """WorldWeave 信号应正确解析"""
+        weave_resp = {
+            "signals": [
+                {
+                    "title": "某科技信号",
+                    "summary": "信号摘要内容",
+                    "url": "https://signal.com/1",
+                    "region_label": "科技",
+                    "published_at": "2026-07-31T13:00:02.000Z",
+                    "recall_score": 12.3,
+                }
+            ]
+        }
+        service._http_client.get.side_effect = _routed_get(world_weave=weave_resp)
+        from src.search.tashan_search import SOURCE_WORLD_WEAVE
+        results = service.search_for_topic("LLM")
+        assert len(results) == 1
+        r = results[0]
+        assert r.source == SOURCE_WORLD_WEAVE
+        assert "信号摘要内容" in r.content
+        assert "科技" in r.content
+        assert r.score == 12.3
+
+    def test_all_three_sources_merged(self, service):
+        """三路结果应合并，source 标注正确"""
+        service._http_client.get.side_effect = _routed_get(
+            aminer={"data": {"list": [{
+                "title": "论文A", "url": "https://p.com/1",
+                "abstract": "abs", "authors": "", "venue": "", "year": "",
+            }]}},
+            source_feed={"list": [{
+                "title": "LLM 文章", "url": "https://f.com/1",
+                "source_feed_name": "信源", "description": "desc",
+            }]},
+            world_weave={"signals": [{
+                "title": "信号", "summary": "sum", "url": "https://s.com/1",
+            }]},
+        )
+        results = service.search_for_topic("LLM")
+        sources = {r.source for r in results}
+        assert len(results) == 3
+        assert "TashanAminer" in sources
+        assert "TashanSourceFeed" in sources
+        assert "TashanWorldWeave" in sources
+
+    def test_network_failure_returns_empty(self, service):
+        """网络异常应降级返回空列表，不抛异常"""
+        service._http_client.get.side_effect = Exception("Connection refused")
+        results = service.search_for_topic("LLM")
+        assert results == []
+
+    def test_aminer_token_error_degrades(self, service):
+        """AMiner Token Parse Error 应以空降级，不影响其他路"""
+        aminers = MagicMock(status_code=200, json=lambda: {
+            "detail": "{\"code\":40308,\"success\":false,\"msg\":\"Token Parse Error\"}"
+        })
+        feeds = MagicMock(status_code=200, json=lambda: {"list": [
+            {"title": "LLM 文章", "url": "https://f.com/1",
+             "source_feed_name": "信源", "description": "desc"}
+        ]})
+        weaves = MagicMock(status_code=200, json=lambda: {"signals": []})
+
+        def _side_effect(url, params=None):
+            if "aminer" in url:
+                return aminers
+            if "source-feed" in url:
+                return feeds
+            return weaves
+
+        service._http_client.get.side_effect = _side_effect
+        results = service.search_for_topic("LLM")
+        # AMiner 失败，但信源能正常返回
+        assert len(results) == 1
+        assert results[0].source == "TashanSourceFeed"
