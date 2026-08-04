@@ -21,11 +21,11 @@ const STAGE_ICONS: Record<string, string> = {
   '1': '💡', '2': '📚', '3': '🎯', '4': '🧪', '5': '📊', '6': '✍️', '7': '👨‍⚖️',
 }
 const STATUS_META: Record<string, { label: string; cls: string }> = {
-  pending: { label: '待开始', cls: 'text-slate-500 border-white/10' },
-  running: { label: '运行中', cls: 'text-flare-300 border-flare-400/40 animate-pulse' },
-  awaiting_review: { label: '待确认', cls: 'text-astro-300 border-astro-400/50' },
-  completed: { label: '已完成', cls: 'text-aurora-300 border-aurora-400/50' },
-  failed: { label: '失败', cls: 'text-flare-400 border-flare-400/60' },
+  pending: { label: '待开始', cls: 'text-slate-500 border-slate-200' },
+  running: { label: '运行中', cls: 'text-amber-600 border-red-200 animate-pulse' },
+  awaiting_review: { label: '待确认', cls: 'text-sky-600 border-sky-300' },
+  completed: { label: '已完成', cls: 'text-emerald-600 border-emerald-300' },
+  failed: { label: '失败', cls: 'text-red-600 border-red-300' },
 }
 
 function downloadText(filename: string, content: string, mime: string) {
@@ -155,12 +155,14 @@ export default function Workspace() {
 
   return (
     <div className="space-y-6">
-      {/* 顶部欢迎条 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="font-display text-2xl font-bold text-white tracking-wide">科研工作台</h2>
-          <p className="text-xs text-slate-500 mt-1">输入研究兴趣 → 一键生成全部 7 个科研阶段；历史项目可随时加载查看</p>
-        </div>
+      {/* 顶部标语（他山 Hero：短句 Slogan 体） */}
+      <div className="py-4">
+        <h2 className="font-display text-3xl font-semibold text-slate-900 tracking-tight leading-tight">
+          让科研流程可见，让每个产出可验证。
+        </h2>
+        <p className="text-sm text-slate-500 mt-2.5 leading-relaxed max-w-2xl">
+          输入研究兴趣，AI Scientist 协同完成 7 个科研阶段；每阶段产出经 RAG + 知识图谱双校验，历史项目可随时加载查看。
+        </p>
       </div>
 
       {/* 科研驾驶舱：今日热点 + 最近任务 */}
@@ -168,7 +170,7 @@ export default function Workspace() {
         <div className="card p-4">
           <h3 className="sec-label !mb-2">🌐 今日科技热点</h3>
           {hotTopics.length === 0 ? (
-            <p className="text-[11px] text-slate-600 py-2">暂无热点（后端搜索不可用时显示为空）</p>
+            <p className="text-[11px] text-slate-400 py-2">暂无热点（后端搜索不可用时显示为空）</p>
           ) : (
             <ul className="space-y-1.5">
               {hotTopics.map((t, i) => {
@@ -178,13 +180,13 @@ export default function Workspace() {
                   <li key={i}>
                     {safeUrl ? (
                       <a href={safeUrl} target="_blank" rel="noreferrer"
-                        className="flex items-start gap-2 text-[12px] text-slate-300 hover:text-astro-300 transition-colors leading-snug">
-                        <span className="text-[9px] font-mono text-slate-600 mt-0.5 shrink-0">#{i + 1}</span>
+                        className="flex items-start gap-2 text-[12px] text-slate-600 hover:text-sky-700 transition-colors leading-snug">
+                        <span className="text-[9px] font-mono text-slate-400 mt-0.5 shrink-0">#{i + 1}</span>
                         <span className="flex-1">{t.title}</span>
                       </a>
                     ) : (
-                      <span className="flex items-start gap-2 text-[12px] text-slate-400 leading-snug">
-                        <span className="text-[9px] font-mono text-slate-600 mt-0.5 shrink-0">#{i + 1}</span>
+                      <span className="flex items-start gap-2 text-[12px] text-slate-500 leading-snug">
+                        <span className="text-[9px] font-mono text-slate-400 mt-0.5 shrink-0">#{i + 1}</span>
                         <span className="flex-1">{t.title}</span>
                       </span>
                     )}
@@ -197,14 +199,14 @@ export default function Workspace() {
         <div className="card p-4">
           <h3 className="sec-label !mb-2">📋 最近任务</h3>
           {pendingTasks.length === 0 ? (
-            <p className="text-[11px] text-slate-600 py-2">暂无进行中的项目，从左侧创建第一个吧</p>
+            <p className="text-[11px] text-slate-400 py-2">暂无进行中的项目，从左侧创建第一个吧</p>
           ) : (
             <ul className="space-y-1.5">
               {pendingTasks.map(t => (
-                <li key={t.id} className="flex items-center gap-2.5 text-[12px] text-slate-300">
+                <li key={t.id} className="flex items-center gap-2.5 text-[12px] text-slate-600">
                   <span className="text-base shrink-0">{t.icon}</span>
                   <span className="truncate flex-1">{t.title}</span>
-                  <span className="text-[10px] text-astro-300 shrink-0">当前：{t.stageName}</span>
+                  <span className="text-[10px] text-sky-600 shrink-0">当前：{t.stageName}</span>
                 </li>
               ))}
             </ul>
@@ -224,15 +226,15 @@ export default function Workspace() {
               onChange={e => setInterest(e.target.value)}
               placeholder="输入研究兴趣，如：嫦娥七号月球南极探测的国际报道"
               rows={3}
-              className="w-full rounded-lg bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-astro-400/60 resize-none"
+              className="w-full rounded-lg bg-slate-50 border border-slate-200 px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-sky-300 resize-none"
             />
-            {error && <p className="text-[11px] text-flare-400 mt-2">{error}</p>}
+            {error && <p className="text-[11px] text-red-600 mt-2">{error}</p>}
             <button type="submit" disabled={creating || generatingAll || !interest.trim()}
               className="btn-primary w-full mt-3 text-xs disabled:opacity-40 disabled:cursor-not-allowed">
               {creating ? '创建中…' : generatingAll ? '⏳ 全流程生成中…' : '🚀 新建并一键生成'}
             </button>
             {generatingAll && (
-              <p className="text-[10px] text-astro-300 mt-2 animate-pulse">AI 正在串行生成 7 个阶段（约 8-12 分钟），进度实时更新，可离开页面</p>
+              <p className="text-[10px] text-sky-600 mt-2 animate-pulse">AI 正在串行生成 7 个阶段（约 8-12 分钟），进度实时更新，可离开页面</p>
             )}
           </form>
 
@@ -241,7 +243,7 @@ export default function Workspace() {
             <h3 className="sec-label !mb-2">历史记录（{projects.length}）</h3>
             <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
               {projects.length === 0 && (
-                <p className="text-[11px] text-slate-600 py-4 text-center">暂无项目，从上方创建第一个吧</p>
+                <p className="text-[11px] text-slate-400 py-4 text-center">暂无项目，从上方创建第一个吧</p>
               )}
               {projects.map(p => (
                 <button
@@ -249,14 +251,14 @@ export default function Workspace() {
                   onClick={() => handleSelect(p.id)}
                   className={`w-full text-left rounded-xl border px-3 py-2.5 transition-all ${
                     selected === p.id || (projects[0]?.id === p.id && selected === null)
-                      ? 'border-astro-400/60 bg-astro-500/10'
-                      : 'border-white/10 bg-white/[0.02] hover:border-white/25'
+                      ? 'border-sky-300 bg-sky-50'
+                      : 'border-slate-200 bg-slate-50 hover:border-slate-300'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-[13px] font-medium text-slate-200 truncate">{p.title}</p>
+                    <p className="text-[13px] font-medium text-slate-700 truncate">{p.title}</p>
                     <span className={`text-[9px] shrink-0 px-1.5 py-0.5 rounded border ${
-                      p.status === 'completed' ? 'text-aurora-300 border-aurora-400/40' : 'text-astro-300 border-astro-400/40'
+                      p.status === 'completed' ? 'text-emerald-600 border-emerald-200' : 'text-sky-600 border-sky-200'
                     }`}>
                       {p.status === 'completed' ? '已完成' : '进行中'}
                     </span>
@@ -266,7 +268,7 @@ export default function Workspace() {
                     {Object.keys(p.stages).map(s => {
                       const st = p.stages[s]?.status
                       const on = st === 'completed' || st === 'awaiting_review' || st === 'running'
-                      return <span key={s} className={`w-3 h-1.5 rounded-full ${on ? (st === 'completed' ? 'bg-aurora-400' : 'bg-astro-400') : 'bg-white/10'}`} />
+                      return <span key={s} className={`w-3 h-1.5 rounded-full ${on ? (st === 'completed' ? 'bg-emerald-500' : 'bg-sky-500') : 'bg-slate-100'}`} />
                     })}
                   </div>
                 </button>
@@ -278,64 +280,64 @@ export default function Workspace() {
         {/* 右：选中项目详情 */}
         <div className="card p-5">
           {!detail ? (
-            <p className="text-xs text-slate-600 text-center py-16">创建项目后，这里将展示 7 阶段进度与产出物</p>
+            <p className="text-xs text-slate-400 text-center py-16">创建项目后，这里将展示 7 阶段进度与产出物</p>
           ) : (
             <div className="space-y-5">
               {/* 项目头 + 操作 */}
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="min-w-0">
-                  <h3 className="font-display text-lg font-bold text-white">{detail.title}</h3>
+                  <h3 className="font-display text-lg font-bold text-slate-800">{detail.title}</h3>
                   <p className="text-[11px] text-slate-500 mt-1">兴趣：{detail.interest}</p>
-                  <p className="text-[10px] text-slate-600 mt-0.5">创建于 {detail.created_at?.slice(0, 19).replace('T', ' ')}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">创建于 {detail.created_at?.slice(0, 19).replace('T', ' ')}</p>
                 </div>
                 <div className="flex gap-2 flex-wrap shrink-0">
                   {detail.status !== 'completed' && (
                     <button onClick={() => handleRunAll(detail.id)} disabled={generatingAll}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-astro-400/50 bg-astro-500/10 text-astro-300 hover:bg-astro-500/20 disabled:opacity-40 transition-all">
+                      className="text-xs px-3 py-1.5 rounded-lg border border-sky-300 bg-sky-50 text-sky-600 hover:bg-sky-100 disabled:opacity-40 transition-all">
                       {generatingAll ? '⏳ 生成中…' : '🚀 一键生成全部'}
                     </button>
                   )}
                   <button onClick={() => handleExport('md')} disabled={exporting || generatingAll}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
+                    className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
                     {exporting ? '导出中…' : '导出 Markdown'}
                   </button>
                   <button onClick={() => handleExport('word')} disabled={exporting || generatingAll}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
+                    className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
                     Word
                   </button>
                   <button onClick={() => handleExport('pdf')} disabled={exporting || generatingAll}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
+                    className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
                     PDF
                   </button>
                   <button onClick={() => handleExport('json')} disabled={exporting || generatingAll}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
+                    className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
                     JSON
                   </button>
                 </div>
               </div>
 
               {/* Research Pipeline 进度 */}
-              <div className="border-t border-white/[0.06] pt-4">
+              <div className="border-t border-slate-100 pt-4">
                 <ResearchPipeline stages={detail.stages} currentStage={detail.current_stage} />
               </div>
 
               {/* 7 阶段产出物摘要 */}
-              <div className="space-y-2.5 border-t border-white/[0.06] pt-4">
+              <div className="space-y-2.5 border-t border-slate-100 pt-4">
                 {Object.keys(detail.stages).map(s => {
                   const rec = detail.stages[s]
                   const meta = STATUS_META[rec?.status] ?? STATUS_META.pending
                   return (
-                    <div key={s} className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+                    <div key={s} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <span className="text-base">{STAGE_ICONS[s]}</span>
-                          <span className="text-[13px] font-medium text-slate-200">{STAGE_NAMES[s]}</span>
-                          {rec?.error && <span className="text-[10px] text-flare-400 truncate">{rec.error}</span>}
+                          <span className="text-[13px] font-medium text-slate-700">{STAGE_NAMES[s]}</span>
+                          {rec?.error && <span className="text-[10px] text-red-600 truncate">{rec.error}</span>}
                         </div>
                         <span className={`text-[10px] shrink-0 px-2 py-0.5 rounded border ${meta.cls}`}>{meta.label}</span>
                       </div>
                       {rec?.output && (
-                        <pre className="text-[9px] text-slate-500 whitespace-pre-wrap bg-black/20 rounded-lg p-2.5 mt-2 max-h-24 overflow-y-auto">
+                        <pre className="text-[9px] text-slate-500 whitespace-pre-wrap bg-slate-50 rounded-lg p-2.5 mt-2 max-h-24 overflow-y-auto">
                           {JSON.stringify(rec.output, null, 1).slice(0, 500)}
                         </pre>
                       )}

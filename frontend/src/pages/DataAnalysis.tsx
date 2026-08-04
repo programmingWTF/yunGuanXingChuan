@@ -32,7 +32,7 @@ function SentimentDonut({ sentiment }: { sentiment: SentimentShape }) {
     return (
       <div className="card p-4">
         <h4 className="sec-label !mb-2">😊 情绪分析</h4>
-        <p className="text-[10px] text-slate-600 py-3 text-center">暂无情绪数据（本次产出未包含情绪分布）</p>
+        <p className="text-[10px] text-slate-400 py-3 text-center">暂无情绪数据（本次产出未包含情绪分布）</p>
       </div>
     )
   }
@@ -50,14 +50,14 @@ function SentimentDonut({ sentiment }: { sentiment: SentimentShape }) {
       <h4 className="sec-label !mb-2">😊 情绪分析</h4>
       <div className="flex items-center gap-5">
         <div className="relative w-24 h-24 rounded-full shrink-0" style={{ background: conic }}>
-          <div className="absolute inset-2 rounded-full bg-[#0a1428] flex items-center justify-center">
-            <span className="text-[11px] font-medium text-slate-200">{dominant}</span>
+          <div className="absolute inset-2 rounded-full bg-white flex items-center justify-center">
+            <span className="text-[11px] font-medium text-slate-700">{dominant}</span>
           </div>
         </div>
         <div className="flex-1 space-y-1">
-          <p className="text-[10px] text-slate-400">积极 <span className="font-mono text-aurora-300">{sentiment.positive}</span></p>
-          <p className="text-[10px] text-slate-400">中性 <span className="font-mono text-astro-300">{sentiment.neutral}</span></p>
-          <p className="text-[10px] text-slate-400">消极 <span className="font-mono text-flare-300">{sentiment.negative}</span></p>
+          <p className="text-[10px] text-slate-500">积极 <span className="font-mono text-emerald-600">{sentiment.positive}</span></p>
+          <p className="text-[10px] text-slate-500">中性 <span className="font-mono text-sky-600">{sentiment.neutral}</span></p>
+          <p className="text-[10px] text-slate-500">消极 <span className="font-mono text-amber-600">{sentiment.negative}</span></p>
         </div>
       </div>
       {sentiment.summary && <p className="text-[10px] text-slate-500 mt-2 leading-snug">{sentiment.summary}</p>}
@@ -65,14 +65,14 @@ function SentimentDonut({ sentiment }: { sentiment: SentimentShape }) {
   )
 }
 
-function HBar({ label, value, color = 'bg-astro-400' }: { label: string; value: number; color?: string }) {
+function HBar({ label, value, color = 'bg-sky-500' }: { label: string; value: number; color?: string }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[10px] text-slate-400 w-20 shrink-0 truncate">{label}</span>
-      <div className="flex-1 h-2 rounded-full bg-white/[0.06] overflow-hidden">
+      <span className="text-[10px] text-slate-500 w-20 shrink-0 truncate">{label}</span>
+      <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(100, Math.max(0, value))}%` }} />
       </div>
-      <span className="text-[10px] font-mono text-slate-400 w-6 text-right">{value}</span>
+      <span className="text-[10px] font-mono text-slate-500 w-6 text-right">{value}</span>
     </div>
   )
 }
@@ -141,18 +141,18 @@ export default function DataAnalysis() {
             <StatusBadge status={status} />
             {status !== 'running' && (
               <button onClick={() => exec({})} disabled={running}
-                className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
+                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
                 {running ? '分析中…' : '重新生成本阶段（框架性分析）'}
               </button>
             )}
-            {error && <span className="text-[11px] text-flare-400">{error}</span>}
+            {error && <span className="text-[11px] text-red-600">{error}</span>}
           </div>
 
           {/* RAG + KG 双校验报告（产出物后置校验） */}
           <VerificationPanel verification={(rec?.output as { verification?: VerificationReport } | null)?.verification ?? null} />
 
           {/* ── 素材上传区 ── */}
-          <div className="card p-4 border-astro-400/25">
+          <div className="card p-4 border-sky-200">
             <div className="flex items-center justify-between mb-2">
               <h3 className="sec-label !mb-0">📎 分析素材</h3>
               <span className="text-[10px] text-slate-500">已添加 {materials.length} 份 · 上传后基于素材真实执行分析</span>
@@ -163,14 +163,14 @@ export default function DataAnalysis() {
                 onChange={e => setPasteText(e.target.value)}
                 placeholder="粘贴报道文本 / 访谈记录 / 数据表格内容…"
                 rows={2}
-                className="flex-1 rounded-lg bg-white/[0.04] border border-white/10 px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-astro-400/60 resize-none"
+                className="flex-1 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-sky-300 resize-none"
               />
               <div className="flex gap-2 shrink-0">
                 <button onClick={addPasted} disabled={!pasteText.trim()}
-                  className="text-xs px-3 py-2 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
+                  className="text-xs px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
                   添加文本
                 </button>
-                <label className={`text-xs px-3 py-2 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 cursor-pointer transition-all ${reading ? 'opacity-40 pointer-events-none' : ''}`}>
+                <label className={`text-xs px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 cursor-pointer transition-all ${reading ? 'opacity-40 pointer-events-none' : ''}`}>
                   {reading ? '读取中…' : '📄 上传文件'}
                   <input type="file" accept=".txt,.md,.csv,.json" multiple className="hidden" onChange={onFileChange} />
                 </label>
@@ -179,21 +179,21 @@ export default function DataAnalysis() {
             {materials.length > 0 && (
               <div className="mt-2.5 space-y-1.5">
                 {materials.map((m, i) => (
-                  <div key={i} className="flex items-center gap-2 rounded-lg bg-white/[0.03] border border-white/10 px-3 py-1.5">
-                    <span className="text-[11px] font-medium text-slate-300 shrink-0">📄 {m.name}</span>
-                    <span className="text-[10px] text-slate-600 truncate flex-1">{m.content.slice(0, 80)}…</span>
-                    <button onClick={() => removeMaterial(i)} className="text-[11px] text-slate-500 hover:text-flare-400 transition-colors shrink-0">✕</button>
+                  <div key={i} className="flex items-center gap-2 rounded-lg bg-slate-50 border border-slate-200 px-3 py-1.5">
+                    <span className="text-[11px] font-medium text-slate-600 shrink-0">📄 {m.name}</span>
+                    <span className="text-[10px] text-slate-400 truncate flex-1">{m.content.slice(0, 80)}…</span>
+                    <button onClick={() => removeMaterial(i)} className="text-[11px] text-slate-500 hover:text-red-600 transition-colors shrink-0">✕</button>
                   </div>
                 ))}
                 <button onClick={runWithMaterials} disabled={running}
                   className="btn-primary w-full mt-2 text-xs disabled:opacity-40 disabled:cursor-not-allowed">
                   {running ? '⏳ AI 分析中…（约 1-3 分钟，请勿刷新）' : '🚀 基于以上素材开始分析'}
                 </button>
-                {actionMsg && <p className="text-[10px] text-slate-400">{actionMsg}</p>}
+                {actionMsg && <p className="text-[10px] text-slate-500">{actionMsg}</p>}
               </div>
             )}
             {materials.length === 0 && (
-              <p className="text-[10px] text-slate-600 mt-2">未添加素材时，分析基于检索上下文做框架性分析；上传素材后分析将基于素材真实内容执行。</p>
+              <p className="text-[10px] text-slate-400 mt-2">未添加素材时，分析基于检索上下文做框架性分析；上传素材后分析将基于素材真实内容执行。</p>
             )}
           </div>
 
@@ -210,7 +210,7 @@ export default function DataAnalysis() {
                     const size = 12 + Math.min(14, Math.round((c.count / maxCount) * 14))
                     return (
                       <span key={i} style={{ fontSize: size }}
-                        className={c.count / maxCount > 0.7 ? 'text-astro-300' : c.count / maxCount > 0.4 ? 'text-aurora-300' : 'text-slate-400'}>
+                        className={c.count / maxCount > 0.7 ? 'text-sky-600' : c.count / maxCount > 0.4 ? 'text-emerald-600' : 'text-slate-500'}>
                         {c.category}
                       </span>
                     )
@@ -221,7 +221,7 @@ export default function DataAnalysis() {
                 <h4 className="sec-label !mb-2">类目 / 框架分布</h4>
                 <div className="space-y-2">
                   {codingTable.map((c, i) => (
-                    <HBar key={i} label={c.category} value={Math.round((c.count / maxCount) * 100)} color={i % 2 ? 'bg-aurora-400' : 'bg-astro-400'} />
+                    <HBar key={i} label={c.category} value={Math.round((c.count / maxCount) * 100)} color={i % 2 ? 'bg-emerald-500' : 'bg-sky-500'} />
                   ))}
                 </div>
               </div>
@@ -230,8 +230,8 @@ export default function DataAnalysis() {
                 <div className="space-y-2">
                   {findings.map((f, i) => (
                     <div key={i} className="flex items-start gap-2">
-                      <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${f.confidence >= 0.7 ? 'bg-aurora-400' : f.confidence >= 0.4 ? 'bg-astro-400' : 'bg-slate-500'}`} />
-                      <p className="text-[11px] text-slate-300 leading-snug">{f.finding}</p>
+                      <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${f.confidence >= 0.7 ? 'bg-emerald-500' : f.confidence >= 0.4 ? 'bg-sky-500' : 'bg-slate-500'}`} />
+                      <p className="text-[11px] text-slate-600 leading-snug">{f.finding}</p>
                     </div>
                   ))}
                 </div>
@@ -247,9 +247,9 @@ export default function DataAnalysis() {
             </div>
           )}
           {output?.interpretation && (
-            <div className="card p-5 border-astro-400/25">
+            <div className="card p-5 border-sky-200">
               <h4 className="sec-label !mb-2">初步解读</h4>
-              <p className="text-[13px] text-slate-300 leading-relaxed">{output.interpretation}</p>
+              <p className="text-[13px] text-slate-600 leading-relaxed">{output.interpretation}</p>
             </div>
           )}
         </div>

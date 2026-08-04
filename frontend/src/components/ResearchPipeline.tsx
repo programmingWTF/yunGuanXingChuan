@@ -61,27 +61,27 @@ export default function ResearchPipeline({ stages, currentStage = 1, compact = f
           const locked = state === 'locked'
           const nodeCls = [
             'flex flex-col items-center gap-1.5 w-[64px] shrink-0 transition-all',
-            locked ? 'opacity-35 cursor-not-allowed' : 'cursor-pointer hover:-translate-y-0.5',
+            locked ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:-translate-y-0.5',
           ].join(' ')
 
           const circleCls = [
             'relative w-10 h-10 rounded-full flex items-center justify-center text-base border transition-all',
-            state === 'done' && 'bg-aurora-500/20 border-aurora-400/70 text-aurora-300 shadow-[0_0_14px_rgba(52,211,153,0.35)]',
-            state === 'active' && 'bg-astro-500/20 border-astro-400/80 text-astro-300 shadow-[0_0_14px_rgba(12,184,232,0.4)]',
-            state === 'running' && 'bg-flare-500/20 border-flare-400/80 text-flare-300 animate-pulse',
-            state === 'locked' && 'bg-white/[0.03] border-white/10 text-slate-600',
+            state === 'done' && 'bg-emerald-50 border-emerald-300 text-emerald-600',
+            state === 'active' && 'bg-sky-50 border-sky-300 text-sky-600 shadow-[0_0_0_3px_rgba(14,165,233,.08)]',
+            state === 'running' && 'bg-amber-50 border-amber-300 text-amber-600 animate-pulse',
+            state === 'locked' && 'bg-slate-50 border-slate-200 text-slate-400',
           ].join(' ')
 
           const body = (
             <>
               <div className={circleCls}>
                 {state === 'done' ? <span className="text-sm font-bold">✓</span> : <span>{node.icon}</span>}
-                {state === 'running' && <span className="absolute -inset-1 rounded-full border border-flare-400/50 animate-ping" />}
+                {state === 'running' && <span className="absolute -inset-1 rounded-full border border-amber-300 animate-ping" />}
               </div>
-              <span className={`text-[11px] font-medium leading-tight text-center ${locked ? 'text-slate-600' : state === 'done' ? 'text-aurora-300' : 'text-slate-200'}`}>
+              <span className={`text-[11px] font-medium leading-tight text-center ${locked ? 'text-slate-400' : state === 'done' ? 'text-emerald-600' : 'text-slate-600'}`}>
                 {node.label}
               </span>
-              <span className="text-[7px] font-mono tracking-widest text-slate-600">{node.en}</span>
+              <span className="text-[7px] font-sans text-slate-400 tracking-[0.18em] uppercase">{node.en}</span>
             </>
           )
 
@@ -93,7 +93,7 @@ export default function ResearchPipeline({ stages, currentStage = 1, compact = f
                 <Link to={node.route} className={nodeCls}>{body}</Link>
               )}
               {idx < PIPELINE_NODES.length - 1 && (
-                <div className={`flex-1 h-[2px] mt-5 mx-1 rounded ${state === 'done' ? 'bg-aurora-500/50' : 'bg-white/[0.07]'}`} />
+                <div className={`flex-1 h-[2px] mt-5 mx-1 rounded ${state === 'done' ? 'bg-emerald-300' : 'bg-slate-200'}`} />
               )}
             </div>
           )
@@ -101,9 +101,9 @@ export default function ResearchPipeline({ stages, currentStage = 1, compact = f
       </div>
       {/* 图例 */}
       <div className="flex items-center justify-center gap-5 mt-4 text-[10px] text-slate-500">
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-aurora-400" /> 已完成</span>
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-astro-400" /> 当前阶段</span>
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-white/20" /> 未解锁</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" /> 已完成</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-sky-400" /> 当前阶段</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-300" /> 未解锁</span>
       </div>
     </div>
   )

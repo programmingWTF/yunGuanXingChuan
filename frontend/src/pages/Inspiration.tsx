@@ -26,11 +26,11 @@ export default function Inspiration() {
             <StatusBadge status={status} />
             {status !== 'running' && (
               <button onClick={() => exec({})} disabled={running}
-                className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
+                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
                 {running ? '生成中…' : '重新生成本阶段'}
               </button>
             )}
-            {error && <span className="text-[11px] text-flare-400">{error}</span>}
+            {error && <span className="text-[11px] text-red-600">{error}</span>}
           </div>
 
           {/* RAG + KG 双校验报告（产出物后置校验） */}
@@ -40,16 +40,16 @@ export default function Inspiration() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {directions.map((d, i) => (
                 <div key={i} className="card p-5 space-y-3">
-                  <p className="text-sm font-medium text-slate-100">{i + 1}. {d.title}</p>
+                  <p className="text-sm font-medium text-slate-700">{i + 1}. {d.title}</p>
                   <p className="text-[11px] text-slate-500">{d.summary}</p>
                   <div className="space-y-1.5">
-                    <ScoreBar label="研究价值" value={d.research_value} color="bg-astro-400" />
+                    <ScoreBar label="研究价值" value={d.research_value} color="bg-sky-500" />
                     <ScoreBar label="覆盖度" value={d.existing_coverage} color="bg-slate-400" />
-                    <ScoreBar label="创新潜力" value={d.innovation_potential} color="bg-aurora-400" />
+                    <ScoreBar label="创新潜力" value={d.innovation_potential} color="bg-emerald-500" />
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {d.keywords?.map((k, j) => (
-                      <span key={j} className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-slate-400">{k}</span>
+                      <span key={j} className="text-[9px] px-1.5 py-0.5 rounded bg-slate-50 border border-slate-200 text-slate-500">{k}</span>
                     ))}
                   </div>
                   {d.reasons?.length > 0 && (
@@ -62,12 +62,12 @@ export default function Inspiration() {
             </div>
           )}
           {output?.discussion_summary && (
-            <p className="text-[11px] text-slate-500 bg-white/[0.03] border border-white/10 rounded-lg p-3">
-              <span className="text-slate-400 font-medium">学者讨论纪要：</span>{output.discussion_summary}
+            <p className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <span className="text-slate-500 font-medium">学者讨论纪要：</span>{output.discussion_summary}
             </p>
           )}
           {directions.length === 0 && rec?.status === 'completed' && (
-            <p className="text-[11px] text-slate-600">该阶段未生成方向卡片，可点击"重新生成本阶段"</p>
+            <p className="text-[11px] text-slate-400">该阶段未生成方向卡片，可点击"重新生成本阶段"</p>
           )}
         </div>
       )}
