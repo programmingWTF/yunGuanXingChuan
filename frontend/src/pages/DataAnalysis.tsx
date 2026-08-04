@@ -17,6 +17,54 @@ interface Material {
   content: string
 }
 
+interface SentimentShape {
+  positive: number
+  neutral: number
+  negative: number
+  summary: string
+}
+
+/** 情绪分析图（conic-gradient 圆环 + 图例 + 解读；ChatGPT 方案四图之一） */
+function SentimentDonut({ sentiment }: { sentiment: SentimentShape }) {
+  const total = sentiment.positive + sentiment.neutral + sentiment.negative
+  if (total <= 0) {
+    // LLM 漏填/全 0 时（schema 默认值落盘可到达），避免「全红圆环 + 积极」的矛盾展示
+    return (
+      <div className="card p-4">
+        <h4 className="sec-label !mb-2">😊 情绪分析</h4>
+        <p className="text-[10px] text-slate-600 py-3 text-center">暂无情绪数据（本次产出未包含情绪分布）</p>
+      </div>
+    )
+  }
+  const p = (sentiment.positive / total) * 360
+  const n = (sentiment.neutral / total) * 360
+  const conic = `conic-gradient(#34d399 0deg ${p}deg, #38d4f8 ${p}deg ${p + n}deg, #fb7185 ${p + n}deg 360deg)`
+  const dominant =
+    sentiment.positive >= sentiment.neutral && sentiment.positive >= sentiment.negative
+      ? '积极'
+      : sentiment.negative > sentiment.neutral
+        ? '消极'
+        : '中性'
+  return (
+    <div className="card p-4">
+      <h4 className="sec-label !mb-2">😊 情绪分析</h4>
+      <div className="flex items-center gap-5">
+        <div className="relative w-24 h-24 rounded-full shrink-0" style={{ background: conic }}>
+          <div className="absolute inset-2 rounded-full bg-[#0a1428] flex items-center justify-center">
+            <span className="text-[11px] font-medium text-slate-200">{dominant}</span>
+          </div>
+        </div>
+        <div className="flex-1 space-y-1">
+          <p className="text-[10px] text-slate-400">积极 <span className="font-mono text-aurora-300">{sentiment.positive}</span></p>
+          <p className="text-[10px] text-slate-400">中性 <span className="font-mono text-astro-300">{sentiment.neutral}</span></p>
+          <p className="text-[10px] text-slate-400">消极 <span className="font-mono text-flare-300">{sentiment.negative}</span></p>
+        </div>
+      </div>
+      {sentiment.summary && <p className="text-[10px] text-slate-500 mt-2 leading-snug">{sentiment.summary}</p>}
+    </div>
+  )
+}
+
 function HBar({ label, value, color = 'bg-astro-400' }: { label: string; value: number; color?: string }) {
   return (
     <div className="flex items-center gap-2">
@@ -39,6 +87,7 @@ export default function DataAnalysis() {
   const output = (rec?.output ?? null) as {
     coding_table?: { category: string; count: number }[]
     findings?: { finding: string; evidence: string; confidence: number }[]
+    sentiment?: SentimentShape
     interpretation?: string
     verification?: unknown
   } | null
@@ -150,6 +199,10 @@ export default function DataAnalysis() {
 
           {codingTable.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* 情绪分析（四图之一：词云/情绪/框架分布/传播路径） */}
+              {output?.sentiment && (
+                <SentimentDonut sentiment={output.sentiment} />
+              )}
               <div className="card p-4">
                 <h4 className="sec-label !mb-2">词云（类目权重）</h4>
                 <div className="flex flex-wrap items-center justify-center gap-2 p-4 min-h-24">

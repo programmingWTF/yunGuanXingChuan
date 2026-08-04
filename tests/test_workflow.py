@@ -740,3 +740,57 @@ class TestWorkflowEnhancements:
             rec = eng.run_stage(p.id, 1, {"topic": "t"})
         assert rec.status == StageStatus.AWAITING_REVIEW
         assert rec.output["directions"] == {"title": "方向", "summary": "摘要"}  # 产出物原样保留
+
+    def test_literature_review_theory_relations_roundtrip(self):
+        """文献综述 schema 支持理论关系（前端理论关系图数据源）"""
+        from src.schemas import LiteratureReview, TheoryRelation
+        lr = LiteratureReview(
+            topic="嫦娥六号",
+            theory_relations=[
+                TheoryRelation(source="框架理论", relation="承继自", target="议程设置理论"),
+                TheoryRelation(source="框架理论", relation="互补于", target="沉默的螺旋理论"),
+            ],
+        )
+        d = lr.model_dump()
+        assert len(d["theory_relations"]) == 2
+        assert d["theory_relations"][0]["source"] == "框架理论"
+
+    def test_analysis_result_sentiment_roundtrip(self):
+        """数据分析 schema 支持情绪分布（前端情绪分析图数据源）"""
+        from src.schemas import AnalysisResult, SentimentDistribution
+        ar = AnalysisResult(
+            topic="嫦娥六号",
+            sentiment=SentimentDistribution(positive=45, neutral=40, negative=15, summary="整体以正面为主"),
+        )
+        d = ar.model_dump()
+        assert d["sentiment"]["positive"] == 45
+        assert d["sentiment"]["summary"] == "整体以正面为主"
+        # 缺省时零值可用（LLM 漏填不破坏 schema）
+        empty = AnalysisResult(topic="x").model_dump()
+        assert empty["sentiment"] == {"positive": 0.0, "neutral": 0.0, "negative": 0.0, "summary": ""}
+
+    def test_export_pdf(self, engine):
+        """PDF 导出返回二进制（%PDF 魔数），复用 fpdf2 中文字体链"""
+        p = engine.create_project(interest="测试项目")
+        engine.store.update_stage(
+            p.id, 1, status=StageStatus.COMPLETED,
+            output={"topic": "t", "directions": [{"title": "方向A", "research_value": 90}]},
+        )
+        result = engine.export_project(p.id, "pdf")
+        assert result["format"] == "pdf"
+        assert isinstance(result["content_bytes"], bytes)
+        assert result["content_bytes"][:4] in (b"%PDF", b"%\xe2\xe3\xcf\xd3") or result["content_bytes"].startswith(b"%PDF")
+
+    def test_export_word_pdf_binary_download_http(self, api_engine):
+        """Word/PDF 经 HTTP 下载返回 200 且 Content-Disposition 中文名 RFC5987 编码（防 latin-1 报错）"""
+        from fastapi.testclient import TestClient
+        from api.main import app
+        with TestClient(app) as client:
+            pid = client.post("/api/workflow/projects", json={"interest": "嫦娥六号"}).json()["project"]["id"]
+            client.post(f"/api/workflow/projects/{pid}/stages/1/run", json={"inputs": {"topic": "嫦娥六号"}})
+            for fmt, magic in [("word", b"PK"), ("pdf", b"%PDF")]:
+                r = client.get(f"/api/workflow/projects/{pid}/export", params={"fmt": fmt})
+                assert r.status_code == 200, f"{fmt} 导出失败: {r.text[:200]}"
+                assert r.content.startswith(magic), f"{fmt} 魔数不符: {r.content[:8]}"
+                cd = r.headers.get("content-disposition", "")
+                assert "filename*=UTF-8''" in cd, f"{fmt} 未做 RFC5987 编码: {cd}"

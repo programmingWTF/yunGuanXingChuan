@@ -126,17 +126,18 @@ export default function Workspace() {
     }))
     .slice(0, 5)
 
-  const handleExport = async (fmt: 'md' | 'json' | 'word') => {
+  const handleExport = async (fmt: 'md' | 'json' | 'word' | 'pdf') => {
     if (!detail) return
     setExporting(true)
     try {
-      if (fmt === 'word') {
-        // Word：二进制文件下载
-        const { blob } = await exportWorkflowProject(detail.id, 'word') as { blob: Blob }
+      if (fmt === 'word' || fmt === 'pdf') {
+        // Word/PDF：二进制文件下载（下载文件名与后端一致净化，防头注入/非法字符）
+        const safeTitle = (detail.title || '云观星传科研项目').replace(/[\r\n"\x00-\x1f]/g, '').trim() || '云观星传科研项目'
+        const { blob } = await exportWorkflowProject(detail.id, fmt) as { blob: Blob }
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `${detail.title}.docx`
+        a.download = `${safeTitle}.${fmt === 'word' ? 'docx' : 'pdf'}`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
@@ -301,6 +302,10 @@ export default function Workspace() {
                   <button onClick={() => handleExport('word')} disabled={exporting || generatingAll}
                     className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
                     Word
+                  </button>
+                  <button onClick={() => handleExport('pdf')} disabled={exporting || generatingAll}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
+                    PDF
                   </button>
                   <button onClick={() => handleExport('json')} disabled={exporting || generatingAll}
                     className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">

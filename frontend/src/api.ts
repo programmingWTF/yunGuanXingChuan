@@ -533,12 +533,12 @@ export async function runAllWorkflow(
   return res.data as { status: string; message: string }
 }
 
-/** 导出项目（md/json 文本；word 为二进制文件下载） */
-export async function exportWorkflowProject(id: string, fmt: 'md' | 'json' | 'word' = 'md') {
-  if (fmt === 'word') {
-    // Word 走二进制下载（后端返回 Content-Disposition 附件）
+/** 导出项目（md/json 文本；word/pdf 为二进制文件下载） */
+export async function exportWorkflowProject(id: string, fmt: 'md' | 'json' | 'word' | 'pdf' = 'md') {
+  if (fmt === 'word' || fmt === 'pdf') {
+    // 二进制走下载（后端返回 Content-Disposition 附件）
     const res = await api.get(`/workflow/projects/${id}/export`, { params: { fmt }, responseType: 'blob' })
-    return { format: 'word' as const, blob: res.data as Blob }
+    return { format: fmt as 'word' | 'pdf', blob: res.data as Blob }
   }
   const res = await api.get(`/workflow/projects/${id}/export`, { params: { fmt } })
   return res.data as { content: string; format: string }

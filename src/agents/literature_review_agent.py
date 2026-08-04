@@ -51,7 +51,10 @@ class LiteratureReviewAgent(BaseAgent):
 1. sections：按主题/时间/方法论维度归类，输出 3-5 个综述章节（theme + content，每章 150-300 字）
 2. research_gap：通过对比分析识别既有研究未覆盖的视角/方法/对象，
    description（50-100 字）、missing_perspectives（2-4 条）、suggestion（深入研究建议）
-3. references：列出 3-8 条本次依据的文献（title/source/year，可基于检索线索）"""
+3. references：列出 3-8 条本次依据的文献（title/source/year，可基于检索线索）
+4. theory_relations：2-4 条理论关系（source/relation/target），梳理与选题相关的理论
+   及其关联（如承继/互补/对比/应用），用于绘制理论关系图，例：
+   {{"source": "框架理论", "relation": "承继自", "target": "议程设置理论"}}"""
         return prompt
 
     def get_agent_info(self) -> Dict:

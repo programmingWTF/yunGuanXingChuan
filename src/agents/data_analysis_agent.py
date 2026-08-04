@@ -61,7 +61,9 @@ class DataAnalysisAgent(BaseAgent):
    与所选方法对应
 2. coding_table：编码类目统计（category + count），内容分析输出类目频次、框架分析输出框架元素频次
 3. findings：2-4 条分析发现（finding + evidence 证据摘录 + confidence 置信度 0-1）
-4. interpretation：100-200 字初步解读（发现意味着什么、对研究问题的回答）"""
+4. sentiment：情绪分布（positive/neutral/negative 三个 0-100 数值，三者之和约 100）
+   + summary（一句话情绪解读，说明素材整体情绪基调）
+5. interpretation：100-200 字初步解读（发现意味着什么、对研究问题的回答）"""
         return prompt
 
     def get_agent_info(self) -> Dict:

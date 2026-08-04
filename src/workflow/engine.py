@@ -647,6 +647,17 @@ class WorkflowEngine:
             })
             return {"project": data, "format": "word", "content_bytes": content_bytes}
 
+        if fmt == "pdf":
+            # 复用 export_service 的 fpdf2 生成（内部转 Markdown 文本）
+            from src.export_service import export_pdf
+            payload = {f"阶段{s['stage']}：{s['name']}": s.get("output") for s in stages_out}
+            content_bytes = export_pdf(payload, {
+                "name": data["title"],
+                "topic": data["interest"],
+                "generator_type": "云观星传·7阶段科研工作流",
+            })
+            return {"project": data, "format": "pdf", "content_bytes": content_bytes}
+
         content = self._to_markdown(data)
         return {"project": data, "format": fmt, "content": content}
 

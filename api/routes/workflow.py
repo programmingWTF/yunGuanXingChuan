@@ -134,24 +134,36 @@ def run_all(project_id: str, req: RunAllRequest, background_tasks: BackgroundTas
 
 @router.get("/projects/{project_id}/export")
 def export_project(project_id: str, fmt: str = "md"):
-    """汇总导出（fmt: md/json/word）"""
-    if fmt not in ("md", "json", "word"):
-        raise HTTPException(status_code=400, detail="fmt 仅支持 md/json/word")
+    """汇总导出（fmt: md/json/word/pdf）"""
+    if fmt not in ("md", "json", "word", "pdf"):
+        raise HTTPException(status_code=400, detail="fmt 仅支持 md/json/word/pdf")
     try:
         result = get_workflow_engine().export_project(project_id, fmt)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    if fmt == "word":
-        # Word 为二进制文件下载，直接返回文件流
+    if fmt in ("word", "pdf"):
+        # 二进制文件下载，直接返回文件流
         from fastapi.responses import Response
+        from urllib.parse import quote
         title = (result.get("project") or {}).get("title", "云观星传科研项目")
         # 文件名净化：去除引号/换行/控制字符，防 Content-Disposition 头注入
         filename = re.sub(r'[\r\n"\x00-\x1f]', '', title).strip() or "云观星传科研项目"
+        media_type = (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            if fmt == "word" else "application/pdf"
+        )
+        # 中文文件名用 RFC 5987（filename*=UTF-8''%xx）编码，HTTP 头仅支持 latin-1
+        ascii_ext = "docx" if fmt == "word" else fmt
+        ascii_fallback = f"export.{ascii_ext}"
+        encoded_name = quote(f"{filename}.{ascii_ext}", safe="")
         return Response(
             content=result["content_bytes"],
-            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            headers={"Content-Disposition": f'attachment; filename="{filename}.docx"'},
+            media_type=media_type,
+            headers={
+                "Content-Disposition":
+                    f"attachment; filename=\"{ascii_fallback}\"; filename*=UTF-8''{encoded_name}",
+            },
         )
     return result
 

@@ -482,12 +482,20 @@ class LiteratureReference(BaseModel):
         return v
 
 
+class TheoryRelation(BaseModel):
+    """理论关系（②文献综述输出项：理论关系图节点与连线，前端渲染）"""
+    source: str = ""   # 理论 A
+    relation: str = "" # 关系描述（如：承继自 / 互补 / 对比）
+    target: str = ""   # 理论 B
+
+
 class LiteratureReview(BaseModel):
     """②文献综述助手输出"""
     topic: str = ""  # 允许 LLM 漏填，由 WorkflowEngine 兜底补全
     sections: List[LiteratureSection] = Field(default_factory=list)
     research_gap: ResearchGap = Field(default_factory=ResearchGap)
     references: List[LiteratureReference] = Field(default_factory=list)
+    theory_relations: List[TheoryRelation] = Field(default_factory=list)  # 理论关系图
 
 
 class ResearchQuestion(BaseModel):
@@ -548,12 +556,21 @@ class AnalysisFinding(BaseModel):
     confidence: float = Field(ge=0, le=1, default=0.5)
 
 
+class SentimentDistribution(BaseModel):
+    """情绪分布（⑤数据分析输出项：词云/情绪/框架/传播路径四图中的情绪分析）"""
+    positive: float = Field(ge=0, le=100, default=0.0)
+    neutral: float = Field(ge=0, le=100, default=0.0)
+    negative: float = Field(ge=0, le=100, default=0.0)
+    summary: str = ""  # 一句话情绪解读
+
+
 class AnalysisResult(BaseModel):
     """⑤数据分析助手输出"""
     topic: str = ""  # 允许 LLM 漏填，由 WorkflowEngine 兜底补全
     analysis_type: str = "content_analysis"   # content_analysis/text_analysis/framework_analysis
     coding_table: List[AnalysisCodingCategory] = Field(default_factory=list)
     findings: List[AnalysisFinding] = Field(default_factory=list)
+    sentiment: SentimentDistribution = Field(default_factory=SentimentDistribution)  # 情绪分析（四图之一）
     interpretation: str = ""                  # 初步解读
 
 
