@@ -54,7 +54,7 @@ export default function Method() {
                   {m.representative_papers?.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {m.representative_papers.map((p, j) => (
-                        <span key={j} className="text-[10px] px-2 py-0.5 rounded bg-sky-50 border border-sky-200 text-sky-600">{p}</span>
+                        <span key={j} className="text-[10px] px-2 py-0.5 rounded bg-sky-50 border border-sky-200 text-sky-600">{typeof p === 'string' ? p : JSON.stringify(p)}</span>
                       ))}
                     </div>
                   )}
@@ -65,7 +65,7 @@ export default function Method() {
                   {expanded === i && m.operation_steps?.length > 0 && (
                     <ol className="space-y-1.5 pl-4 list-decimal">
                       {m.operation_steps.map((s, j) => (
-                        <li key={j} className="text-[11px] text-slate-600 leading-relaxed">{s}</li>
+                        <li key={j} className="text-[11px] text-slate-600 leading-relaxed">{typeof s === 'string' ? s : JSON.stringify(s)}</li>
                       ))}
                     </ol>
                   )}

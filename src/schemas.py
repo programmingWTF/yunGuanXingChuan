@@ -2,10 +2,45 @@
 云观星传 - 核心数据 Schema（Pydantic）
 所有 Agent 间通信必须使用这些结构化 Schema
 """
-from pydantic import BaseModel, Field, field_validator
-from typing import Dict, List, Optional
+from pydantic import BaseModel, Field, field_validator, BeforeValidator
+from typing import Dict, List, Optional, Annotated
 from enum import Enum
 import json
+
+
+def _normalize_str_list(v):
+    """LLM 格式漂移容错：字符串数组中出现对象时，提取最可读的文本键归一为字符串。
+
+    实测高发场景（均为对象列表而非字符串列表）：
+    - 评审 suggestions: {"problem": "..."} → 提取 problem
+    - 方法推荐 representative_papers: {"title": "..."} → 提取 title
+    - 选题 reasons/keywords、Gap missing_perspectives 等同理
+    """
+    if not isinstance(v, list):
+        return []
+    out = []
+    for item in v:
+        if isinstance(item, str):
+            text = item.strip()
+        elif isinstance(item, dict):
+            text = (
+                item.get("title") or item.get("text") or item.get("name")
+                or item.get("suggestion") or item.get("problem") or item.get("content")
+                or item.get("reason") or item.get("keyword") or item.get("step")
+                or item.get("issue") or item.get("paper") or ""
+            )
+            if not text and item:
+                text = json.dumps(item, ensure_ascii=False)
+            text = str(text).strip()
+        else:
+            text = str(item).strip()
+        if text:
+            out.append(text)
+    return out
+
+
+# 通用字符串列表类型：由 LLM 直接产出的 List[str] 字段统一用它，防格式漂移
+StrList = Annotated[List[str], BeforeValidator(_normalize_str_list)]
 
 
 class FrameworkType(str, Enum):
@@ -441,8 +476,8 @@ class TopicDirection(BaseModel):
     research_value: int = Field(ge=0, le=100, default=0)        # 研究价值评分
     existing_coverage: int = Field(ge=0, le=100, default=0)     # 既有研究覆盖度
     innovation_potential: int = Field(ge=0, le=100, default=0)  # 创新潜力评分
-    reasons: List[str] = Field(default_factory=list)            # 推荐理由
-    keywords: List[str] = Field(default_factory=list)           # 关键词
+    reasons: StrList = Field(default_factory=list)            # 推荐理由
+    keywords: StrList = Field(default_factory=list)           # 关键词
 
 
 class InspirationResult(BaseModel):
@@ -462,7 +497,7 @@ class LiteratureSection(BaseModel):
 class ResearchGap(BaseModel):
     """研究空白（Gap）"""
     description: str = ""
-    missing_perspectives: List[str] = Field(default_factory=list)  # 未覆盖的视角/方法/对象
+    missing_perspectives: StrList = Field(default_factory=list)  # 未覆盖的视角/方法/对象
     suggestion: str = ""                      # 深入研究建议
 
 
@@ -533,8 +568,8 @@ class MethodRecommendation(BaseModel):
     name: str                                 # 方法名，如"内容分析"
     method_type: str = "quantitative"         # quantitative/qualitative/mixed
     fit_score: int = Field(ge=0, le=100, default=0)       # 方法适配度评分
-    representative_papers: List[str] = Field(default_factory=list)  # 范文/代表论文
-    operation_steps: List[str] = Field(default_factory=list)        # 操作步骤
+    representative_papers: StrList = Field(default_factory=list)  # 范文/代表论文
+    operation_steps: StrList = Field(default_factory=list)        # 操作步骤
     rationale: str = ""                       # 推荐理由
 
 
