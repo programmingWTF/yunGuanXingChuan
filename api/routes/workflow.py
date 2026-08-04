@@ -26,12 +26,12 @@ router = APIRouter()
 
 
 class CreateProjectRequest(BaseModel):
-    title: str = ""
-    interest: str = Field(..., description="初始研究兴趣/议题")
+    title: str = Field("", max_length=100, description="项目名称")
+    interest: str = Field(..., max_length=500, description="初始研究兴趣/议题")
 
 
 class RunStageRequest(BaseModel):
-    inputs: Dict = Field(default_factory=dict, description="阶段输入（如 direction/materials/style_sample）")
+    inputs: Dict = Field(default_factory=dict, max_length=100, description="阶段输入（如 direction/materials/style_sample）")
 
 
 @router.get("/stages")
@@ -70,8 +70,11 @@ def run_stage(project_id: str, stage: int, req: RunStageRequest):
         record = get_workflow_engine().run_stage(project_id, stage, req.inputs)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"阶段执行失败: {e}")
+    except Exception:
+        # 不回显内部异常细节（可能含文件路径/服务信息），只记日志
+        import logging
+        logging.getLogger(__name__).exception(f"阶段 {stage} 执行异常（项目 {project_id}）")
+        raise HTTPException(status_code=500, detail="阶段执行失败，请稍后重试")
     return {
         "stage": stage,
         "status": record.status.value,
