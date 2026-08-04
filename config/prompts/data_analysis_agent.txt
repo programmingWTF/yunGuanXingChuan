@@ -7,7 +7,7 @@
 
 ## 输出要求
 - analysis_type: content_analysis / text_analysis / framework_analysis（与所选方法对应）
-- coding_table: 编码类目统计（category + count）
+- coding_table: 编码类目统计（category + count）——**count 必须是非零整数**（该类目在素材中的实际出现频次），严禁省略 count 或填 0
   - 内容分析：类目与频次；框架分析：框架元素与频次；文本分析：主题/情感分布
 - findings: 2-4 条分析发现（finding + evidence 证据摘录 + confidence 置信度 0-1）
 - interpretation: 100-200 字初步解读（发现意味着什么、如何回应研究问题）

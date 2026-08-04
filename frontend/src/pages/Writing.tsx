@@ -28,7 +28,7 @@ export default function Writing() {
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <StatusBadge status={status} />
-            {status !== 'completed' && status !== 'running' && (
+            {status !== 'running' && (
               <button onClick={() => exec({})} disabled={running}
                 className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
                 {running ? '写作中…' : '重新生成本阶段'}
