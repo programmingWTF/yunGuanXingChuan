@@ -446,7 +446,7 @@ class TopicDirection(BaseModel):
 
 class InspirationResult(BaseModel):
     """①选题孵化器输出"""
-    topic: str
+    topic: str = ""  # 允许 LLM 漏填，由 WorkflowEngine 兜底补全
     directions: List[TopicDirection] = Field(default_factory=list)
     selected_direction: str = ""              # 用户选定方向（默认推荐第 1 个）
     discussion_summary: str = ""              # 多学者讨论纪要
@@ -474,7 +474,7 @@ class LiteratureReference(BaseModel):
 
 class LiteratureReview(BaseModel):
     """②文献综述助手输出"""
-    topic: str
+    topic: str = ""  # 允许 LLM 漏填，由 WorkflowEngine 兜底补全
     sections: List[LiteratureSection] = Field(default_factory=list)
     research_gap: ResearchGap = Field(default_factory=ResearchGap)
     references: List[LiteratureReference] = Field(default_factory=list)
@@ -503,7 +503,7 @@ class QuestionQualityReport(BaseModel):
 
 class ResearchDesignResult(BaseModel):
     """③研究问题设计师输出"""
-    topic: str
+    topic: str = ""  # 允许 LLM 漏填，由 WorkflowEngine 兜底补全
     research_questions: List[ResearchQuestion] = Field(default_factory=list)
     hypotheses: List[ResearchHypothesis] = Field(default_factory=list)
     quality_report: QuestionQualityReport = Field(default_factory=QuestionQualityReport)
@@ -521,7 +521,7 @@ class MethodRecommendation(BaseModel):
 
 class MethodRecommendationResult(BaseModel):
     """④方法顾问输出"""
-    topic: str
+    topic: str = ""  # 允许 LLM 漏填，由 WorkflowEngine 兜底补全
     methods: List[MethodRecommendation] = Field(default_factory=list)
 
 
@@ -540,7 +540,7 @@ class AnalysisFinding(BaseModel):
 
 class AnalysisResult(BaseModel):
     """⑤数据分析助手输出"""
-    topic: str
+    topic: str = ""  # 允许 LLM 漏填，由 WorkflowEngine 兜底补全
     analysis_type: str = "content_analysis"   # content_analysis/text_analysis/framework_analysis
     coding_table: List[AnalysisCodingCategory] = Field(default_factory=list)
     findings: List[AnalysisFinding] = Field(default_factory=list)
@@ -555,7 +555,7 @@ class PaperSection(BaseModel):
 
 class PaperDraft(BaseModel):
     """⑥论文写手输出"""
-    topic: str
+    topic: str = ""  # 允许 LLM 漏填，由 WorkflowEngine 兜底补全
     title: str = ""
     sections: List[PaperSection] = Field(default_factory=list)
     style_notes: List[str] = Field(default_factory=list)      # 风格蒸馏说明
@@ -580,7 +580,7 @@ class ReviewerOpinion(BaseModel):
 
 class ReviewerFeedback(BaseModel):
     """⑦评审模拟器输出"""
-    topic: str
+    topic: str = ""  # 允许 LLM 漏填，由 WorkflowEngine 兜底补全
     reviewers: List[ReviewerOpinion] = Field(default_factory=list)
     revision_notes: str = ""                  # 一键修改说明
 

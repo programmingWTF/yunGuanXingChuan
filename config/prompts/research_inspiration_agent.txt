@@ -24,3 +24,23 @@
 - selected_direction 填综合评分最优的方向标题
 - discussion_summary 用 100-150 字总结学者讨论的核心结论
 - 必须只输出 JSON，不要输出解释文字
+
+## 输出格式（必须严格遵循：directions 必须是包含 3-5 个对象的数组）
+```json
+{
+  "topic": "朱雀二号火箭的国际报道",
+  "directions": [
+    {
+      "title": "中美商业航天竞争叙事研究",
+      "summary": "考察中美主流媒体对商业航天的竞争框架呈现差异",
+      "research_value": 92,
+      "existing_coverage": 60,
+      "innovation_potential": 88,
+      "reasons": ["议题新", "数据可得", "理论契合"],
+      "keywords": ["商业航天", "竞争框架", "中美比较"]
+    }
+  ],
+  "selected_direction": "中美商业航天竞争叙事研究",
+  "discussion_summary": "学者们认为该方向兼具前沿性与可行性。"
+}
+```

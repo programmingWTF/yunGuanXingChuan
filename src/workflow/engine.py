@@ -47,14 +47,16 @@ class WorkflowEngine:
         from src.agents.paper_writer_agent import PaperWriterAgent
         from src.agents.reviewer_simulator_agent import ReviewerSimulatorAgent
 
+        # max_retries=1：LLM 输出不合格时快速失败，让前端立即显示错误；
+        # max_tokens 按阶段调大以保障生成质量（写作/评审最大），配合 run_stage 240s 超时
         return {
-            WorkflowStage.INSPIRATION: ResearchInspirationAgent(),
-            WorkflowStage.LITERATURE: LiteratureReviewAgent(),
-            WorkflowStage.DESIGN: ResearchQuestionAgent(),
-            WorkflowStage.METHOD: MethodAdvisorAgent(),
-            WorkflowStage.DATA_ANALYSIS: DataAnalysisAgent(),
-            WorkflowStage.WRITING: PaperWriterAgent(),
-            WorkflowStage.REVIEW: ReviewerSimulatorAgent(),
+            WorkflowStage.INSPIRATION: ResearchInspirationAgent(max_retries=1, max_tokens=6000),
+            WorkflowStage.LITERATURE: LiteratureReviewAgent(max_retries=1, max_tokens=6000),
+            WorkflowStage.DESIGN: ResearchQuestionAgent(max_retries=1, max_tokens=5000),
+            WorkflowStage.METHOD: MethodAdvisorAgent(max_retries=1, max_tokens=5000),
+            WorkflowStage.DATA_ANALYSIS: DataAnalysisAgent(max_retries=1, max_tokens=6000),
+            WorkflowStage.WRITING: PaperWriterAgent(max_retries=1, max_tokens=8000),
+            WorkflowStage.REVIEW: ReviewerSimulatorAgent(max_retries=1, max_tokens=6000),
         }
 
     def _get_agent(self, stage: int) -> Any:
@@ -129,7 +131,14 @@ class WorkflowEngine:
         self._inject_previous_outputs(project, stage, full_inputs)
 
         try:
-            output = agent.run(full_inputs)
+            output = self._run_with_timeout(lambda: agent.run(full_inputs), 240.0, None, "智能体生成", swallow_exc=False)
+            if output is None:
+                raise TimeoutError(f"阶段 {stage} AI 生成超时（>240 秒），请重试")
+            # 服务端兜底：LLM 漏填/空填 topic 时补全，保证产出物完整
+            if isinstance(output, dict):
+                if not output.get("topic"):
+                    output["topic"] = full_inputs.get("topic", "")
+                output.setdefault("project_title", full_inputs.get("project_title", ""))
             updated = self.store.update_stage(
                 project_id, stage,
                 status=StageStatus.AWAITING_REVIEW,
@@ -173,31 +182,64 @@ class WorkflowEngine:
         return record.output if record else None
 
     # ------------------------------------------------------------------
-    # 知识库/搜索上下文注入（全部降级，不影响主流程）
+    # 知识库/搜索上下文注入（全部降级 + 超时，不影响主流程）
     # ------------------------------------------------------------------
+    def _run_with_timeout(self, fn, timeout: float, default, label: str, swallow_exc: bool = True):
+        """在独立线程执行并限时。
+
+        - 超时：返回 default（避免外部服务/LLM 拖住科研流程）
+        - 异常：swallow_exc=True 时降级返回 default（搜索/KG 用）；False 时重新抛出（agent 用）
+        """
+        from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+        ex = ThreadPoolExecutor(max_workers=1)
+        try:
+            future = ex.submit(fn)
+            try:
+                return future.result(timeout=timeout)
+            except FuturesTimeout:
+                logger.warning(f"[WorkflowEngine] {label} 超时（{timeout}s），降级返回默认值")
+                return default
+        except Exception as e:
+            if swallow_exc:
+                logger.warning(f"[WorkflowEngine] {label} 执行异常: {e}")
+                return default
+            raise
+        finally:
+            # wait=False：不等待仍在执行的子线程（否则 shutdown 会阻塞直至其结束）
+            ex.shutdown(wait=False, cancel_futures=True)
+
     def _build_stage_context(self, stage: int, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        """按阶段注入检索上下文（unified search / vector store / KG）"""
+        """按阶段注入检索上下文（unified search / vector store / KG），全部带超时降级"""
         context: Dict[str, Any] = {}
         topic = inputs.get("topic", "")
         keywords = self._extract_keywords(inputs)
 
-        try:
-            from src.search.unified_search import get_unified_search_service
-            service = get_unified_search_service()
-            sources = service.search_for_topic(topic) if topic else []
-            context["search_context"] = [
-                {"url": s.url, "title": s.title, "content": (s.content or "")[:400], "source": s.source}
-                for s in (sources or [])[:8]
-            ]
-        except Exception as e:
-            logger.warning(f"[WorkflowEngine] 搜索上下文注入失败: {e}")
-            context["search_context"] = []
+        if topic:
+            try:
+                from src.search.unified_search import get_unified_search_service
+                service = get_unified_search_service()
+
+                def _search():
+                    return service.search_for_topic(topic)
+
+                sources = self._run_with_timeout(_search, 8.0, [], "统一搜索")
+                context["search_context"] = [
+                    {"url": s.url, "title": s.title, "content": (s.content or "")[:400], "source": s.source}
+                    for s in (sources or [])[:8]
+                ]
+            except Exception as e:
+                logger.warning(f"[WorkflowEngine] 搜索上下文注入失败: {e}")
+                context["search_context"] = []
 
         if stage in (WorkflowStage.LITERATURE, WorkflowStage.DESIGN, WorkflowStage.METHOD):
             try:
                 from src.knowledge.vector_store import get_vector_store
                 vs = get_vector_store()
-                hits = vs.search(topic, top_k=6) if topic else []
+
+                def _vsearch():
+                    return vs.search(topic, top_k=6)
+
+                hits = self._run_with_timeout(_vsearch, 10.0, [], "知识库检索")
                 context["knowledge_hits"] = [
                     {"text": h.get("text", "")[:500], "score": round(float(h.get("score", 0)), 3), "metadata": h.get("metadata", {})}
                     for h in (hits or [])
@@ -210,7 +252,11 @@ class WorkflowEngine:
             try:
                 from src.knowledge.kg_builder import get_knowledge_graph
                 kg = get_knowledge_graph()
-                related = kg.find_related_entities(topic, depth=2) if topic else []
+
+                def _kg():
+                    return kg.find_related_entities(topic, depth=2)
+
+                related = self._run_with_timeout(_kg, 5.0, [], "知识图谱实体")
                 context["kg_entities"] = [r["entity"] for r in (related or [])[:10]]
             except Exception as e:
                 logger.warning(f"[WorkflowEngine] KG 实体注入失败: {e}")

@@ -85,7 +85,7 @@ export function StageActions({
       {status === 'pending' || status === 'failed' ? (
         <button onClick={onRun} disabled={running}
           className="btn-primary text-xs disabled:opacity-40 disabled:cursor-not-allowed">
-          {running ? '运行中…' : runLabel}
+          {running ? 'AI 生成中…' : runLabel}
         </button>
       ) : status === 'awaiting_review' ? (
         <button onClick={onApprove} className="btn-primary text-xs">
@@ -96,6 +96,11 @@ export function StageActions({
           重新运行
         </button>
       ) : null}
+      {running && (
+        <span className="text-[11px] text-astro-300 animate-pulse">
+          AI 正在分析中…（生成质量优先，约需 1-3 分钟，请耐心等待，勿刷新页面）
+        </span>
+      )}
       {error && <span className="text-[11px] text-flare-400">{error}</span>}
     </div>
   )
@@ -149,7 +154,7 @@ export function useStageExec(stage: number) {
     }
   }
 
-  return { projectId, status, rec, running, error, exec, approve }
+  return { projectId, status, rec, running, error, exec, approve, loadProject }
 }
 
 /** 产出物 JSON 展示 */

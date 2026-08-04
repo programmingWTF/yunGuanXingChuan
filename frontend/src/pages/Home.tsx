@@ -46,7 +46,8 @@ export default function Home() {
     setError('')
     try {
       const project = await createProject('', interest.trim())
-      navigate(`/projects?focus=${project.id}`)
+      // 直接进入选题孵化页（阶段 1），预填兴趣，让用户点击"开始讨论"
+      navigate(`/inspiration?project=${project.id}&interest=${encodeURIComponent(interest.trim())}`)
     } catch (err: unknown) {
       const status = axios.isAxiosError(err) ? err.response?.status : null
       setError(status === 404

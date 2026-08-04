@@ -209,6 +209,7 @@ class LLMClient:
         model: Optional[str] = None,
         temperature: float = 0.3,
         enable_search: bool = False,
+        max_tokens: Optional[int] = None,
     ) -> dict:
         """
         发送聊天请求，返回解析后的 JSON 字典
@@ -230,6 +231,7 @@ class LLMClient:
             temperature=temperature,
             json_mode=True,
             enable_search=enable_search,
+            max_tokens=max_tokens,
         )
 
         # 尝试解析 JSON

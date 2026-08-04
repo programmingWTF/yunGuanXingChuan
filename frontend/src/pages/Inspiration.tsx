@@ -1,8 +1,10 @@
 /**
  * 云观星传 - ① 选题孵化
  * 输入研究兴趣 → AI 推荐 3-5 个选题方向（研究价值/覆盖度/创新潜力评分）→ 选定进入文献综述
+ * 支持从首页快速开始跳转：/inspiration?project=<id>&interest=<兴趣>
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { StageLayout, StageActions, ScoreBar, StatusBadge, NoProjectHint, OutputView, useStageExec, type StageInfo } from '../components/StageUI'
 
 const INFO: StageInfo = {
@@ -11,9 +13,18 @@ const INFO: StageInfo = {
 }
 
 export default function Inspiration() {
-  const { projectId, status, rec, running, error, exec, approve } = useStageExec(1)
-  const [interest, setInterest] = useState('')
+  const { projectId, status, rec, running, error, exec, approve, loadProject } = useStageExec(1)
+  const [searchParams] = useSearchParams()
+  const [interest, setInterest] = useState(searchParams.get('interest') ?? '')
   const [selected, setSelected] = useState('')
+
+  // 首页快速开始跳转时自动加载对应项目
+  const urlProject = searchParams.get('project')
+  useEffect(() => {
+    if (urlProject && projectId !== urlProject) {
+      loadProject(urlProject).catch(() => { /* ignore */ })
+    }
+  }, [urlProject, projectId, loadProject])
 
   const output = (rec?.output ?? null) as { directions?: { title: string; summary: string; research_value: number; existing_coverage: number; innovation_potential: number; reasons: string[]; keywords: string[] }[]; discussion_summary?: string } | null
   const directions = output?.directions ?? []

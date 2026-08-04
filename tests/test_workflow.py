@@ -274,7 +274,8 @@ class TestWorkflowEngine:
         rec = engine.run_stage(p.id, 1, {})
         assert rec.status == StageStatus.AWAITING_REVIEW
         assert rec.run_count == 2
-        assert rec.output == {"topic": "t", "directions": []}
+        # 引擎兜底补全 project_title
+        assert rec.output == {"topic": "t", "directions": [], "project_title": p.title}
 
     def test_rerun_failure_after_success_clears_old_output(self, engine):
         """回归：已有成功产出后重跑失败，旧产出物必须被清空（不得残留展示）"""
