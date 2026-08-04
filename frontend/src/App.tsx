@@ -5,13 +5,12 @@
  * 用户看到的是科研工作流。核心交互：首页 Research Pipeline 时间轴，
  * 点击任意节点进入对应科研流程页面。
  *
- * 路由结构（9 页面）：
+ * 路由结构（9 页面，全部对接 /api/workflow）：
  *   /              科研首页（驾驶舱 + Pipeline）
  *   /inspiration   ① 选题孵化     /literature   ② 文献综述
  *   /design        ③ 研究设计     /method       ④ 方法推荐
  *   /data-analysis ⑤ 数据分析     /writing      ⑥ 学术写作
  *   /review        ⑦ 同行评审     /projects     我的项目
- * 旧功能页面保留在 Legacy 分组（路由不变，不破坏）。
  */
 import { useEffect, useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation } from 'react-router-dom'
@@ -19,19 +18,15 @@ import { StoreProvider, useStore } from './store'
 import StarfieldBackground from './components/StarfieldBackground'
 import Home from './pages/Home'
 import Projects from './pages/Projects'
-import StagePlaceholder from './pages/StagePlaceholder'
-// Legacy 页面（保留，不破坏旧功能）
-import TaskCenter from './pages/TaskCenter'
-import Dashboard from './pages/Dashboard'
-import Hypotheses from './pages/Hypotheses'
-import Strategy from './pages/Strategy'
-import KnowledgeGraph from './pages/KnowledgeGraph'
-import VerifyReport from './pages/VerifyReport'
-import Parliament from './pages/Parliament'
-import ResearchOutput from './pages/ResearchOutput'
-import CrossCultural from './pages/CrossCultural'
+import Inspiration from './pages/Inspiration'
+import Literature from './pages/Literature'
+import Design from './pages/Design'
+import Method from './pages/Method'
+import DataAnalysis from './pages/DataAnalysis'
+import Writing from './pages/Writing'
+import Review from './pages/Review'
 
-/* ── 导航定义：科研流程分组 ── */
+/* ── 导航定义：科研流程（9 页面） ── */
 const PIPELINE_NAV = [
   { to: '/', icon: '🏠', label: '科研首页', en: 'HOME', end: true },
   { to: '/inspiration', icon: '💡', label: '选题孵化', en: 'TOPIC' },
@@ -42,19 +37,6 @@ const PIPELINE_NAV = [
   { to: '/writing', icon: '✍️', label: '学术写作', en: 'WRITING' },
   { to: '/review', icon: '👨‍⚖️', label: '同行评审', en: 'REVIEW' },
   { to: '/projects', icon: '📁', label: '我的项目', en: 'PROJECTS' },
-]
-
-/* ── Legacy 导航（旧功能，保留可访问） ── */
-const LEGACY_NAV = [
-  { to: '/task-center', icon: '◈', label: '研究工作台', en: 'RESEARCH' },
-  { to: '/parliament', icon: '⬡', label: 'AI 工作流', en: 'WORKFLOW' },
-  { to: '/outputs', icon: '▤', label: '成果中心', en: 'OUTPUT' },
-  { to: '/dashboard', icon: '◉', label: '传播分析', en: 'ANALYSIS' },
-  { to: '/hypotheses', icon: '△', label: '研究假设', en: 'HYPOTHESES' },
-  { to: '/strategy', icon: '▤', label: '传播策略', en: 'STRATEGY' },
-  { to: '/kg', icon: '✦', label: '知识图谱', en: 'KNOWLEDGE' },
-  { to: '/verify', icon: '◇', label: '证据校验', en: 'EVIDENCE' },
-  { to: '/cross-cultural', icon: '⇌', label: '跨文化对照', en: 'CROSS-CULT' },
 ]
 
 /* ── 实时时钟 ── */
@@ -96,7 +78,7 @@ function Sidebar() {
 
       {/* 科研流程导航 */}
       <nav className="flex-1 px-3.5 py-4 space-y-0.5 overflow-y-auto">
-        <p className="sec-label px-3 mb-2">Research Pipeline</p>
+        <p className="sec-label px-3 mb-2">Research Pipeline · {stageMeta.length || 7} 阶段</p>
         {PIPELINE_NAV.map(item => (
           <NavLink key={item.to} to={item.to} end={item.end ?? false}
             className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
@@ -105,23 +87,6 @@ function Sidebar() {
             <span className="text-[8px] font-mono tracking-widest text-slate-600">{item.en}</span>
           </NavLink>
         ))}
-
-        {/* Legacy 分组 */}
-        <details className="group mt-4">
-          <summary className="sec-label px-3 mb-1 cursor-pointer select-none hover:text-slate-400 transition-colors">
-            Legacy Modules <span className="text-[9px]">({stageMeta.length || 7})</span>
-          </summary>
-          <div className="space-y-0.5 mt-1">
-            {LEGACY_NAV.map(item => (
-              <NavLink key={item.to} to={item.to}
-                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                <span className="w-6 text-center text-base opacity-60">{item.icon}</span>
-                <span className="flex-1 text-[12px]">{item.label}</span>
-                <span className="text-[8px] font-mono tracking-widest text-slate-600">{item.en}</span>
-              </NavLink>
-            ))}
-          </div>
-        </details>
       </nav>
 
       {/* 底部系统状态 */}
@@ -146,12 +111,12 @@ function SystemStatus() {
         </span>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-[10px] text-slate-500">科研流程</span>
-        <span className="text-[10px] font-mono text-astro-300">7 Agent</span>
+        <span className="text-[10px] text-slate-500">科研智能体</span>
+        <span className="text-[10px] font-mono text-astro-300">7 Agents</span>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-[10px] text-slate-500">搜索引擎</span>
-        <span className="text-[10px] font-mono text-slate-400">Tavily + Qwen + 他山</span>
+        <span className="text-[10px] text-slate-500">知识库</span>
+        <span className="text-[10px] font-mono text-slate-400">四库 + 搜索</span>
       </div>
     </div>
   )
@@ -160,8 +125,7 @@ function SystemStatus() {
 /* ── 顶部状态栏 ── */
 function TopBar() {
   const location = useLocation()
-  const all = [...PIPELINE_NAV, ...LEGACY_NAV]
-  const current = all.find(n => n.to === location.pathname)
+  const current = PIPELINE_NAV.find(n => n.to === location.pathname)
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between px-8 h-14 border-b border-white/[0.06] bg-[#040810]/70 backdrop-blur-xl">
       <div className="flex items-center gap-3">
@@ -197,25 +161,14 @@ function AppLayout() {
             <Routes location={location}>
               {/* 科研工作台 9 页面 */}
               <Route path="/" element={<Home />} />
-              <Route path="/inspiration" element={<StagePlaceholder stage={1} />} />
-              <Route path="/literature" element={<StagePlaceholder stage={2} />} />
-              <Route path="/design" element={<StagePlaceholder stage={3} />} />
-              <Route path="/method" element={<StagePlaceholder stage={4} />} />
-              <Route path="/data-analysis" element={<StagePlaceholder stage={5} />} />
-              <Route path="/writing" element={<StagePlaceholder stage={6} />} />
-              <Route path="/review" element={<StagePlaceholder stage={7} />} />
+              <Route path="/inspiration" element={<Inspiration />} />
+              <Route path="/literature" element={<Literature />} />
+              <Route path="/design" element={<Design />} />
+              <Route path="/method" element={<Method />} />
+              <Route path="/data-analysis" element={<DataAnalysis />} />
+              <Route path="/writing" element={<Writing />} />
+              <Route path="/review" element={<Review />} />
               <Route path="/projects" element={<Projects />} />
-
-              {/* Legacy 路由（保留旧功能入口） */}
-              <Route path="/task-center" element={<TaskCenter />} />
-              <Route path="/parliament" element={<Parliament />} />
-              <Route path="/outputs" element={<ResearchOutput />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/hypotheses" element={<Hypotheses />} />
-              <Route path="/strategy" element={<Strategy />} />
-              <Route path="/kg" element={<KnowledgeGraph />} />
-              <Route path="/verify" element={<VerifyReport />} />
-              <Route path="/cross-cultural" element={<CrossCultural />} />
 
               {/* 兜底：未知路径回科研首页 */}
               <Route path="*" element={<Home />} />
