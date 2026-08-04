@@ -1,9 +1,9 @@
 /**
- * 云观星传 - ⑦ 同行评审
- * Reviewer 1/2/3 卡片（创新/方法/论证/文献/语言评分 + 建议）+ 一键生成修改说明
+ * 云观星传 - ⑦ 同行评审（产出物查看页）
+ * 展示三审稿人评分与一键修改说明
  */
 import { useState } from 'react'
-import { StageLayout, StageActions, ScoreBar, StatusBadge, NoProjectHint, OutputView, useStageExec, type StageInfo } from '../components/StageUI'
+import { StageLayout, ScoreBar, StatusBadge, NoProjectHint, useStageExec, type StageInfo } from '../components/StageUI'
 
 const INFO: StageInfo = {
   stage: 7, icon: '👨‍⚖️', title: '同行评审', en: 'PEER REVIEW',
@@ -18,7 +18,7 @@ interface ReviewerShape {
 }
 
 export default function Review() {
-  const { projectId, status, rec, running, error, exec, approve } = useStageExec(7)
+  const { projectId, status, rec, running, error, exec } = useStageExec(7)
   const [copied, setCopied] = useState(false)
 
   const output = (rec?.output ?? null) as {
@@ -26,10 +26,6 @@ export default function Review() {
     revision_notes?: string
   } | null
   const reviewers = output?.reviewers ?? []
-
-  const handleRun = async () => {
-    await exec({})
-  }
 
   const handleCopy = async () => {
     if (!output?.revision_notes) return
@@ -43,22 +39,18 @@ export default function Review() {
   return (
     <StageLayout info={INFO}>
       {!projectId ? <NoProjectHint /> : (
-        <div className="space-y-5">
-          {/* 输入区 */}
-          <div className="card p-5">
-            <h3 className="sec-label !mb-1">模拟同行评审</h3>
-            <p className="text-[11px] text-slate-500 mb-3">自动带入论文初稿，3 位审稿人从多维度评价</p>
-            <div className="flex items-center gap-3">
-              <button onClick={handleRun} disabled={running}
-                className="btn-primary text-xs disabled:opacity-40 disabled:cursor-not-allowed">
-                {running ? '评审中…' : '开始评审 →'}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <StatusBadge status={status} />
+            {status !== 'completed' && status !== 'running' && (
+              <button onClick={() => exec({})} disabled={running}
+                className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
+                {running ? '评审中…' : '重新生成本阶段'}
               </button>
-              <StatusBadge status={status} />
-              <StageActions status={status} onRun={handleRun} onApprove={approve} running={running} error={error} />
-            </div>
+            )}
+            {error && <span className="text-[11px] text-flare-400">{error}</span>}
           </div>
 
-          {/* 审稿人卡片 */}
           {reviewers.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {reviewers.map((r, i) => (
@@ -85,8 +77,6 @@ export default function Review() {
               ))}
             </div>
           )}
-
-          {/* 一键修改说明 */}
           {output?.revision_notes && (
             <div className="card p-5 border-aurora-400/30">
               <div className="flex items-center justify-between mb-2">
@@ -98,8 +88,6 @@ export default function Review() {
               <p className="text-[13px] text-slate-200 leading-relaxed whitespace-pre-wrap">{output.revision_notes}</p>
             </div>
           )}
-
-          {rec?.status === 'awaiting_review' && <OutputView output={rec.output} />}
         </div>
       )}
     </StageLayout>

@@ -26,12 +26,13 @@ class UnifiedSearchService:
         self.qwen = QwenWebSearchService()
         self.tashan = get_tashan_search_service() if with_tashan else None
 
-    def search_for_topic(self, topic: str) -> List[SearchSource]:
+    def search_for_topic(self, topic: str, extra_queries: Optional[List[str]] = None) -> List[SearchSource]:
         """
         为科技议题执行三引擎并行搜索，合并去重
 
         Args:
             topic: 科技议题名称
+            extra_queries: 附加查询词（传给**他山**做多查询词全量召回，提升覆盖面）
 
         Returns:
             合并后的 SearchSource 列表，每条标注 source 字段
@@ -62,7 +63,8 @@ class UnifiedSearchService:
             if not self.tashan:
                 return []
             try:
-                return self.tashan.search_for_topic(topic)
+                # 他山全量召回：多查询词 × 多 scene × 多页（多多调用）
+                return self.tashan.search_for_topic(topic, extra_queries=extra_queries)
             except Exception as e:
                 logger.warning(f"他山搜索失败（不影响整体）: {e}")
                 return []

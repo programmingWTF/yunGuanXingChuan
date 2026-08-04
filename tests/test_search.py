@@ -275,16 +275,20 @@ class TestUnifiedSearchMerge:
         assert results[0].source == "TashanSourceFeed"
 
 
-def _routed_get(aminer=None, source_feed=None, world_weave=None):
+def _routed_get(aminer=None, source_feed=None, world_weave=None, literature=None, signals=None):
     """构造按 URL 分发响应的 httpx.get side_effect。
 
     每个参数传入对应接口的响应 dict；未提供者返回空结构。
     """
-    def _side_effect(url, params=None):
+    def _side_effect(url, params=None, headers=None, **kwargs):
         if "aminer" in url:
             resp = aminer if aminer is not None else {"data": {"list": []}}
         elif "source-feed" in url:
             resp = source_feed if source_feed is not None else {"list": []}
+        elif "literature" in url:
+            resp = literature if literature is not None else {"list": []}
+        elif "signals" in url:
+            resp = signals if signals is not None else {"signals": []}
         else:
             resp = world_weave if world_weave is not None else {"signals": []}
         return MagicMock(status_code=200, json=lambda r=resp: r)
@@ -319,6 +323,7 @@ class TestTashanSearch:
             }
         }
         service._http_client.get.side_effect = _routed_get(aminer=aminer_resp)
+        service.token = "test"  # 配置 token 后启用 AMiner
         from src.search.tashan_search import SOURCE_AMINER
         results = service.search_for_topic("LLM")
         assert len(results) == 1
@@ -359,7 +364,7 @@ class TestTashanSearch:
         weave_resp = {
             "signals": [
                 {
-                    "title": "某科技信号",
+                    "title": "LLM 某科技信号",
                     "summary": "信号摘要内容",
                     "url": "https://signal.com/1",
                     "region_label": "科技",
@@ -390,9 +395,10 @@ class TestTashanSearch:
                 "source_feed_name": "信源", "description": "desc",
             }]},
             world_weave={"signals": [{
-                "title": "信号", "summary": "sum", "url": "https://s.com/1",
+                "title": "LLM 信号", "summary": "sum", "url": "https://s.com/1",
             }]},
         )
+        service.token = "test"  # 配置 token 后启用 AMiner
         results = service.search_for_topic("LLM")
         sources = {r.source for r in results}
         assert len(results) == 3
@@ -417,7 +423,7 @@ class TestTashanSearch:
         ]})
         weaves = MagicMock(status_code=200, json=lambda: {"signals": []})
 
-        def _side_effect(url, params=None):
+        def _side_effect(url, params=None, headers=None, **kwargs):
             if "aminer" in url:
                 return aminers
             if "source-feed" in url:

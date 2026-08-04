@@ -301,12 +301,13 @@ class WorkflowEngine:
                 service = get_unified_search_service()
 
                 def _search():
-                    return service.search_for_topic(topic)
+                    # 传关键词扩展查询词：他山按多查询词 × 多 scene 全量召回（多多调用）
+                    return service.search_for_topic(topic, extra_queries=keywords)
 
-                sources = self._run_with_timeout(_search, 8.0, [], "统一搜索")
+                sources = self._run_with_timeout(_search, 12.0, [], "统一搜索")
                 context["search_context"] = [
                     {"url": s.url, "title": s.title, "content": (s.content or "")[:400], "source": s.source}
-                    for s in (sources or [])[:8]
+                    for s in (sources or [])[:12]
                 ]
             except Exception as e:
                 logger.warning(f"[WorkflowEngine] 搜索上下文注入失败: {e}")

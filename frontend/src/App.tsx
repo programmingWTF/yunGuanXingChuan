@@ -2,22 +2,21 @@
  * 云观星传 V2.0 — AI Scientist 科研工作台
  *
  * 前端按"科研流程"命名（非按智能体命名）：智能体隐藏在页面背后，
- * 用户看到的是科研工作流。核心交互：首页 Research Pipeline 时间轴，
- * 点击任意节点进入对应科研流程页面。
+ * 用户看到的是科研工作流。核心交互：首页科研工作台（历史项目+新建+一键生成），
+ * 7 个科研流程页面用于查看各阶段产出物。
  *
- * 路由结构（9 页面，全部对接 /api/workflow）：
- *   /              科研首页（驾驶舱 + Pipeline）
+ * 路由结构：
+ *   /              科研工作台（默认页：历史项目 / 新建 / 一键生成 / 进度 / 产出物 / 导出）
  *   /inspiration   ① 选题孵化     /literature   ② 文献综述
  *   /design        ③ 研究设计     /method       ④ 方法推荐
  *   /data-analysis ⑤ 数据分析     /writing      ⑥ 学术写作
- *   /review        ⑦ 同行评审     /projects     我的项目
+ *   /review        ⑦ 同行评审
  */
 import { useEffect, useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import { StoreProvider, useStore } from './store'
 import StarfieldBackground from './components/StarfieldBackground'
-import Home from './pages/Home'
-import Projects from './pages/Projects'
+import Workspace from './pages/Workspace'
 import Inspiration from './pages/Inspiration'
 import Literature from './pages/Literature'
 import Design from './pages/Design'
@@ -26,9 +25,9 @@ import DataAnalysis from './pages/DataAnalysis'
 import Writing from './pages/Writing'
 import Review from './pages/Review'
 
-/* ── 导航定义：科研流程（9 页面） ── */
+/* ── 导航定义：科研工作台 + 科研流程 ── */
 const PIPELINE_NAV = [
-  { to: '/', icon: '🏠', label: '科研首页', en: 'HOME', end: true },
+  { to: '/', icon: '🏠', label: '科研工作台', en: 'HOME', end: true },
   { to: '/inspiration', icon: '💡', label: '选题孵化', en: 'TOPIC' },
   { to: '/literature', icon: '📚', label: '文献综述', en: 'LITERATURE' },
   { to: '/design', icon: '🎯', label: '研究设计', en: 'DESIGN' },
@@ -36,7 +35,6 @@ const PIPELINE_NAV = [
   { to: '/data-analysis', icon: '📊', label: '数据分析', en: 'ANALYSIS' },
   { to: '/writing', icon: '✍️', label: '学术写作', en: 'WRITING' },
   { to: '/review', icon: '👨‍⚖️', label: '同行评审', en: 'REVIEW' },
-  { to: '/projects', icon: '📁', label: '我的项目', en: 'PROJECTS' },
 ]
 
 /* ── 实时时钟 ── */
@@ -159,8 +157,8 @@ function AppLayout() {
         <main className="px-8 py-7 max-w-[1600px]">
           <div key={location.pathname} className="page-transition">
             <Routes location={location}>
-              {/* 科研工作台 9 页面 */}
-              <Route path="/" element={<Home />} />
+              {/* 科研工作台（默认页）+ 7 个科研流程页 */}
+              <Route path="/" element={<Workspace />} />
               <Route path="/inspiration" element={<Inspiration />} />
               <Route path="/literature" element={<Literature />} />
               <Route path="/design" element={<Design />} />
@@ -168,10 +166,9 @@ function AppLayout() {
               <Route path="/data-analysis" element={<DataAnalysis />} />
               <Route path="/writing" element={<Writing />} />
               <Route path="/review" element={<Review />} />
-              <Route path="/projects" element={<Projects />} />
 
-              {/* 兜底：未知路径回科研首页 */}
-              <Route path="*" element={<Home />} />
+              {/* 兜底：未知路径回科研工作台 */}
+              <Route path="*" element={<Workspace />} />
             </Routes>
           </div>
         </main>

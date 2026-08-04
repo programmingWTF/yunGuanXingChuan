@@ -1,9 +1,9 @@
 /**
- * 云观星传 - ④ 方法推荐
- * 方法卡片（适配度 %/类型/范文/操作步骤展开）
+ * 云观星传 - ④ 方法推荐（产出物查看页）
+ * 展示方法卡片（适配度/类型/范文/操作步骤）
  */
 import { useState } from 'react'
-import { StageLayout, StageActions, ScoreBar, StatusBadge, NoProjectHint, OutputView, useStageExec, type StageInfo } from '../components/StageUI'
+import { StageLayout, ScoreBar, StatusBadge, NoProjectHint, useStageExec, type StageInfo } from '../components/StageUI'
 
 const INFO: StageInfo = {
   stage: 4, icon: '🧪', title: '方法推荐', en: 'RESEARCH METHOD',
@@ -11,7 +11,7 @@ const INFO: StageInfo = {
 }
 
 export default function Method() {
-  const { projectId, status, rec, running, error, exec, approve } = useStageExec(4)
+  const { projectId, status, rec, running, error, exec } = useStageExec(4)
   const [expanded, setExpanded] = useState<number | null>(null)
 
   const output = (rec?.output ?? null) as {
@@ -19,29 +19,21 @@ export default function Method() {
   } | null
   const methods = output?.methods ?? []
 
-  const handleRun = async () => {
-    await exec({})
-  }
-
   return (
     <StageLayout info={INFO}>
       {!projectId ? <NoProjectHint /> : (
-        <div className="space-y-5">
-          {/* 输入区 */}
-          <div className="card p-5">
-            <h3 className="sec-label !mb-1">推荐研究方法</h3>
-            <p className="text-[11px] text-slate-500 mb-3">自动带入 RQ 与研究假设，按量化/质性/混合匹配方法并评分</p>
-            <div className="flex items-center gap-3">
-              <button onClick={handleRun} disabled={running}
-                className="btn-primary text-xs disabled:opacity-40 disabled:cursor-not-allowed">
-                {running ? '推荐中…' : '推荐方法 →'}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <StatusBadge status={status} />
+            {status !== 'completed' && status !== 'running' && (
+              <button onClick={() => exec({})} disabled={running}
+                className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
+                {running ? '生成中…' : '重新生成本阶段'}
               </button>
-              <StatusBadge status={status} />
-              <StageActions status={status} onRun={handleRun} onApprove={approve} running={running} error={error} />
-            </div>
+            )}
+            {error && <span className="text-[11px] text-flare-400">{error}</span>}
           </div>
 
-          {/* 方法卡片 */}
           {methods.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {methods.map((m, i) => (
@@ -56,22 +48,15 @@ export default function Method() {
                     <ScoreBar label="适配度" value={m.fit_score} color="bg-astro-400" />
                   </div>
                   <p className="text-[11px] text-slate-400">{m.rationale}</p>
-
                   {m.representative_papers?.length > 0 && (
-                    <div>
-                      <p className="text-[10px] text-slate-600 mb-1">代表论文</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {m.representative_papers.map((p, j) => (
-                          <span key={j} className="text-[10px] px-2 py-0.5 rounded bg-astro-500/10 border border-astro-400/25 text-astro-300">{p}</span>
-                        ))}
-                      </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {m.representative_papers.map((p, j) => (
+                        <span key={j} className="text-[10px] px-2 py-0.5 rounded bg-astro-500/10 border border-astro-400/25 text-astro-300">{p}</span>
+                      ))}
                     </div>
                   )}
-
-                  <button
-                    onClick={() => setExpanded(expanded === i ? null : i)}
-                    className="text-[11px] text-astro-400 hover:text-astro-300 transition-colors"
-                  >
+                  <button onClick={() => setExpanded(expanded === i ? null : i)}
+                    className="text-[11px] text-astro-400 hover:text-astro-300 transition-colors">
                     {expanded === i ? '收起操作步骤 ▲' : '展开操作步骤 ▼'}
                   </button>
                   {expanded === i && m.operation_steps?.length > 0 && (
@@ -85,8 +70,6 @@ export default function Method() {
               ))}
             </div>
           )}
-
-          {rec?.status === 'awaiting_review' && <OutputView output={rec.output} />}
         </div>
       )}
     </StageLayout>
