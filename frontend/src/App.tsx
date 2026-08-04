@@ -1,32 +1,42 @@
 /**
- * 云观星传 V2.0 — AI Scientist Research Workspace
- * 深空观测站式大屏布局：左侧导航栏 + 顶部状态栏 + 内容区
+ * 云观星传 V2.0 — AI Scientist 科研工作台
+ *
+ * 前端按"科研流程"命名（非按智能体命名）：智能体隐藏在页面背后，
+ * 用户看到的是科研工作流。核心交互：首页 Research Pipeline 时间轴，
+ * 点击任意节点进入对应科研流程页面。
+ *
+ * 路由结构（9 页面，全部对接 /api/workflow）：
+ *   /              科研首页（驾驶舱 + Pipeline）
+ *   /inspiration   ① 选题孵化     /literature   ② 文献综述
+ *   /design        ③ 研究设计     /method       ④ 方法推荐
+ *   /data-analysis ⑤ 数据分析     /writing      ⑥ 学术写作
+ *   /review        ⑦ 同行评审     /projects     我的项目
  */
 import { useEffect, useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import { StoreProvider, useStore } from './store'
 import StarfieldBackground from './components/StarfieldBackground'
-import TaskCenter from './pages/TaskCenter'
-import Dashboard from './pages/Dashboard'
-import Hypotheses from './pages/Hypotheses'
-import Strategy from './pages/Strategy'
-import KnowledgeGraph from './pages/KnowledgeGraph'
-import VerifyReport from './pages/VerifyReport'
-import Parliament from './pages/Parliament'
-import ResearchOutput from './pages/ResearchOutput'
-import CrossCultural from './pages/CrossCultural'
+import Home from './pages/Home'
+import Projects from './pages/Projects'
+import Inspiration from './pages/Inspiration'
+import Literature from './pages/Literature'
+import Design from './pages/Design'
+import Method from './pages/Method'
+import DataAnalysis from './pages/DataAnalysis'
+import Writing from './pages/Writing'
+import Review from './pages/Review'
 
-/* ── 导航定义 ── */
-const NAV_ITEMS = [
-  { to: '/', icon: '◈', label: '研究工作台', en: 'RESEARCH' },
-  { to: '/parliament', icon: '⬡', label: 'AI 工作流', en: 'WORKFLOW' },
-  { to: '/outputs', icon: '▤', label: '成果中心', en: 'OUTPUT' },
-  { to: '/dashboard', icon: '◉', label: '传播分析', en: 'ANALYSIS' },
-  { to: '/hypotheses', icon: '△', label: '研究假设', en: 'HYPOTHESES' },
-  { to: '/strategy', icon: '▤', label: '传播策略', en: 'STRATEGY' },
-  { to: '/kg', icon: '✦', label: '知识图谱', en: 'KNOWLEDGE' },
-  { to: '/verify', icon: '◇', label: '证据校验', en: 'EVIDENCE' },
-  { to: '/cross-cultural', icon: '⇌', label: '跨文化对照', en: 'CROSS-CULT' },
+/* ── 导航定义：科研流程（9 页面） ── */
+const PIPELINE_NAV = [
+  { to: '/', icon: '🏠', label: '科研首页', en: 'HOME', end: true },
+  { to: '/inspiration', icon: '💡', label: '选题孵化', en: 'TOPIC' },
+  { to: '/literature', icon: '📚', label: '文献综述', en: 'LITERATURE' },
+  { to: '/design', icon: '🎯', label: '研究设计', en: 'DESIGN' },
+  { to: '/method', icon: '🧪', label: '方法推荐', en: 'METHOD' },
+  { to: '/data-analysis', icon: '📊', label: '数据分析', en: 'ANALYSIS' },
+  { to: '/writing', icon: '✍️', label: '学术写作', en: 'WRITING' },
+  { to: '/review', icon: '👨‍⚖️', label: '同行评审', en: 'REVIEW' },
+  { to: '/projects', icon: '📁', label: '我的项目', en: 'PROJECTS' },
 ]
 
 /* ── 实时时钟 ── */
@@ -46,6 +56,7 @@ function LiveClock() {
 
 /* ── 侧边栏 ── */
 function Sidebar() {
+  const { stageMeta } = useStore()
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-[228px] z-40 flex flex-col border-r border-white/[0.06] bg-[#060d1c]/80 backdrop-blur-xl">
       {/* LOGO */}
@@ -65,11 +76,11 @@ function Sidebar() {
 
       <div className="mx-5 divider-glow" />
 
-      {/* 导航 */}
-      <nav className="flex-1 px-3.5 py-4 space-y-1 overflow-y-auto">
-        <p className="sec-label px-3 mb-3">Mission Modules</p>
-        {NAV_ITEMS.map(item => (
-          <NavLink key={item.to} to={item.to} end={item.to === '/'}
+      {/* 科研流程导航 */}
+      <nav className="flex-1 px-3.5 py-4 space-y-0.5 overflow-y-auto">
+        <p className="sec-label px-3 mb-2">Research Pipeline · {stageMeta.length || 7} 阶段</p>
+        {PIPELINE_NAV.map(item => (
+          <NavLink key={item.to} to={item.to} end={item.end ?? false}
             className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
             <span className="w-6 text-center text-base opacity-80">{item.icon}</span>
             <span className="flex-1">{item.label}</span>
@@ -100,12 +111,12 @@ function SystemStatus() {
         </span>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-[10px] text-slate-500">三库知识源</span>
-        <span className="text-[10px] font-mono text-astro-300">3 / 3 ✓</span>
+        <span className="text-[10px] text-slate-500">科研智能体</span>
+        <span className="text-[10px] font-mono text-astro-300">7 Agents</span>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-[10px] text-slate-500">搜索引擎</span>
-        <span className="text-[10px] font-mono text-slate-400">Tavily + Qwen</span>
+        <span className="text-[10px] text-slate-500">知识库</span>
+        <span className="text-[10px] font-mono text-slate-400">四库 + 搜索</span>
       </div>
     </div>
   )
@@ -114,17 +125,22 @@ function SystemStatus() {
 /* ── 顶部状态栏 ── */
 function TopBar() {
   const location = useLocation()
-  const current = NAV_ITEMS.find(n => n.to === location.pathname) || NAV_ITEMS[0]
+  const current = PIPELINE_NAV.find(n => n.to === location.pathname)
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between px-8 h-14 border-b border-white/[0.06] bg-[#040810]/70 backdrop-blur-xl">
       <div className="flex items-center gap-3">
-        <span className="text-astro-400 text-sm">{current.icon}</span>
-        <span className="text-sm font-medium text-slate-200">{current.label}</span>
-        <span className="text-[9px] font-mono tracking-[0.25em] text-slate-600 uppercase">/ {current.en}</span>
+        {current && (
+          <>
+            <span className="text-astro-400 text-sm">{current.icon}</span>
+            <span className="text-sm font-medium text-slate-200">{current.label}</span>
+            <span className="text-[9px] font-mono tracking-[0.25em] text-slate-600 uppercase">/ {current.en}</span>
+          </>
+        )}
+        {!current && <span className="text-sm font-medium text-slate-200">云观星传 AI Scientist</span>}
       </div>
       <div className="flex items-center gap-5">
         <span className="hidden md:inline text-[10px] font-mono text-slate-600 tracking-wider">
-          RESEARCH WORKSPACE v2.0
+          AI SCIENTIST RESEARCH WORKSPACE
         </span>
         <LiveClock />
       </div>
@@ -143,15 +159,19 @@ function AppLayout() {
         <main className="px-8 py-7 max-w-[1600px]">
           <div key={location.pathname} className="page-transition">
             <Routes location={location}>
-              <Route path="/" element={<TaskCenter />} />
-              <Route path="/parliament" element={<Parliament />} />
-              <Route path="/outputs" element={<ResearchOutput />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/hypotheses" element={<Hypotheses />} />
-              <Route path="/strategy" element={<Strategy />} />
-              <Route path="/kg" element={<KnowledgeGraph />} />
-              <Route path="/verify" element={<VerifyReport />} />
-              <Route path="/cross-cultural" element={<CrossCultural />} />
+              {/* 科研工作台 9 页面 */}
+              <Route path="/" element={<Home />} />
+              <Route path="/inspiration" element={<Inspiration />} />
+              <Route path="/literature" element={<Literature />} />
+              <Route path="/design" element={<Design />} />
+              <Route path="/method" element={<Method />} />
+              <Route path="/data-analysis" element={<DataAnalysis />} />
+              <Route path="/writing" element={<Writing />} />
+              <Route path="/review" element={<Review />} />
+              <Route path="/projects" element={<Projects />} />
+
+              {/* 兜底：未知路径回科研首页 */}
+              <Route path="*" element={<Home />} />
             </Routes>
           </div>
         </main>
