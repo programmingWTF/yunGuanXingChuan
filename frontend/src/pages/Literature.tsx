@@ -2,7 +2,7 @@
  * 云观星传 - ② 文献综述（产出物查看页）
  * 展示文献归类、综述正文与 Research Gap
  */
-import { StageLayout, StatusBadge, NoProjectHint, useStageExec, type StageInfo } from '../components/StageUI'
+import { StageLayout, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
 
 const INFO: StageInfo = {
   stage: 2, icon: '📚', title: '文献综述', en: 'LITERATURE REVIEW',
@@ -34,6 +34,9 @@ export default function Literature() {
             )}
             {error && <span className="text-[11px] text-flare-400">{error}</span>}
           </div>
+
+          {/* RAG + KG 双校验报告（产出物后置校验） */}
+          <VerificationPanel verification={(rec?.output as { verification?: VerificationReport } | null)?.verification ?? null} />
 
           {sections.length > 0 && (
             <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">

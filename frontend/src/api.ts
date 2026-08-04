@@ -533,10 +533,32 @@ export async function runAllWorkflow(
   return res.data as { status: string; message: string }
 }
 
-/** 导出项目（md/json） */
-export async function exportWorkflowProject(id: string, fmt: 'md' | 'json' = 'md') {
+/** 导出项目（md/json 文本；word 为二进制文件下载） */
+export async function exportWorkflowProject(id: string, fmt: 'md' | 'json' | 'word' = 'md') {
+  if (fmt === 'word') {
+    // Word 走二进制下载（后端返回 Content-Disposition 附件）
+    const res = await api.get(`/workflow/projects/${id}/export`, { params: { fmt }, responseType: 'blob' })
+    return { format: 'word' as const, blob: res.data as Blob }
+  }
   const res = await api.get(`/workflow/projects/${id}/export`, { params: { fmt } })
   return res.data as { content: string; format: string }
+}
+
+/** AI 润色论文章节（独立接口，不修改已确认产出物） */
+export async function polishWorkflowSection(
+  id: string,
+  section: string,
+  content: string,
+  instruction: string = '',
+) {
+  const res = await api.post(`/workflow/projects/${id}/stages/6/polish`, { section, content, instruction })
+  return res.data as { section: string; content: string }
+}
+
+/** 今日科技热点（统一搜索召回；后端不可用时返回空列表） */
+export async function getHotTopics(limit: number = 6) {
+  const res = await api.get('/workflow/hot-topics', { params: { limit } })
+  return res.data as { topics: { title: string; url: string; source: string; content: string }[] }
 }
 
 export default api

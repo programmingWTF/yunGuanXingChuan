@@ -159,6 +159,8 @@ function AppLayout() {
             <Routes location={location}>
               {/* 科研工作台（默认页）+ 7 个科研流程页 */}
               <Route path="/" element={<Workspace />} />
+              {/* “我的项目”入口（StageUI 引导链接指向此路由）：复用科研工作台 */}
+              <Route path="/projects" element={<Workspace />} />
               <Route path="/inspiration" element={<Inspiration />} />
               <Route path="/literature" element={<Literature />} />
               <Route path="/design" element={<Design />} />

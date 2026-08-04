@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import axios from 'axios'
 import { useStore } from '../store'
-import { runAllWorkflow, getWorkflowProject, exportWorkflowProject } from '../api'
+import { runAllWorkflow, getWorkflowProject, exportWorkflowProject, getHotTopics } from '../api'
 import type { ResearchProject } from '../api'
 import ResearchPipeline from '../components/ResearchPipeline'
 
@@ -111,12 +111,40 @@ export default function Workspace() {
   const [selected, setSelected] = useState<string | null>(null)
   const detail: ResearchProject | null = currentProject?.id === selected ? currentProject : projects.find(p => p.id === selected) ?? projects[0] ?? null
 
-  const handleExport = async (fmt: 'md' | 'json') => {
+  // ── 今日科技热点 + 最近任务（首页驾驶舱模块）──
+  const [hotTopics, setHotTopics] = useState<{ title: string; url: string; source: string }[]>([])
+  useEffect(() => {
+    getHotTopics(5).then(({ topics }) => setHotTopics(topics)).catch(() => { /* 后端不可用忽略 */ })
+  }, [])
+  const pendingTasks = projects
+    .filter(p => p.status !== 'completed')
+    .map(p => ({
+      id: p.id,
+      title: p.title,
+      stageName: STAGE_NAMES[String(p.current_stage)] ?? '—',
+      icon: STAGE_ICONS[String(p.current_stage)] ?? '📁',
+    }))
+    .slice(0, 5)
+
+  const handleExport = async (fmt: 'md' | 'json' | 'word') => {
     if (!detail) return
     setExporting(true)
     try {
-      const { content } = await exportWorkflowProject(detail.id, fmt)
-      downloadText(`${detail.title}.${fmt === 'md' ? 'md' : 'json'}`, content, fmt === 'md' ? 'text/markdown' : 'application/json')
+      if (fmt === 'word') {
+        // Word：二进制文件下载
+        const { blob } = await exportWorkflowProject(detail.id, 'word') as { blob: Blob }
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${detail.title}.docx`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      } else {
+        const { content } = await exportWorkflowProject(detail.id, fmt) as { content: string }
+        downloadText(`${detail.title}.${fmt}`, content, fmt === 'md' ? 'text/markdown' : 'application/json')
+      }
     } catch {
       setError('导出失败，请确认后端已启动')
     } finally {
@@ -131,6 +159,55 @@ export default function Workspace() {
         <div>
           <h2 className="font-display text-2xl font-bold text-white tracking-wide">科研工作台</h2>
           <p className="text-xs text-slate-500 mt-1">输入研究兴趣 → 一键生成全部 7 个科研阶段；历史项目可随时加载查看</p>
+        </div>
+      </div>
+
+      {/* 科研驾驶舱：今日热点 + 最近任务 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="card p-4">
+          <h3 className="sec-label !mb-2">🌐 今日科技热点</h3>
+          {hotTopics.length === 0 ? (
+            <p className="text-[11px] text-slate-600 py-2">暂无热点（后端搜索不可用时显示为空）</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {hotTopics.map((t, i) => {
+                // 外部搜索来源的 url 不可信：仅渲染 http/https，其余按纯文本展示（防 javascript: 等注入）
+                const safeUrl = /^https?:\/\//i.test(t.url || '') ? t.url : null
+                return (
+                  <li key={i}>
+                    {safeUrl ? (
+                      <a href={safeUrl} target="_blank" rel="noreferrer"
+                        className="flex items-start gap-2 text-[12px] text-slate-300 hover:text-astro-300 transition-colors leading-snug">
+                        <span className="text-[9px] font-mono text-slate-600 mt-0.5 shrink-0">#{i + 1}</span>
+                        <span className="flex-1">{t.title}</span>
+                      </a>
+                    ) : (
+                      <span className="flex items-start gap-2 text-[12px] text-slate-400 leading-snug">
+                        <span className="text-[9px] font-mono text-slate-600 mt-0.5 shrink-0">#{i + 1}</span>
+                        <span className="flex-1">{t.title}</span>
+                      </span>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+        <div className="card p-4">
+          <h3 className="sec-label !mb-2">📋 最近任务</h3>
+          {pendingTasks.length === 0 ? (
+            <p className="text-[11px] text-slate-600 py-2">暂无进行中的项目，从左侧创建第一个吧</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {pendingTasks.map(t => (
+                <li key={t.id} className="flex items-center gap-2.5 text-[12px] text-slate-300">
+                  <span className="text-base shrink-0">{t.icon}</span>
+                  <span className="truncate flex-1">{t.title}</span>
+                  <span className="text-[10px] text-astro-300 shrink-0">当前：{t.stageName}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
@@ -220,6 +297,10 @@ export default function Workspace() {
                   <button onClick={() => handleExport('md')} disabled={exporting || generatingAll}
                     className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
                     {exporting ? '导出中…' : '导出 Markdown'}
+                  </button>
+                  <button onClick={() => handleExport('word')} disabled={exporting || generatingAll}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
+                    Word
                   </button>
                   <button onClick={() => handleExport('json')} disabled={exporting || generatingAll}
                     className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">

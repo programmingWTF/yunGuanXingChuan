@@ -1,12 +1,20 @@
 /**
- * 云观星传 - ⑤ 数据分析（产出物查看页）
- * 展示编码类目分布 / 词云 / 研究发现 / 初步解读
+ * 云观星传 - ⑤ 数据分析（产出物查看 + 素材上传分析）
+ * - 无素材：一键模式下由 Agent 做框架性分析（基于检索上下文）
+ * - 有素材：上传报道文本/访谈记录/数据表格 → 基于选定研究方法真实执行分析
+ * 展示：词云（类目权重）/ 类目分布 / 研究发现 / 传播路径证据 / 初步解读
  */
-import { StageLayout, StatusBadge, NoProjectHint, useStageExec, type StageInfo } from '../components/StageUI'
+import { useState } from 'react'
+import { StageLayout, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
 
 const INFO: StageInfo = {
   stage: 5, icon: '📊', title: '数据分析', en: 'DATA ANALYSIS',
-  description: '内容/文本/框架分析结果与初步解读（一键模式下为框架性分析）',
+  description: '上传素材（文本/访谈/表格）执行内容/文本/框架分析，输出编码表与初步解读',
+}
+
+interface Material {
+  name: string
+  content: string
 }
 
 function HBar({ label, value, color = 'bg-astro-400' }: { label: string; value: number; color?: string }) {
@@ -23,15 +31,58 @@ function HBar({ label, value, color = 'bg-astro-400' }: { label: string; value: 
 
 export default function DataAnalysis() {
   const { projectId, status, rec, running, error, exec } = useStageExec(5)
+  const [materials, setMaterials] = useState<Material[]>([])
+  const [pasteText, setPasteText] = useState('')
+  const [reading, setReading] = useState(false)
+  const [actionMsg, setActionMsg] = useState('')
 
   const output = (rec?.output ?? null) as {
     coding_table?: { category: string; count: number }[]
     findings?: { finding: string; evidence: string; confidence: number }[]
     interpretation?: string
+    verification?: unknown
   } | null
   const codingTable = output?.coding_table ?? []
   const findings = output?.findings ?? []
   const maxCount = Math.max(1, ...codingTable.map(c => c.count))
+
+  /** 粘贴素材 → 加入列表 */
+  const addPasted = () => {
+    const t = pasteText.trim()
+    if (!t) return
+    setMaterials(prev => [...prev, { name: `粘贴素材 ${prev.length + 1}`, content: t.slice(0, 20000) }])
+    setPasteText('')
+  }
+
+  /** 文件上传（txt/md/csv/json）→ 读取文本加入列表 */
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (files.length === 0) return
+    setReading(true)
+    try {
+      const added = await Promise.all(
+        files.map(async f => ({ name: f.name, content: (await f.text()).slice(0, 20000) })),
+      )
+      setMaterials(prev => [...prev, ...added])
+    } finally {
+      setReading(false)
+      e.target.value = ''
+    }
+  }
+
+  const removeMaterial = (i: number) => setMaterials(prev => prev.filter((_, idx) => idx !== i))
+
+  /** 基于素材执行分析（产出物落盘为 awaiting_review，可确认后进入下一阶段） */
+  const runWithMaterials = async () => {
+    if (materials.length === 0) return
+    setActionMsg('')
+    try {
+      await exec({ materials })
+      setActionMsg('✅ 分析完成：下方展示基于素材的分析结果，确认后可进入下一阶段')
+    } catch {
+      setActionMsg('❌ 分析失败，请稍后重试（可在产出物区域查看具体错误）')
+    }
+  }
 
   return (
     <StageLayout info={INFO}>
@@ -42,10 +93,59 @@ export default function DataAnalysis() {
             {status !== 'running' && (
               <button onClick={() => exec({})} disabled={running}
                 className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
-                {running ? '分析中…' : '重新生成本阶段'}
+                {running ? '分析中…' : '重新生成本阶段（框架性分析）'}
               </button>
             )}
             {error && <span className="text-[11px] text-flare-400">{error}</span>}
+          </div>
+
+          {/* RAG + KG 双校验报告（产出物后置校验） */}
+          <VerificationPanel verification={(rec?.output as { verification?: VerificationReport } | null)?.verification ?? null} />
+
+          {/* ── 素材上传区 ── */}
+          <div className="card p-4 border-astro-400/25">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="sec-label !mb-0">📎 分析素材</h3>
+              <span className="text-[10px] text-slate-500">已添加 {materials.length} 份 · 上传后基于素材真实执行分析</span>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <textarea
+                value={pasteText}
+                onChange={e => setPasteText(e.target.value)}
+                placeholder="粘贴报道文本 / 访谈记录 / 数据表格内容…"
+                rows={2}
+                className="flex-1 rounded-lg bg-white/[0.04] border border-white/10 px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-astro-400/60 resize-none"
+              />
+              <div className="flex gap-2 shrink-0">
+                <button onClick={addPasted} disabled={!pasteText.trim()}
+                  className="text-xs px-3 py-2 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
+                  添加文本
+                </button>
+                <label className={`text-xs px-3 py-2 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 cursor-pointer transition-all ${reading ? 'opacity-40 pointer-events-none' : ''}`}>
+                  {reading ? '读取中…' : '📄 上传文件'}
+                  <input type="file" accept=".txt,.md,.csv,.json" multiple className="hidden" onChange={onFileChange} />
+                </label>
+              </div>
+            </div>
+            {materials.length > 0 && (
+              <div className="mt-2.5 space-y-1.5">
+                {materials.map((m, i) => (
+                  <div key={i} className="flex items-center gap-2 rounded-lg bg-white/[0.03] border border-white/10 px-3 py-1.5">
+                    <span className="text-[11px] font-medium text-slate-300 shrink-0">📄 {m.name}</span>
+                    <span className="text-[10px] text-slate-600 truncate flex-1">{m.content.slice(0, 80)}…</span>
+                    <button onClick={() => removeMaterial(i)} className="text-[11px] text-slate-500 hover:text-flare-400 transition-colors shrink-0">✕</button>
+                  </div>
+                ))}
+                <button onClick={runWithMaterials} disabled={running}
+                  className="btn-primary w-full mt-2 text-xs disabled:opacity-40 disabled:cursor-not-allowed">
+                  {running ? '⏳ AI 分析中…（约 1-3 分钟，请勿刷新）' : '🚀 基于以上素材开始分析'}
+                </button>
+                {actionMsg && <p className="text-[10px] text-slate-400">{actionMsg}</p>}
+              </div>
+            )}
+            {materials.length === 0 && (
+              <p className="text-[10px] text-slate-600 mt-2">未添加素材时，分析基于检索上下文做框架性分析；上传素材后分析将基于素材真实内容执行。</p>
+            )}
           </div>
 
           {codingTable.length > 0 && (

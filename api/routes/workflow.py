@@ -11,6 +11,7 @@
 - POST   /projects/{id}/stages/{s}/approve  研究者确认，推进到下一阶段
 - GET    /projects/{id}/export?fmt=md|json  汇总导出
 """
+import re
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -133,11 +134,51 @@ def run_all(project_id: str, req: RunAllRequest, background_tasks: BackgroundTas
 
 @router.get("/projects/{project_id}/export")
 def export_project(project_id: str, fmt: str = "md"):
-    """汇总导出（fmt: md/json）"""
-    if fmt not in ("md", "json"):
-        raise HTTPException(status_code=400, detail="fmt 仅支持 md/json")
+    """汇总导出（fmt: md/json/word）"""
+    if fmt not in ("md", "json", "word"):
+        raise HTTPException(status_code=400, detail="fmt 仅支持 md/json/word")
     try:
         result = get_workflow_engine().export_project(project_id, fmt)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+    if fmt == "word":
+        # Word 为二进制文件下载，直接返回文件流
+        from fastapi.responses import Response
+        title = (result.get("project") or {}).get("title", "云观星传科研项目")
+        # 文件名净化：去除引号/换行/控制字符，防 Content-Disposition 头注入
+        filename = re.sub(r'[\r\n"\x00-\x1f]', '', title).strip() or "云观星传科研项目"
+        return Response(
+            content=result["content_bytes"],
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f'attachment; filename="{filename}.docx"'},
+        )
     return result
+
+
+class PolishSectionRequest(BaseModel):
+    """论文章节润色请求（独立于阶段状态机，不落盘）"""
+    section: str = Field(..., max_length=100, description="章节名（如 引言）")
+    content: str = Field(..., max_length=12000, description="章节原文")
+    instruction: str = Field("", max_length=500, description="润色指令（可选，缺省用规范润色要求）")
+
+
+@router.post("/projects/{project_id}/stages/{stage}/polish")
+def polish_stage_section(project_id: str, stage: int, req: PolishSectionRequest):
+    """AI 润色论文章节：返回润色后正文，不修改已确认产出物"""
+    if stage != 6:
+        raise HTTPException(status_code=400, detail="仅论文写作（⑥）阶段支持章节润色")
+    try:
+        polished = get_workflow_engine().polish_section(req.section, req.content, req.instruction)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception(f"章节润色失败（项目 {project_id}）")
+        raise HTTPException(status_code=500, detail="润色失败，请稍后重试")
+    return {"section": req.section, "content": polished}
+
+
+@router.get("/hot-topics")
+def hot_topics(limit: int = 6):
+    """今日科技热点（统一搜索召回；后端不可用时降级为空列表）"""
+    items = get_workflow_engine().get_hot_topics(limit=min(max(limit, 1), 10))
+    return {"topics": items}

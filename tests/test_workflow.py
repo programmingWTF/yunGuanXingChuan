@@ -602,3 +602,141 @@ class TestWorkflowAPI:
         from api.main import app
         with TestClient(app) as client:
             assert client.get("/api/workflow/projects/proj_nope").status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# 增强功能：RAG+KG 双校验 / 章节润色 / Word 导出 / 今日热点
+# ---------------------------------------------------------------------------
+
+
+class TestWorkflowEnhancements:
+    """产出物后置校验 + 润色 + Word 导出 + 热点（全部可降级，不阻塞主流程）"""
+
+    def test_extract_claims_by_stage(self, engine):
+        """各阶段断言抽取规则"""
+        claims = engine._extract_claims(WorkflowStage.DESIGN, {
+            "research_questions": [{"id": "RQ1", "text": "全球南方媒体如何框架化报道嫦娥六号月球样品研究？"}],
+        })
+        assert claims and "嫦娥六号" in claims[0]
+
+    def test_attach_verification_appends(self, engine):
+        """校验结果附加到产出物"""
+        from src.schemas import VerificationResult, VerificationStatus
+        fake_validator = MagicMock()
+        fake_validator.cross_validate_claim.return_value = VerificationResult(
+            claim="x", status=VerificationStatus.VERIFIED, confidence=0.9,
+            rag_evidence="证据文本", kg_match="嫦娥六号", notes="RAG: verified | KG: partial | External: unverified",
+        )
+        with patch("src.verification.cross_validator.CrossValidator", return_value=fake_validator):
+            output = {"topic": "嫦娥六号", "directions": [
+                {"title": "嫦娥六号月球样品研究的国际传播框架", "summary": "分析全球南方媒体对月球样品研究的报道框架", "keywords": ["嫦娥六号", "国际传播"]},
+            ]}
+            engine._attach_verification(WorkflowStage.INSPIRATION, output, "嫦娥六号")
+        v = output["verification"]
+        assert v["summary"]["total"] >= 1
+        assert v["summary"]["verified"] >= 1
+        assert v["items"][0]["claim"]
+
+    def test_attach_verification_degrades(self, engine):
+        """校验器异常时静默降级，不抛错也不写 verification"""
+        with patch("src.verification.cross_validator.CrossValidator", side_effect=RuntimeError("validator down")):
+            output = {"topic": "t", "directions": [{"title": "一个足够长的选题方向标题用于校验断言", "summary": "对应摘要说明"}]}
+            engine._attach_verification(1, output, "t")
+        assert "verification" not in output
+
+    def test_run_stage_attaches_verification(self, store, tmp_path):
+        """run_stage 产出物自动附带双校验结果（mock validator）"""
+        from src.schemas import VerificationResult, VerificationStatus
+        agents = {WorkflowStage.INSPIRATION: make_mock_agent({
+            "topic": "嫦娥六号",
+            "directions": [{"title": "嫦娥六号月球样品国际传播研究", "summary": "分析各国媒体报道框架与叙事差异"}],
+        })}
+        fake_validator = MagicMock()
+        fake_validator.cross_validate_claim.return_value = VerificationResult(
+            claim="x", status=VerificationStatus.PARTIALLY_VERIFIED, confidence=0.7,
+        )
+        with patch("src.search.unified_search.get_unified_search_service", side_effect=RuntimeError()), \
+             patch("src.knowledge.vector_store.get_vector_store", side_effect=RuntimeError()), \
+             patch("src.knowledge.kg_builder.get_knowledge_graph", side_effect=RuntimeError()), \
+             patch("src.verification.cross_validator.CrossValidator", return_value=fake_validator):
+            eng = WorkflowEngine(store=store, agents=agents)
+            p = eng.create_project(interest="嫦娥六号")
+            rec = eng.run_stage(p.id, 1, {"topic": "嫦娥六号"})
+        assert rec.status == StageStatus.AWAITING_REVIEW
+        assert rec.output["verification"]["summary"]["total"] >= 1
+
+    def test_run_stage_survives_verification_failure(self, store, tmp_path):
+        """校验器完全不可用时 run_stage 依旧成功（不阻塞主流程）"""
+        agents = {WorkflowStage.INSPIRATION: make_mock_agent({
+            "topic": "t",
+            "directions": [{"title": "一个足够长的选题方向标题用于校验断言", "summary": "对应摘要说明"}],
+        })}
+        with patch("src.search.unified_search.get_unified_search_service", side_effect=RuntimeError()), \
+             patch("src.knowledge.vector_store.get_vector_store", side_effect=RuntimeError()), \
+             patch("src.knowledge.kg_builder.get_knowledge_graph", side_effect=RuntimeError()), \
+             patch("src.verification.cross_validator.CrossValidator", side_effect=RuntimeError("validator down")):
+            eng = WorkflowEngine(store=store, agents=agents)
+            p = eng.create_project(interest="t")
+            rec = eng.run_stage(p.id, 1, {"topic": "t"})
+        assert rec.status == StageStatus.AWAITING_REVIEW
+        assert rec.output is not None
+
+    def test_polish_section(self, engine):
+        """章节润色：调用 LLM（json_mode=False），返回文本"""
+        fake_llm = MagicMock()
+        fake_llm.chat.return_value = "润色后的引言正文。"
+        with patch("src.llm_client.get_llm_client", return_value=fake_llm):
+            text = engine.polish_section("引言", "这是一段足够长的原文用于测试润色。", "更简洁")
+        assert text == "润色后的引言正文。"
+        assert fake_llm.chat.call_args.kwargs["json_mode"] is False
+
+    def test_export_word(self, engine):
+        """Word 导出返回 docx 二进制（PK 魔数）"""
+        p = engine.create_project(interest="测试项目")
+        engine.store.update_stage(
+            p.id, 1, status=StageStatus.COMPLETED,
+            output={"topic": "t", "directions": [{"title": "方向A", "research_value": 90}]},
+        )
+        result = engine.export_project(p.id, "word")
+        assert result["format"] == "word"
+        assert isinstance(result["content_bytes"], bytes)
+        assert result["content_bytes"].startswith(b"PK")
+
+    def test_get_hot_topics_degrades(self, engine):
+        """热点搜索不可用时降级为空列表"""
+        with patch("src.search.unified_search.get_unified_search_service", side_effect=RuntimeError("no net")):
+            assert engine.get_hot_topics() == []
+
+    def test_extract_claims_guards_malformed_output(self, engine):
+        """LLM 输出字段类型漂移（dict 而非 list）不抛异常，正常降级为空"""
+        malformed = {"directions": {"title": "方向", "summary": "摘要"}, "sections": {"theme": "x"}}
+        for stage in range(1, 8):
+            claims = engine._extract_claims(stage, malformed)
+            assert claims == []
+
+    def test_attach_verification_survives_malformed_output(self, engine):
+        """畸形产出物 + 可用校验器：抽取为空则直接返回，不写 verification 也不抛错"""
+        from src.schemas import VerificationResult, VerificationStatus
+        fake_validator = MagicMock()
+        fake_validator.cross_validate_claim.return_value = VerificationResult(
+            claim="x", status=VerificationStatus.VERIFIED, confidence=0.9,
+        )
+        with patch("src.verification.cross_validator.CrossValidator", return_value=fake_validator):
+            output = {"topic": "t", "directions": {"title": "方向", "summary": "摘要"}}  # 畸形：dict 非 list
+            engine._attach_verification(WorkflowStage.INSPIRATION, output, "t")
+        assert "verification" not in output
+
+    def test_run_stage_malformed_output_not_failed(self, store, tmp_path):
+        """畸形产出物时 run_stage 依旧成功（校验不拖垮主流程）"""
+        agents = {WorkflowStage.INSPIRATION: make_mock_agent({
+            "topic": "t", "directions": {"title": "方向", "summary": "摘要"},  # 畸形
+        })}
+        with patch("src.search.unified_search.get_unified_search_service", side_effect=RuntimeError()), \
+             patch("src.knowledge.vector_store.get_vector_store", side_effect=RuntimeError()), \
+             patch("src.knowledge.kg_builder.get_knowledge_graph", side_effect=RuntimeError()), \
+             patch("src.verification.cross_validator.CrossValidator", side_effect=RuntimeError("validator down")):
+            eng = WorkflowEngine(store=store, agents=agents)
+            p = eng.create_project(interest="t")
+            rec = eng.run_stage(p.id, 1, {"topic": "t"})
+        assert rec.status == StageStatus.AWAITING_REVIEW
+        assert rec.output["directions"] == {"title": "方向", "summary": "摘要"}  # 产出物原样保留

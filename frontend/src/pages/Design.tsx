@@ -2,7 +2,7 @@
  * 云观星传 - ③ 研究设计（产出物查看页）
  * 展示 RQ / H 列表与 AI 质量检验评分
  */
-import { StageLayout, ScoreBar, StatusBadge, NoProjectHint, useStageExec, type StageInfo } from '../components/StageUI'
+import { StageLayout, ScoreBar, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
 
 const INFO: StageInfo = {
   stage: 3, icon: '🎯', title: '研究设计', en: 'RESEARCH DESIGN',
@@ -35,6 +35,9 @@ export default function Design() {
             )}
             {error && <span className="text-[11px] text-flare-400">{error}</span>}
           </div>
+
+          {/* RAG + KG 双校验报告（产出物后置校验） */}
+          <VerificationPanel verification={(rec?.output as { verification?: VerificationReport } | null)?.verification ?? null} />
 
           {questions.length > 0 && (
             <div className="space-y-3">

@@ -1,18 +1,23 @@
 /**
- * 云观星传 - ⑥ 学术写作（产出物查看页）
- * Notion 式分栏展示论文初稿章节
+ * 云观星传 - ⑥ 学术写作（产出物查看 + 章节级 AI 润色）
+ * Notion 式分栏：左目录 / 右正文；每章支持 AI 润色（独立接口，不修改已确认产出物）
  */
 import { useState } from 'react'
-import { StageLayout, StatusBadge, NoProjectHint, useStageExec, type StageInfo } from '../components/StageUI'
+import { StageLayout, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
+import { polishWorkflowSection } from '../api'
 
 const INFO: StageInfo = {
   stage: 6, icon: '✍️', title: '学术写作', en: 'ACADEMIC WRITING',
-  description: '整合前期产出，按标准论文结构生成初稿',
+  description: '整合前期产出，按标准论文结构生成初稿（支持章节润色与风格蒸馏）',
 }
 
 export default function Writing() {
   const { projectId, status, rec, running, error, exec } = useStageExec(6)
   const [activeSection, setActiveSection] = useState(0)
+  const [instruction, setInstruction] = useState('')
+  const [polishing, setPolishing] = useState(false)
+  const [polishResult, setPolishResult] = useState<{ section: string; content: string } | null>(null)
+  const [polishError, setPolishError] = useState('')
 
   const output = (rec?.output ?? null) as {
     title?: string
@@ -21,6 +26,21 @@ export default function Writing() {
   } | null
   const sections = output?.sections ?? []
   const active = sections[activeSection]
+
+  /** AI 润色当前章节（返回润色后正文，不覆盖已确认产出物） */
+  const handlePolish = async () => {
+    if (!projectId || !active) return
+    setPolishing(true)
+    setPolishError('')
+    try {
+      const result = await polishWorkflowSection(projectId, active.section, active.content, instruction)
+      setPolishResult(result)
+    } catch {
+      setPolishError('润色失败，请确认后端已启动后重试')
+    } finally {
+      setPolishing(false)
+    }
+  }
 
   return (
     <StageLayout info={INFO}>
@@ -37,13 +57,16 @@ export default function Writing() {
             {error && <span className="text-[11px] text-flare-400">{error}</span>}
           </div>
 
+          {/* RAG + KG 双校验报告（产出物后置校验） */}
+          <VerificationPanel verification={(rec?.output as { verification?: VerificationReport } | null)?.verification ?? null} />
+
           {sections.length > 0 && (
             <div className="card p-5">
               <h3 className="font-display text-lg font-bold text-white mb-4 text-center">{output?.title}</h3>
               <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] gap-4">
                 <nav className="space-y-1 self-start sticky top-20">
                   {sections.map((s, i) => (
-                    <button key={i} onClick={() => setActiveSection(i)}
+                    <button key={i} onClick={() => { setActiveSection(i); setPolishResult(null); setPolishError('') }}
                       className={`w-full text-left text-[12px] px-3 py-2 rounded-lg transition-colors ${
                         activeSection === i ? 'bg-astro-500/15 text-astro-300 border border-astro-400/30' : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
                       }`}>
@@ -52,9 +75,41 @@ export default function Writing() {
                   ))}
                 </nav>
                 {active && (
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-slate-200">{active.section}</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <h4 className="text-sm font-medium text-slate-200">{active.section}</h4>
+                      {/* AI 润色操作区 */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <input
+                          value={instruction}
+                          onChange={e => setInstruction(e.target.value)}
+                          placeholder="润色要求（可选），如：更简洁、突出创新点"
+                          className="w-52 rounded-lg bg-white/[0.04] border border-white/10 px-2.5 py-1.5 text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-astro-400/60"
+                        />
+                        <button onClick={handlePolish} disabled={polishing}
+                          className="text-[11px] px-3 py-1.5 rounded-lg border border-astro-400/50 bg-astro-500/10 text-astro-300 hover:bg-astro-500/20 disabled:opacity-40 transition-all">
+                          {polishing ? '⏳ 润色中…' : '✨ AI 润色'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 原文 */}
                     <p className="text-[13px] text-slate-300 leading-relaxed whitespace-pre-wrap">{active.content}</p>
+
+                    {/* 润色结果（不落盘，可对比/复制） */}
+                    {polishResult && (
+                      <div className="rounded-xl border border-aurora-400/40 bg-aurora-500/[0.05] p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[11px] font-medium text-aurora-300">✨ 润色结果（未写入产出物，可复制使用）</p>
+                          <button onClick={() => navigator.clipboard?.writeText(polishResult.content)}
+                            className="text-[10px] px-2 py-1 rounded border border-white/15 text-slate-300 hover:border-aurora-400/60 hover:text-aurora-300 transition-all">
+                            复制
+                          </button>
+                        </div>
+                        <p className="text-[13px] text-slate-200 leading-relaxed whitespace-pre-wrap">{polishResult.content}</p>
+                      </div>
+                    )}
+                    {polishError && <p className="text-[11px] text-flare-400">{polishError}</p>}
                   </div>
                 )}
               </div>
