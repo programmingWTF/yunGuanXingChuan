@@ -443,4 +443,91 @@ export function getExportUrl(taskId: string, format: string) {
   return `/api/outputs/export/${taskId}?format=${format}`
 }
 
+// ============ 科研工作流接口（7 智能体 · AI Scientist 科研工作台）============
+
+export interface WorkflowStageMeta {
+  stage: number
+  key: string
+  name: string
+  icon: string
+  description: string
+  library: string[]
+}
+
+export type WorkflowStageStatus = 'pending' | 'running' | 'awaiting_review' | 'completed' | 'failed'
+
+export interface WorkflowStageRecord {
+  stage: number
+  status: WorkflowStageStatus
+  output: Record<string, unknown> | null
+  error: string | null
+  run_count: number
+  updated_at: string
+}
+
+export interface ResearchProject {
+  id: string
+  title: string
+  interest: string
+  current_stage: number
+  status: 'active' | 'completed'
+  created_at: string
+  updated_at: string
+  stages: Record<string, WorkflowStageRecord>
+  history: Record<string, unknown>[]
+}
+
+/** 获取科研流程阶段元数据（Research Pipeline 渲染） */
+export async function getWorkflowStages() {
+  const res = await api.get('/workflow/stages')
+  return res.data as { stages: WorkflowStageMeta[] }
+}
+
+/** 创建科研项目 */
+export async function createWorkflowProject(title: string, interest: string) {
+  const res = await api.post('/workflow/projects', { title, interest })
+  return res.data as { project: ResearchProject }
+}
+
+/** 项目列表 */
+export async function listWorkflowProjects() {
+  const res = await api.get('/workflow/projects')
+  return res.data as { projects: ResearchProject[] }
+}
+
+/** 项目详情 */
+export async function getWorkflowProject(id: string) {
+  const res = await api.get(`/workflow/projects/${id}`)
+  return res.data as { project: ResearchProject }
+}
+
+/** 执行阶段智能体（同步，产出物落盘为 awaiting_review） */
+export async function runWorkflowStage(id: string, stage: number, inputs: Record<string, unknown> = {}) {
+  const res = await api.post(`/workflow/projects/${id}/stages/${stage}/run`, { inputs })
+  return res.data as {
+    stage: number
+    status: WorkflowStageStatus
+    output: Record<string, unknown> | null
+    error: string | null
+  }
+}
+
+/** 获取阶段产出物 */
+export async function getWorkflowStageResult(id: string, stage: number) {
+  const res = await api.get(`/workflow/projects/${id}/stages/${stage}/result`)
+  return res.data as { stage: number; output: Record<string, unknown> }
+}
+
+/** 研究者确认阶段产出物，推进到下一阶段 */
+export async function approveWorkflowStage(id: string, stage: number) {
+  const res = await api.post(`/workflow/projects/${id}/stages/${stage}/approve`)
+  return res.data as { project: ResearchProject }
+}
+
+/** 导出项目（md/json） */
+export async function exportWorkflowProject(id: string, fmt: 'md' | 'json' = 'md') {
+  const res = await api.get(`/workflow/projects/${id}/export`, { params: { fmt } })
+  return res.data as { content: string; format: string }
+}
+
 export default api
