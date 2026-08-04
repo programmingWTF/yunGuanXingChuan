@@ -276,6 +276,23 @@ class TestWorkflowEngine:
         assert rec.run_count == 2
         assert rec.output == {"topic": "t", "directions": []}
 
+    def test_rerun_failure_after_success_clears_old_output(self, engine):
+        """回归：已有成功产出后重跑失败，旧产出物必须被清空（不得残留展示）"""
+        p = engine.create_project(interest="朱雀2号火箭")
+        agent = engine._get_agent(1)
+        agent.run.side_effect = [{"topic": "t", "directions": [{"title": "旧产出"}]}, RuntimeError("LLM 不可用")]
+        # 第一次成功
+        rec = engine.run_stage(p.id, 1, {})
+        assert rec.status == StageStatus.AWAITING_REVIEW
+        assert rec.output["directions"][0]["title"] == "旧产出"
+        # 重跑失败 → 旧产出必须清空
+        with pytest.raises(RuntimeError):
+            engine.run_stage(p.id, 1, {})
+        failed = engine.get_project(p.id)
+        assert failed.stages["1"].status == StageStatus.FAILED
+        assert failed.stages["1"].output is None, "重跑失败后不得残留旧产出物"
+        assert failed.stages["1"].run_count == 2
+
     def test_previous_outputs_injected(self, engine):
         """跨阶段数据流：执行阶段 2 时自动注入阶段 1 的产出物"""
         p = engine.create_project(interest="朱雀2号火箭")

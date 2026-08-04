@@ -115,7 +115,7 @@ class WorkflowEngine:
         self.store.update_stage(
             project_id, stage,
             status=StageStatus.RUNNING,
-            output=None,
+            clear_output=True,
             increment_run_count=True,
             append_history={"stage": stage, "action": "run_start", "summary": f"开始执行{STAGE_META[WorkflowStage(stage)]['name']}"},
         )
@@ -130,13 +130,15 @@ class WorkflowEngine:
 
         try:
             output = agent.run(full_inputs)
-            self.store.update_stage(
+            updated = self.store.update_stage(
                 project_id, stage,
                 status=StageStatus.AWAITING_REVIEW,
                 output=output,
                 append_history={"stage": stage, "action": "run_done", "summary": f"{STAGE_META[WorkflowStage(stage)]['name']}产出完成"},
             )
-            return self.store.get(project_id).stages[str(stage)]
+            if updated is None:
+                raise RuntimeError(f"项目已不存在: {project_id}")
+            return updated.stages[str(stage)]
         except Exception as e:
             logger.error(f"[WorkflowEngine] 阶段 {stage} 执行失败: {e}")
             self.store.update_stage(

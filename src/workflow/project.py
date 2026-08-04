@@ -55,7 +55,7 @@ class ProjectStore:
 
     def _write(self, project: ResearchProject) -> None:
         with self._lock:
-            project.updated_at = datetime.now().isoformat(timespec="seconds")
+            project.updated_at = datetime.now().isoformat(timespec="milliseconds")
             path = self._path(project.id)
             # 原子写盘：先写临时文件再 os.replace，避免崩溃留下损坏 JSON
             tmp_path = path.with_suffix(".json.tmp")
@@ -68,7 +68,7 @@ class ProjectStore:
     # ------------------------------------------------------------------
     def create(self, title: str = "", interest: str = "") -> ResearchProject:
         """创建研究项目（初始化 7 个阶段记录）"""
-        now = datetime.now().isoformat(timespec="seconds")
+        now = datetime.now().isoformat(timespec="milliseconds")
         project = ResearchProject(
             id=f"proj_{uuid4().hex[:8]}",
             title=title or interest or "未命名研究项目",
@@ -112,6 +112,7 @@ class ProjectStore:
                      status: Optional[StageStatus] = None,
                      output: Optional[Dict] = None,
                      error: Optional[str] = None,
+                     clear_output: bool = False,
                      increment_run_count: bool = False,
                      append_history: Optional[Dict] = None) -> Optional[ResearchProject]:
         """更新某阶段状态并写盘（read-modify-write 整体持锁，返回更新后的项目）"""
@@ -125,9 +126,11 @@ class ProjectStore:
                 record = StageRecord(stage=stage)
                 project.stages[key] = record
 
-            now = datetime.now().isoformat(timespec="seconds")
+            now = datetime.now().isoformat(timespec="milliseconds")
             if status is not None:
                 record.status = status
+            if clear_output:
+                record.output = None
             if output is not None:
                 record.output = output
             if error is not None:
