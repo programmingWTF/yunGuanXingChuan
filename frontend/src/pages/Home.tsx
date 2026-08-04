@@ -11,6 +11,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { useStore } from '../store'
+import { runAllWorkflow } from '../api'
 import ResearchPipeline from '../components/ResearchPipeline'
 
 /** 今日热点（示例数据，后续可接统一搜索后端实时热点） */
@@ -46,8 +47,11 @@ export default function Home() {
     setError('')
     try {
       const project = await createProject('', interest.trim())
-      // 直接进入选题孵化页（阶段 1），预填兴趣，让用户点击"开始讨论"
-      navigate(`/inspiration?project=${project.id}&interest=${encodeURIComponent(interest.trim())}`)
+      // 一键全流程：创建后立即后台串行生成全部 7 阶段
+      try {
+        await runAllWorkflow(project.id)
+      } catch { /* run-all 失败不阻断跳转，可在项目页手动重试 */ }
+      navigate(`/projects?focus=${project.id}`)
     } catch (err: unknown) {
       const status = axios.isAxiosError(err) ? err.response?.status : null
       setError(status === 404

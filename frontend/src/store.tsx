@@ -57,6 +57,10 @@ interface StoreContextValue {
   projects: ResearchProject[]
   /** 当前查看的科研项目 */
   currentProject: ResearchProject | null
+  /** 更新当前项目（一键全流程轮询用） */
+  setCurrentProject: (p: ResearchProject | null) => void
+  /** 更新项目列表 */
+  setProjects: (fn: (prev: ResearchProject[]) => ResearchProject[]) => void
   /** 刷新项目列表 */
   refreshProjects: () => Promise<void>
   /** 加载单个项目详情 */
@@ -318,6 +322,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     <StoreContext.Provider value={{
       state, runAnalysis, reset, loadHistoryResult, backendOnline, setBackendOnline,
       stageMeta, projects, currentProject,
+      setCurrentProject, setProjects,
       refreshProjects, loadProject, createProject, runStage, approveStage,
     }}>
       {children}

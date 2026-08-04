@@ -13,11 +13,11 @@
 """
 import sys
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 
 from src.workflow import get_workflow_engine
@@ -32,6 +32,13 @@ class CreateProjectRequest(BaseModel):
 
 class RunStageRequest(BaseModel):
     inputs: Dict = Field(default_factory=dict, max_length=100, description="阶段输入（如 direction/materials/style_sample）")
+
+
+class RunAllRequest(BaseModel):
+    """一键全流程请求（全部可选，缺省用项目兴趣/规范风格/框架性分析）"""
+    materials: Optional[list] = Field(default=None, description="数据分析素材列表（[{name, content}]）")
+    style_sample: Optional[str] = Field(default=None, max_length=5000, description="论文写作风格蒸馏样本")
+    topic: Optional[str] = Field(default=None, max_length=200, description="研究主题覆盖（默认项目兴趣）")
 
 
 @router.get("/stages")
@@ -100,6 +107,28 @@ def approve_stage(project_id: str, stage: int):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"project": project.model_dump()}
+
+
+@router.post("/projects/{project_id}/run-all")
+def run_all(project_id: str, req: RunAllRequest, background_tasks: BackgroundTasks):
+    """
+    一键全流程：后台串行执行全部 7 个阶段（选题→文献→设计→方法→数据→写作→评审），
+    每阶段自动完成。进度通过 GET /projects/{id} 轮询各阶段状态（running/completed/failed）。
+    """
+    engine = get_workflow_engine()
+    project = engine.get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="项目不存在")
+    if project.status == "completed" and all(
+        (project.stages.get(str(s)) or {}).status.value == "completed" for s in range(1, 8)
+    ):
+        raise HTTPException(status_code=400, detail="该项目已全部生成完成，可到各阶段页重新运行")
+
+    background_tasks.add_task(
+        engine.run_all, project_id,
+        materials=req.materials, style_sample=req.style_sample, topic=req.topic,
+    )
+    return {"status": "running", "message": "全流程生成已启动，请通过 GET /projects/{id} 查看各阶段进度"}
 
 
 @router.get("/projects/{project_id}/export")

@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.schemas import ResearchProject, StageRecord, StageStatus
 from src.workflow.stages import WorkflowStage, STAGE_META, get_stage_meta_list
-from src.workflow.project import ProjectStore, get_project_store
+from src.workflow.project import ProjectStore, get_project_store, TOTAL_STAGES
 
 logger = logging.getLogger(__name__)
 
@@ -180,6 +180,87 @@ class WorkflowEngine:
             return None
         record = project.stages.get(str(stage))
         return record.output if record else None
+
+    # ------------------------------------------------------------------
+    # 一键全流程（run-all）：串行执行 7 阶段，自动完成（不要求逐阶段确认）
+    # ------------------------------------------------------------------
+    def run_all(self, project_id: str, materials: Optional[List[Dict]] = None,
+                style_sample: Optional[str] = None,
+                topic: Optional[str] = None) -> Dict[str, Any]:
+        """
+        一键跑通全部 7 个科研阶段（选题→文献→设计→方法→数据→写作→评审）。
+
+        - 每阶段自动注入前序产出（_inject_previous_outputs）与知识库/搜索上下文
+        - 数据分析（⑤）无素材时由 Agent 做框架性分析；写作（⑥）无风格样本用规范风格
+        - 单阶段失败即停止（后续阶段依赖前序产出）
+        - 所有阶段直接置 COMPLETED，项目 status=completed
+        """
+        project = self.store.get(project_id)
+        if project is None:
+            raise ValueError(f"项目不存在: {project_id}")
+
+        topic = topic or project.interest or project.title
+        results: Dict[str, Any] = {}
+
+        for stage in range(1, TOTAL_STAGES + 1):
+            meta = STAGE_META.get(WorkflowStage(stage), {})
+            stage_name = meta.get("name", f"阶段{stage}")
+
+            # 标记运行中（清空旧产出 + 递增次数）
+            project = self.store.update_stage(
+                project_id, stage,
+                status=StageStatus.RUNNING,
+                clear_output=True,
+                increment_run_count=True,
+                append_history={"stage": stage, "action": "run_all_start", "summary": f"全流程·开始{stage_name}"},
+            )
+            if project is None:
+                raise ValueError(f"项目不存在: {project_id}")
+
+            # 构造输入：topic + 可选素材/风格样本
+            inputs: Dict[str, Any] = {"topic": topic, "project_title": project.title}
+            if stage == WorkflowStage.DATA_ANALYSIS and materials:
+                inputs["materials"] = materials
+            if stage == WorkflowStage.WRITING and style_sample:
+                inputs["style_sample"] = style_sample
+
+            # 注入上下文 + 前序产出
+            context = self._build_stage_context(stage, inputs)
+            inputs.update(context)
+            self._inject_previous_outputs(project, stage, inputs)
+
+            agent = self._get_agent(stage)
+            try:
+                output = self._run_with_timeout(
+                    lambda a=agent, i=dict(inputs): a.run(i),
+                    240.0, None, f"全流程·{stage_name}", swallow_exc=False,
+                )
+                if output is None:
+                    raise TimeoutError(f"{stage_name}生成超时（>240 秒）")
+                if isinstance(output, dict):
+                    if not output.get("topic"):
+                        output["topic"] = topic
+                    output.setdefault("project_title", project.title)
+                project = self.store.update_stage(
+                    project_id, stage,
+                    status=StageStatus.COMPLETED,
+                    output=output,
+                    append_history={"stage": stage, "action": "run_all_done", "summary": f"全流程·{stage_name}完成"},
+                )
+                results[stage] = {"status": "completed", "name": stage_name}
+            except Exception as e:
+                logger.error(f"[WorkflowEngine] 全流程阶段 {stage} 失败: {e}")
+                self.store.update_stage(
+                    project_id, stage,
+                    status=StageStatus.FAILED,
+                    error=str(e),
+                    append_history={"stage": stage, "action": "run_all_failed", "summary": f"全流程·{stage_name}失败: {str(e)[:100]}"},
+                )
+                results[stage] = {"status": "failed", "name": stage_name, "error": str(e)}
+                break  # 前序失败则停止后续
+
+        final = self.store.get(project_id)
+        return {"project": final.model_dump() if final else None, "stages": results}
 
     # ------------------------------------------------------------------
     # 知识库/搜索上下文注入（全部降级 + 超时，不影响主流程）

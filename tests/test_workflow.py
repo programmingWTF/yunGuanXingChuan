@@ -314,6 +314,48 @@ class TestWorkflowEngine:
         engine.run_stage(p.id, 1, {})  # 重跑
         assert engine.get_project(p.id).stages["1"].run_count == 2
 
+    def test_run_all_completes_all_stages(self, engine):
+        """一键全流程：7 阶段全部直接完成，项目 completed"""
+        p = engine.create_project(interest="朱雀2号火箭")
+        result = engine.run_all(p.id)
+        final = engine.get_project(p.id)
+        assert final.status == "completed"
+        for stage in range(1, 8):
+            rec = final.stages[str(stage)]
+            assert rec.status == StageStatus.COMPLETED, f"阶段 {stage} 未完成: {rec.status}"
+            assert rec.output is not None
+        assert len(result["stages"]) == 7
+        assert all(s["status"] == "completed" for s in result["stages"].values())
+
+    def test_run_all_injects_previous_outputs(self, engine):
+        """全流程阶段 2 自动收到阶段 1 产出"""
+        p = engine.create_project(interest="朱雀2号火箭")
+        engine.run_all(p.id)
+        agent2 = engine._get_agent(2)
+        called = agent2.run.call_args[0][0]
+        assert called["inspiration_result"]["directions"][0]["title"] == "方向A"
+
+    def test_run_all_passes_materials_to_stage5(self, engine):
+        """全流程将素材传给数据分析阶段"""
+        p = engine.create_project(interest="朱雀2号火箭")
+        materials = [{"name": "报道1", "content": "text"}]
+        engine.run_all(p.id, materials=materials)
+        agent5 = engine._get_agent(5)
+        called = agent5.run.call_args[0][0]
+        assert called["materials"] == materials
+
+    def test_run_all_stops_on_failure(self, engine):
+        """全流程中途失败即停止，后续阶段保持 pending"""
+        p = engine.create_project(interest="朱雀2号火箭")
+        engine._get_agent(3).run.side_effect = RuntimeError("LLM 不可用")
+        result = engine.run_all(p.id)
+        final = engine.get_project(p.id)
+        assert final.stages["1"].status == StageStatus.COMPLETED
+        assert final.stages["2"].status == StageStatus.COMPLETED
+        assert final.stages["3"].status == StageStatus.FAILED
+        assert final.stages["4"].status == StageStatus.PENDING
+        assert result["stages"][3]["status"] == "failed"
+
     def test_export_markdown_contains_stages(self, engine):
         p = engine.create_project(interest="朱雀2号火箭")
         engine.run_stage(p.id, 1, {})

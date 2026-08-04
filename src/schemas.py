@@ -2,7 +2,7 @@
 云观星传 - 核心数据 Schema（Pydantic）
 所有 Agent 间通信必须使用这些结构化 Schema
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Dict, List, Optional
 from enum import Enum
 
@@ -470,6 +470,16 @@ class LiteratureReference(BaseModel):
     title: str
     source: str = ""                          # 期刊/机构
     year: str = ""
+
+    @field_validator("title", "source", "year", mode="before")
+    @classmethod
+    def _coerce_str(cls, v):
+        """LLM 可能输出 int/float（如 year=2026），统一转字符串避免 schema 校验失败"""
+        if v is None:
+            return ""
+        if isinstance(v, (int, float)):
+            return str(v)
+        return v
 
 
 class LiteratureReview(BaseModel):

@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import threading
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -55,7 +56,7 @@ class ProjectStore:
 
     def _write(self, project: ResearchProject) -> None:
         with self._lock:
-            project.updated_at = datetime.now().isoformat(timespec="milliseconds")
+            project.updated_at = datetime.now().isoformat(timespec="microseconds")
             path = self._path(project.id)
             # 原子写盘：先写临时文件再 os.replace，避免崩溃留下损坏 JSON
             tmp_path = path.with_suffix(".json.tmp")
@@ -67,10 +68,11 @@ class ProjectStore:
     # CRUD
     # ------------------------------------------------------------------
     def create(self, title: str = "", interest: str = "") -> ResearchProject:
-        """创建研究项目（初始化 7 个阶段记录）"""
-        now = datetime.now().isoformat(timespec="milliseconds")
+        """创建研究项目（初始化 7 个阶段记录；id 用微秒时间戳保证单调递增）"""
+        now = datetime.now().isoformat(timespec="microseconds")
         project = ResearchProject(
-            id=f"proj_{uuid4().hex[:8]}",
+            # 微秒时间戳 id：单调递增（Windows 时钟分辨率 ~15ms，uuid 不保证可排序）
+            id=f"proj_{int(time.time() * 1_000_000)}",
             title=title or interest or "未命名研究项目",
             interest=interest,
             created_at=now,
@@ -86,7 +88,7 @@ class ProjectStore:
         return self._read(project_id)
 
     def list(self) -> List[ResearchProject]:
-        """按创建时间倒序返回全部项目"""
+        """按创建顺序倒序返回全部项目（id 微秒时间戳单调递增，天然可排序）"""
         projects = []
         for path in sorted(self.base_dir.glob("proj_*.json"), reverse=True):
             try:
@@ -94,8 +96,8 @@ class ProjectStore:
                     projects.append(ResearchProject.model_validate(json.load(f)))
             except Exception as e:
                 logger.warning(f"[ProjectStore] 跳过损坏项目文件 {path.name}: {e}")
-        # 按创建时间倒序（与 glob 文件名顺序解耦）
-        projects.sort(key=lambda p: p.created_at, reverse=True)
+        # 按 id（微秒时间戳）倒序：后创建在前；兼容旧 uuid id 项目（排最前/最后无妨）
+        projects.sort(key=lambda p: p.id, reverse=True)
         return projects
 
     def delete(self, project_id: str) -> bool:
@@ -126,7 +128,7 @@ class ProjectStore:
                 record = StageRecord(stage=stage)
                 project.stages[key] = record
 
-            now = datetime.now().isoformat(timespec="milliseconds")
+            now = datetime.now().isoformat(timespec="microseconds")
             if status is not None:
                 record.status = status
             if clear_output:

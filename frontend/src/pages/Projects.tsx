@@ -4,11 +4,11 @@
  * 项目管理页：新建项目、阶段进度一览、各阶段产出物查看、
  * 一键导出（Markdown / JSON）。
  */
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import { useStore } from '../store'
-import { exportWorkflowProject } from '../api'
+import { exportWorkflowProject, runAllWorkflow, getWorkflowProject } from '../api'
 import type { ResearchProject } from '../api'
 
 const STAGE_NAMES: Record<string, string> = {
@@ -54,7 +54,7 @@ function OutputSummary({ output }: { output: Record<string, unknown> | null }) {
 }
 
 export default function Projects() {
-  const { projects, currentProject, refreshProjects, loadProject, createProject } = useStore()
+  const { projects, currentProject, refreshProjects, loadProject, createProject, setCurrentProject, setProjects } = useStore()
   const [searchParams] = useSearchParams()
   const focusId = searchParams.get('focus')
 
@@ -64,10 +64,17 @@ export default function Projects() {
   const [error, setError] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(focusId)
   const [exporting, setExporting] = useState(false)
+  const [generatingAll, setGeneratingAll] = useState(false)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     refreshProjects()
   }, [refreshProjects])
+
+  // 组件卸载时停止轮询
+  useEffect(() => () => {
+    if (pollRef.current) clearInterval(pollRef.current)
+  }, [])
 
   // 聚焦 URL 指定项目
   useEffect(() => {
@@ -102,6 +109,34 @@ export default function Projects() {
     try {
       await loadProject(id)
     } catch { /* ignore */ }
+  }
+
+  /** 一键生成全部：触发后台 run-all 并轮询各阶段进度 */
+  const handleRunAll = async () => {
+    if (!selectedId) return
+    setGeneratingAll(true)
+    setError('')
+    try {
+      await runAllWorkflow(selectedId)
+    } catch (err: unknown) {
+      const status = axios.isAxiosError(err) ? err.response?.status : null
+      setError(status === 400 ? '该项目已全部生成完成' : '启动全流程失败，请确认后端已启动')
+      setGeneratingAll(false)
+      return
+    }
+    // 轮询项目详情（每 2.5 秒），阶段状态实时点亮
+    pollRef.current = setInterval(async () => {
+      try {
+        const { project } = await getWorkflowProject(selectedId)
+        setCurrentProject(project)
+        setProjects(prev => prev.map(p => (p.id === selectedId ? project : p)))
+        const allDone = project.status === 'completed'
+        if (allDone) {
+          if (pollRef.current) clearInterval(pollRef.current)
+          setGeneratingAll(false)
+        }
+      } catch { /* 网络抖动忽略 */ }
+    }, 2500)
   }
 
   const handleExport = async (fmt: 'md' | 'json') => {
@@ -211,12 +246,22 @@ export default function Projects() {
                   <p className="text-[11px] text-slate-500 mt-1">兴趣：{detail.interest}</p>
                   <p className="text-[10px] text-slate-600 mt-0.5">创建于 {detail.created_at?.slice(0, 19).replace('T', ' ')}</p>
                 </div>
-                <div className="flex gap-2 shrink-0">
-                  <button onClick={() => handleExport('md')} disabled={exporting}
+                <div className="flex gap-2 shrink-0 flex-wrap">
+                  {/* 一键生成全部 */}
+                  {detail.status !== 'completed' && (
+                    <button
+                      onClick={handleRunAll}
+                      disabled={generatingAll}
+                      className="text-xs px-3 py-1.5 rounded-lg border border-astro-400/50 bg-astro-500/10 text-astro-300 hover:bg-astro-500/20 disabled:opacity-40 transition-all"
+                    >
+                      {generatingAll ? '⏳ 全流程生成中…' : '🚀 一键生成全部'}
+                    </button>
+                  )}
+                  <button onClick={() => handleExport('md')} disabled={exporting || generatingAll}
                     className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
                     {exporting ? '导出中…' : '导出 Markdown'}
                   </button>
-                  <button onClick={() => handleExport('json')} disabled={exporting}
+                  <button onClick={() => handleExport('json')} disabled={exporting || generatingAll}
                     className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
                     JSON
                   </button>

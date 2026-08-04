@@ -524,6 +524,15 @@ export async function approveWorkflowStage(id: string, stage: number) {
   return res.data as { project: ResearchProject }
 }
 
+/** 一键全流程：后台串行执行全部 7 阶段（进度通过 getWorkflowProject 轮询各阶段状态） */
+export async function runAllWorkflow(
+  id: string,
+  opts: { materials?: { name: string; content: string }[]; style_sample?: string; topic?: string } = {},
+) {
+  const res = await api.post(`/workflow/projects/${id}/run-all`, opts)
+  return res.data as { status: string; message: string }
+}
+
 /** 导出项目（md/json） */
 export async function exportWorkflowProject(id: string, fmt: 'md' | 'json' = 'md') {
   const res = await api.get(`/workflow/projects/${id}/export`, { params: { fmt } })
