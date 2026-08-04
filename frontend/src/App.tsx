@@ -1,11 +1,26 @@
 /**
- * 云观星传 V2.0 — AI Scientist Research Workspace
- * 深空观测站式大屏布局：左侧导航栏 + 顶部状态栏 + 内容区
+ * 云观星传 V2.0 — AI Scientist 科研工作台
+ *
+ * 前端按"科研流程"命名（非按智能体命名）：智能体隐藏在页面背后，
+ * 用户看到的是科研工作流。核心交互：首页 Research Pipeline 时间轴，
+ * 点击任意节点进入对应科研流程页面。
+ *
+ * 路由结构（9 页面）：
+ *   /              科研首页（驾驶舱 + Pipeline）
+ *   /inspiration   ① 选题孵化     /literature   ② 文献综述
+ *   /design        ③ 研究设计     /method       ④ 方法推荐
+ *   /data-analysis ⑤ 数据分析     /writing      ⑥ 学术写作
+ *   /review        ⑦ 同行评审     /projects     我的项目
+ * 旧功能页面保留在 Legacy 分组（路由不变，不破坏）。
  */
 import { useEffect, useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import { StoreProvider, useStore } from './store'
 import StarfieldBackground from './components/StarfieldBackground'
+import Home from './pages/Home'
+import Projects from './pages/Projects'
+import StagePlaceholder from './pages/StagePlaceholder'
+// Legacy 页面（保留，不破坏旧功能）
 import TaskCenter from './pages/TaskCenter'
 import Dashboard from './pages/Dashboard'
 import Hypotheses from './pages/Hypotheses'
@@ -16,9 +31,22 @@ import Parliament from './pages/Parliament'
 import ResearchOutput from './pages/ResearchOutput'
 import CrossCultural from './pages/CrossCultural'
 
-/* ── 导航定义 ── */
-const NAV_ITEMS = [
-  { to: '/', icon: '◈', label: '研究工作台', en: 'RESEARCH' },
+/* ── 导航定义：科研流程分组 ── */
+const PIPELINE_NAV = [
+  { to: '/', icon: '🏠', label: '科研首页', en: 'HOME', end: true },
+  { to: '/inspiration', icon: '💡', label: '选题孵化', en: 'TOPIC' },
+  { to: '/literature', icon: '📚', label: '文献综述', en: 'LITERATURE' },
+  { to: '/design', icon: '🎯', label: '研究设计', en: 'DESIGN' },
+  { to: '/method', icon: '🧪', label: '方法推荐', en: 'METHOD' },
+  { to: '/data-analysis', icon: '📊', label: '数据分析', en: 'ANALYSIS' },
+  { to: '/writing', icon: '✍️', label: '学术写作', en: 'WRITING' },
+  { to: '/review', icon: '👨‍⚖️', label: '同行评审', en: 'REVIEW' },
+  { to: '/projects', icon: '📁', label: '我的项目', en: 'PROJECTS' },
+]
+
+/* ── Legacy 导航（旧功能，保留可访问） ── */
+const LEGACY_NAV = [
+  { to: '/task-center', icon: '◈', label: '研究工作台', en: 'RESEARCH' },
   { to: '/parliament', icon: '⬡', label: 'AI 工作流', en: 'WORKFLOW' },
   { to: '/outputs', icon: '▤', label: '成果中心', en: 'OUTPUT' },
   { to: '/dashboard', icon: '◉', label: '传播分析', en: 'ANALYSIS' },
@@ -46,6 +74,7 @@ function LiveClock() {
 
 /* ── 侧边栏 ── */
 function Sidebar() {
+  const { stageMeta } = useStore()
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-[228px] z-40 flex flex-col border-r border-white/[0.06] bg-[#060d1c]/80 backdrop-blur-xl">
       {/* LOGO */}
@@ -65,17 +94,34 @@ function Sidebar() {
 
       <div className="mx-5 divider-glow" />
 
-      {/* 导航 */}
-      <nav className="flex-1 px-3.5 py-4 space-y-1 overflow-y-auto">
-        <p className="sec-label px-3 mb-3">Mission Modules</p>
-        {NAV_ITEMS.map(item => (
-          <NavLink key={item.to} to={item.to} end={item.to === '/'}
+      {/* 科研流程导航 */}
+      <nav className="flex-1 px-3.5 py-4 space-y-0.5 overflow-y-auto">
+        <p className="sec-label px-3 mb-2">Research Pipeline</p>
+        {PIPELINE_NAV.map(item => (
+          <NavLink key={item.to} to={item.to} end={item.end ?? false}
             className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
             <span className="w-6 text-center text-base opacity-80">{item.icon}</span>
             <span className="flex-1">{item.label}</span>
             <span className="text-[8px] font-mono tracking-widest text-slate-600">{item.en}</span>
           </NavLink>
         ))}
+
+        {/* Legacy 分组 */}
+        <details className="group mt-4">
+          <summary className="sec-label px-3 mb-1 cursor-pointer select-none hover:text-slate-400 transition-colors">
+            Legacy Modules <span className="text-[9px]">({stageMeta.length || 7})</span>
+          </summary>
+          <div className="space-y-0.5 mt-1">
+            {LEGACY_NAV.map(item => (
+              <NavLink key={item.to} to={item.to}
+                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                <span className="w-6 text-center text-base opacity-60">{item.icon}</span>
+                <span className="flex-1 text-[12px]">{item.label}</span>
+                <span className="text-[8px] font-mono tracking-widest text-slate-600">{item.en}</span>
+              </NavLink>
+            ))}
+          </div>
+        </details>
       </nav>
 
       {/* 底部系统状态 */}
@@ -100,12 +146,12 @@ function SystemStatus() {
         </span>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-[10px] text-slate-500">三库知识源</span>
-        <span className="text-[10px] font-mono text-astro-300">3 / 3 ✓</span>
+        <span className="text-[10px] text-slate-500">科研流程</span>
+        <span className="text-[10px] font-mono text-astro-300">7 Agent</span>
       </div>
       <div className="flex items-center justify-between">
         <span className="text-[10px] text-slate-500">搜索引擎</span>
-        <span className="text-[10px] font-mono text-slate-400">Tavily + Qwen</span>
+        <span className="text-[10px] font-mono text-slate-400">Tavily + Qwen + 他山</span>
       </div>
     </div>
   )
@@ -114,17 +160,23 @@ function SystemStatus() {
 /* ── 顶部状态栏 ── */
 function TopBar() {
   const location = useLocation()
-  const current = NAV_ITEMS.find(n => n.to === location.pathname) || NAV_ITEMS[0]
+  const all = [...PIPELINE_NAV, ...LEGACY_NAV]
+  const current = all.find(n => n.to === location.pathname)
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between px-8 h-14 border-b border-white/[0.06] bg-[#040810]/70 backdrop-blur-xl">
       <div className="flex items-center gap-3">
-        <span className="text-astro-400 text-sm">{current.icon}</span>
-        <span className="text-sm font-medium text-slate-200">{current.label}</span>
-        <span className="text-[9px] font-mono tracking-[0.25em] text-slate-600 uppercase">/ {current.en}</span>
+        {current && (
+          <>
+            <span className="text-astro-400 text-sm">{current.icon}</span>
+            <span className="text-sm font-medium text-slate-200">{current.label}</span>
+            <span className="text-[9px] font-mono tracking-[0.25em] text-slate-600 uppercase">/ {current.en}</span>
+          </>
+        )}
+        {!current && <span className="text-sm font-medium text-slate-200">云观星传 AI Scientist</span>}
       </div>
       <div className="flex items-center gap-5">
         <span className="hidden md:inline text-[10px] font-mono text-slate-600 tracking-wider">
-          RESEARCH WORKSPACE v2.0
+          AI SCIENTIST RESEARCH WORKSPACE
         </span>
         <LiveClock />
       </div>
@@ -143,7 +195,19 @@ function AppLayout() {
         <main className="px-8 py-7 max-w-[1600px]">
           <div key={location.pathname} className="page-transition">
             <Routes location={location}>
-              <Route path="/" element={<TaskCenter />} />
+              {/* 科研工作台 9 页面 */}
+              <Route path="/" element={<Home />} />
+              <Route path="/inspiration" element={<StagePlaceholder stage={1} />} />
+              <Route path="/literature" element={<StagePlaceholder stage={2} />} />
+              <Route path="/design" element={<StagePlaceholder stage={3} />} />
+              <Route path="/method" element={<StagePlaceholder stage={4} />} />
+              <Route path="/data-analysis" element={<StagePlaceholder stage={5} />} />
+              <Route path="/writing" element={<StagePlaceholder stage={6} />} />
+              <Route path="/review" element={<StagePlaceholder stage={7} />} />
+              <Route path="/projects" element={<Projects />} />
+
+              {/* Legacy 路由（保留旧功能入口） */}
+              <Route path="/task-center" element={<TaskCenter />} />
               <Route path="/parliament" element={<Parliament />} />
               <Route path="/outputs" element={<ResearchOutput />} />
               <Route path="/dashboard" element={<Dashboard />} />
@@ -152,6 +216,9 @@ function AppLayout() {
               <Route path="/kg" element={<KnowledgeGraph />} />
               <Route path="/verify" element={<VerifyReport />} />
               <Route path="/cross-cultural" element={<CrossCultural />} />
+
+              {/* 兜底：未知路径回科研首页 */}
+              <Route path="*" element={<Home />} />
             </Routes>
           </div>
         </main>
