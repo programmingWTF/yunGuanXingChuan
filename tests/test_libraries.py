@@ -132,6 +132,15 @@ class TestIngestChunksLibrary:
 
 
 class TestKnowledgeAPI:
+    @pytest.fixture(autouse=True)
+    def mock_vector_store(self):
+        """CI 无 API key：mock 掉 get_vector_store，避免创建 LLM client 抛 Missing credentials"""
+        vs = MagicMock()
+        vs.documents = []
+        vs.search.return_value = []
+        with patch("src.knowledge.libraries.get_vector_store", return_value=vs):
+            yield
+
     def test_libraries_endpoint(self):
         from fastapi.testclient import TestClient
         from api.main import app
