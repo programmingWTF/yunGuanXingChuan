@@ -7,7 +7,6 @@
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store'
-import ResearchPipeline from './ResearchPipeline'
 
 export interface StageInfo {
   stage: number
@@ -17,18 +16,10 @@ export interface StageInfo {
   description: string
 }
 
-/** 阶段页统一布局：进度条 + 头部 + 内容 */
+/** 阶段页统一布局：头部 + 内容（进度条统一显示在主页科研工作台，子页不再重复） */
 export function StageLayout({ info, children }: { info: StageInfo; children: ReactNode }) {
-  const { currentProject } = useStore()
   return (
     <div className="space-y-6">
-      <div className="card p-4">
-        <ResearchPipeline
-          stages={currentProject?.stages ?? null}
-          currentStage={currentProject?.current_stage ?? 1}
-          compact
-        />
-      </div>
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-display text-2xl font-bold text-white tracking-wide">
