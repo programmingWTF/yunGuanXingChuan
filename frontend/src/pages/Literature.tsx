@@ -38,7 +38,7 @@ function TheoryRelationGraph({ relations }: { relations: TheoryRelation[] }) {
   return (
     <div className="card p-4">
       <h3 className="sec-label !mb-1">🧭 理论关系图</h3>
-      <p className="text-[10px] text-slate-600 mb-2">与选题相关的理论及其关联（承继 / 互补 / 对比 / 应用）</p>
+      <p className="text-[10px] text-slate-400 mb-2">与选题相关的理论及其关联（承继 / 互补 / 对比 / 应用）</p>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="理论关系图">
         {/* 连线 */}
         {relations.map((r, i) => {
@@ -48,9 +48,9 @@ function TheoryRelationGraph({ relations }: { relations: TheoryRelation[] }) {
           return (
             <g key={i}>
               <path d={`M ${x1} ${NODE_Y + NODE_H} Q ${cx} ${NODE_Y + 74} ${x2} ${NODE_Y + NODE_H}`}
-                fill="none" stroke="rgba(56,212,248,0.4)" strokeWidth="1.5" />
+                fill="none" stroke="rgba(14,165,233,.45)" strokeWidth="1.5" />
               <text x={cx} y={NODE_Y + 78} textAnchor="middle"
-                className="fill-slate-400" fontSize="10">{r.relation}</text>
+                className="fill-slate-500" fontSize="10">{r.relation}</text>
             </g>
           )
         })}
@@ -61,9 +61,9 @@ function TheoryRelationGraph({ relations }: { relations: TheoryRelation[] }) {
           return (
             <g key={i}>
               <rect x={x - w / 2} y={NODE_Y} width={w} height={NODE_H} rx="10"
-                fill="rgba(12,184,232,0.12)" stroke="rgba(56,212,248,0.45)" strokeWidth="1" />
+                fill="rgba(14,165,233,.08)" stroke="rgba(14,165,233,.4)" strokeWidth="1" />
               <text x={x} y={NODE_Y + NODE_H / 2 + 4} textAnchor="middle"
-                className="fill-slate-200" fontSize="12">{nameOf(n)}</text>
+                className="fill-slate-700" fontSize="12">{nameOf(n)}</text>
             </g>
           )
         })}
@@ -92,11 +92,11 @@ export default function Literature() {
             <StatusBadge status={status} />
             {status !== 'running' && (
               <button onClick={() => exec({})} disabled={running}
-                className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
+                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
                 {running ? '生成中…' : '重新生成本阶段'}
               </button>
             )}
-            {error && <span className="text-[11px] text-flare-400">{error}</span>}
+            {error && <span className="text-[11px] text-red-600">{error}</span>}
           </div>
 
           {/* RAG + KG 双校验报告（产出物后置校验） */}
@@ -108,17 +108,17 @@ export default function Literature() {
                 <h3 className="sec-label !mb-2">文献归类</h3>
                 {sections.map((s, i) => (
                   <a key={i} href={`#sec-${i}`}
-                    className="block text-[12px] text-slate-300 hover:text-astro-300 py-1.5 px-2 rounded-lg hover:bg-white/[0.04] transition-colors">
+                    className="block text-[12px] text-slate-600 hover:text-sky-700 py-1.5 px-2 rounded-lg hover:bg-slate-100 transition-colors">
                     ▸ {s.theme}
                   </a>
                 ))}
                 {output?.references && (
-                  <div className="mt-4 pt-3 border-t border-white/[0.06]">
+                  <div className="mt-4 pt-3 border-t border-slate-100">
                     <p className="sec-label !mb-2">参考文献（{output.references.length}）</p>
                     {output.references.map((r, i) => (
                       <p key={i} className="text-[10px] text-slate-500 mb-1">
-                        {r.year && <span className="text-slate-600">[{r.year}]</span>} {r.title}
-                        {r.source && <span className="text-slate-600"> — {r.source}</span>}
+                        {r.year && <span className="text-slate-400">[{r.year}]</span>} {r.title}
+                        {r.source && <span className="text-slate-400"> — {r.source}</span>}
                       </p>
                     ))}
                   </div>
@@ -128,22 +128,22 @@ export default function Literature() {
               <div className="space-y-4">
                 {sections.map((s, i) => (
                   <div key={i} id={`sec-${i}`} className="card p-5">
-                    <h4 className="text-sm font-medium text-astro-300 mb-2">{s.theme}</h4>
-                    <p className="text-[13px] text-slate-300 leading-relaxed whitespace-pre-wrap">{s.content}</p>
+                    <h4 className="text-sm font-medium text-sky-600 mb-2">{s.theme}</h4>
+                    <p className="text-[13px] text-slate-600 leading-relaxed whitespace-pre-wrap">{s.content}</p>
                   </div>
                 ))}
                 {gap && (
-                  <div className="card p-5 border-flare-400/40 bg-flare-500/[0.04]">
-                    <h4 className="text-sm font-medium text-flare-300 mb-2">🔍 Research Gap 研究空白</h4>
-                    <p className="text-[13px] text-slate-200 leading-relaxed">{gap.description}</p>
+                  <div className="card p-5 border-red-200 bg-red-50">
+                    <h4 className="text-sm font-medium text-amber-600 mb-2">🔍 Research Gap 研究空白</h4>
+                    <p className="text-[13px] text-slate-700 leading-relaxed">{gap.description}</p>
                     {gap.missing_perspectives?.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-1.5">
                         {gap.missing_perspectives.map((m, i) => (
-                          <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-flare-500/10 border border-flare-400/30 text-flare-300">缺：{m}</span>
+                          <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-red-50 border border-red-200 text-amber-600">缺：{m}</span>
                         ))}
                       </div>
                     )}
-                    {gap.suggestion && <p className="text-[11px] text-slate-400 mt-3">💡 建议：{gap.suggestion}</p>}
+                    {gap.suggestion && <p className="text-[11px] text-slate-500 mt-3">💡 建议：{gap.suggestion}</p>}
                   </div>
                 )}
                 {/* 理论关系图（ChatGPT 方案：Gap 下方展示） */}

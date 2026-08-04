@@ -29,11 +29,11 @@ export default function Design() {
             <StatusBadge status={status} />
             {status !== 'running' && (
               <button onClick={() => exec({})} disabled={running}
-                className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
+                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
                 {running ? '生成中…' : '重新生成本阶段'}
               </button>
             )}
-            {error && <span className="text-[11px] text-flare-400">{error}</span>}
+            {error && <span className="text-[11px] text-red-600">{error}</span>}
           </div>
 
           {/* RAG + KG 双校验报告（产出物后置校验） */}
@@ -45,8 +45,8 @@ export default function Design() {
               {questions.map((q, i) => (
                 <div key={i} className="card p-4">
                   <div className="flex items-start gap-3">
-                    <span className="shrink-0 text-xs font-mono px-2 py-1 rounded bg-astro-500/10 border border-astro-400/30 text-astro-300">{q.id}</span>
-                    <p className="text-sm text-slate-200 leading-relaxed">{q.text}</p>
+                    <span className="shrink-0 text-xs font-mono px-2 py-1 rounded bg-sky-50 border border-sky-200 text-sky-600">{q.id}</span>
+                    <p className="text-sm text-slate-700 leading-relaxed">{q.text}</p>
                   </div>
                 </div>
               ))}
@@ -56,10 +56,10 @@ export default function Design() {
                   {hypotheses.map((h, i) => (
                     <div key={i} className="card p-4">
                       <div className="flex items-start gap-3">
-                        <span className="shrink-0 text-xs font-mono px-2 py-1 rounded bg-aurora-500/10 border border-aurora-400/30 text-aurora-300">{h.id}</span>
+                        <span className="shrink-0 text-xs font-mono px-2 py-1 rounded bg-emerald-50 border border-emerald-200 text-emerald-600">{h.id}</span>
                         <div>
-                          <p className="text-sm text-slate-200 leading-relaxed">{h.statement}</p>
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-slate-500 mt-1 inline-block">{h.hypothesis_type === 'quantitative' ? '量化' : '质性'}</span>
+                          <p className="text-sm text-slate-700 leading-relaxed">{h.statement}</p>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-50 text-slate-500 mt-1 inline-block">{h.hypothesis_type === 'quantitative' ? '量化' : '质性'}</span>
                         </div>
                       </div>
                     </div>
@@ -67,12 +67,12 @@ export default function Design() {
                 </>
               )}
               {quality && (
-                <div className="card p-5 border-astro-400/30">
+                <div className="card p-5 border-sky-200">
                   <h3 className="sec-label !mb-3">AI 评价 · 问题质量检验</h3>
                   <div className="space-y-2">
                     <ScoreBar label="清晰度" value={quality.clarity} />
-                    <ScoreBar label="创新性" value={quality.innovativeness} color="bg-aurora-400" />
-                    <ScoreBar label="可操作性" value={quality.operability} color="bg-flare-400" />
+                    <ScoreBar label="创新性" value={quality.innovativeness} color="bg-emerald-500" />
+                    <ScoreBar label="可操作性" value={quality.operability} color="bg-red-500" />
                   </div>
                   {quality.comments?.length > 0 && (
                     <ul className="mt-3 space-y-1">

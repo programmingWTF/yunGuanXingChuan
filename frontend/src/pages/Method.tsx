@@ -27,11 +27,11 @@ export default function Method() {
             <StatusBadge status={status} />
             {status !== 'running' && (
               <button onClick={() => exec({})} disabled={running}
-                className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
+                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
                 {running ? '生成中…' : '重新生成本阶段'}
               </button>
             )}
-            {error && <span className="text-[11px] text-flare-400">{error}</span>}
+            {error && <span className="text-[11px] text-red-600">{error}</span>}
           </div>
 
           {/* RAG + KG 双校验报告（产出物后置校验） */}
@@ -43,29 +43,29 @@ export default function Method() {
                 <div key={i} className="card p-5 space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-medium text-slate-100">{i + 1}. {m.name}</p>
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-slate-500 mt-1 inline-block">
+                      <p className="text-sm font-medium text-slate-700">{i + 1}. {m.name}</p>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-50 text-slate-500 mt-1 inline-block">
                         {m.method_type === 'quantitative' ? '量化' : m.method_type === 'qualitative' ? '质性' : '混合'}
                       </span>
                     </div>
-                    <ScoreBar label="适配度" value={m.fit_score} color="bg-astro-400" />
+                    <ScoreBar label="适配度" value={m.fit_score} color="bg-sky-500" />
                   </div>
-                  <p className="text-[11px] text-slate-400">{m.rationale}</p>
+                  <p className="text-[11px] text-slate-500">{m.rationale}</p>
                   {m.representative_papers?.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {m.representative_papers.map((p, j) => (
-                        <span key={j} className="text-[10px] px-2 py-0.5 rounded bg-astro-500/10 border border-astro-400/25 text-astro-300">{p}</span>
+                        <span key={j} className="text-[10px] px-2 py-0.5 rounded bg-sky-50 border border-sky-200 text-sky-600">{p}</span>
                       ))}
                     </div>
                   )}
                   <button onClick={() => setExpanded(expanded === i ? null : i)}
-                    className="text-[11px] text-astro-400 hover:text-astro-300 transition-colors">
+                    className="text-[11px] text-sky-600 hover:text-sky-700 transition-colors">
                     {expanded === i ? '收起操作步骤 ▲' : '展开操作步骤 ▼'}
                   </button>
                   {expanded === i && m.operation_steps?.length > 0 && (
                     <ol className="space-y-1.5 pl-4 list-decimal">
                       {m.operation_steps.map((s, j) => (
-                        <li key={j} className="text-[11px] text-slate-300 leading-relaxed">{s}</li>
+                        <li key={j} className="text-[11px] text-slate-600 leading-relaxed">{s}</li>
                       ))}
                     </ol>
                   )}

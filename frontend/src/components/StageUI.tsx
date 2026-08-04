@@ -1,5 +1,5 @@
 /**
- * 云观星传 - 科研流程页面共享 UI 组件
+ * 云观星传 V3.0 - 科研流程页面共享 UI 组件（他山世界学术风 · 浅色）
  *
  * 7 个科研流程页面（选题孵化/文献综述/研究设计/方法推荐/数据分析/学术写作/同行评审）
  * 统一复用：阶段头部、评分条、运行/确认操作、产出物展示。
@@ -22,12 +22,12 @@ export function StageLayout({ info, children }: { info: StageInfo; children: Rea
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-display text-2xl font-bold text-white tracking-wide">
+          <h2 className="font-display text-2xl font-semibold text-slate-900 tracking-tight">
             {info.icon} {info.title}
           </h2>
-          <p className="text-xs text-slate-500 mt-1">{info.en} · {info.description}</p>
+          <p className="text-xs text-slate-500 mt-1.5">{info.en} · {info.description}</p>
         </div>
-        <span className="text-[9px] font-mono text-slate-600 tracking-widest">STAGE {info.stage}</span>
+        <span className="text-[10px] font-sans text-slate-400 tracking-[0.22em] uppercase">Stage {info.stage}</span>
       </div>
       {children}
     </div>
@@ -35,29 +35,29 @@ export function StageLayout({ info, children }: { info: StageInfo; children: Rea
 }
 
 /** 0-100 评分条 */
-export function ScoreBar({ label, value, color = 'bg-astro-400' }: { label: string; value: number; color?: string }) {
+export function ScoreBar({ label, value, color = 'bg-sky-500' }: { label: string; value: number; color?: string }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[11px] text-slate-400 w-20 shrink-0">{label}</span>
-      <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+      <span className="text-[11px] text-slate-500 w-20 shrink-0">{label}</span>
+      <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
         <div className={`h-full rounded-full ${color} transition-all`} style={{ width: `${Math.min(100, Math.max(0, value))}%` }} />
       </div>
-      <span className="text-[11px] font-mono text-slate-300 w-7 text-right">{value}</span>
+      <span className="text-[11px] font-mono text-slate-600 w-7 text-right">{value}</span>
     </div>
   )
 }
 
-/** 状态徽章 */
+/** 状态徽章（胶囊，他山 8.6） */
 export function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    pending: { label: '待开始', cls: 'text-slate-500 border-white/10' },
-    running: { label: '运行中', cls: 'text-flare-300 border-flare-400/40 animate-pulse' },
-    awaiting_review: { label: '待确认', cls: 'text-astro-300 border-astro-400/50' },
-    completed: { label: '已完成', cls: 'text-aurora-300 border-aurora-400/50' },
-    failed: { label: '失败', cls: 'text-flare-400 border-flare-400/60' },
+    pending: { label: '待开始', cls: 'text-slate-500 bg-slate-50 border-slate-200' },
+    running: { label: '运行中', cls: 'text-amber-600 bg-amber-50 border-amber-200 animate-pulse' },
+    awaiting_review: { label: '待确认', cls: 'text-sky-700 bg-sky-50 border-sky-200' },
+    completed: { label: '已完成', cls: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+    failed: { label: '失败', cls: 'text-red-600 bg-red-50 border-red-200' },
   }
   const m = map[status] ?? map.pending
-  return <span className={`text-[10px] shrink-0 px-2 py-0.5 rounded border ${m.cls}`}>{m.label}</span>
+  return <span className={`text-[10px] shrink-0 px-2.5 py-1 rounded-full border font-medium ${m.cls}`}>{m.label}</span>
 }
 
 /** 运行/确认操作区 */
@@ -75,7 +75,7 @@ export function StageActions({
     <div className="flex items-center gap-3 flex-wrap">
       {status === 'pending' || status === 'failed' ? (
         <button onClick={onRun} disabled={running}
-          className="btn-primary text-xs disabled:opacity-40 disabled:cursor-not-allowed">
+          className="btn-primary text-xs disabled:opacity-45 disabled:cursor-not-allowed">
           {running ? 'AI 生成中…' : runLabel}
         </button>
       ) : status === 'awaiting_review' ? (
@@ -83,16 +83,16 @@ export function StageActions({
           确认产出，进入下一阶段 →
         </button>
       ) : status === 'completed' ? (
-        <button onClick={onRun} disabled={running} className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:border-astro-400/60 hover:text-astro-300 disabled:opacity-40 transition-all">
+        <button onClick={onRun} disabled={running} className="text-xs px-3.5 py-2 rounded-btn border border-slate-200 text-slate-600 hover:border-sky-300 hover:text-sky-700 hover:bg-sky-50 disabled:opacity-45 transition-all">
           重新运行
         </button>
       ) : null}
       {running && (
-        <span className="text-[11px] text-astro-300 animate-pulse">
+        <span className="text-[11px] text-amber-600 animate-pulse">
           AI 正在分析中…（生成质量优先，约需 1-3 分钟，请耐心等待，勿刷新页面）
         </span>
       )}
-      {error && <span className="text-[11px] text-flare-400">{error}</span>}
+      {error && <span className="text-[11px] text-red-600">{error}</span>}
     </div>
   )
 }
@@ -100,8 +100,8 @@ export function StageActions({
 /** 无项目引导 */
 export function NoProjectHint() {
   return (
-    <div className="card p-8 text-center text-sm text-slate-500">
-      暂无项目上下文 —— 请先到 <Link to="/projects" className="text-astro-400 hover:text-astro-300">我的项目</Link> 创建研究项目
+    <div className="card p-10 text-center text-sm text-slate-500">
+      暂无项目上下文 —— 请先到 <Link to="/projects" className="text-sky-600 hover:text-sky-700 font-medium">我的项目</Link> 创建研究项目
     </div>
   )
 }
@@ -150,9 +150,9 @@ export function useStageExec(stage: number) {
 
 /** 产出物 JSON 展示 */
 export function OutputView({ output }: { output: Record<string, unknown> | null }) {
-  if (!output) return <p className="text-[11px] text-slate-600">暂无产出物</p>
+  if (!output) return <p className="text-[11px] text-slate-400">暂无产出物</p>
   return (
-    <pre className="text-[10px] text-slate-400 whitespace-pre-wrap bg-black/20 rounded-lg p-3 max-h-64 overflow-y-auto">
+    <pre className="text-[10px] text-slate-500 whitespace-pre-wrap bg-slate-50 border border-slate-100 rounded-lg p-3 max-h-64 overflow-y-auto">
       {JSON.stringify(output, null, 2)}
     </pre>
   )
@@ -182,10 +182,10 @@ export interface VerificationReport {
 }
 
 const VERIFY_STATUS_META: Record<string, { label: string; cls: string }> = {
-  verified: { label: '✓ 已验证', cls: 'text-aurora-300 border-aurora-400/50 bg-aurora-500/10' },
-  partial: { label: '◐ 部分验证', cls: 'text-astro-300 border-astro-400/50 bg-astro-500/10' },
-  unverified: { label: '○ 未验证', cls: 'text-slate-400 border-white/15 bg-white/[0.03]' },
-  conflicting: { label: '⚠ 存在冲突', cls: 'text-flare-400 border-flare-400/50 bg-flare-500/10' },
+  verified: { label: '✓ 已验证', cls: 'text-emerald-700 border-emerald-200 bg-emerald-50' },
+  partial: { label: '◐ 部分验证', cls: 'text-sky-700 border-sky-200 bg-sky-50' },
+  unverified: { label: '○ 未验证', cls: 'text-slate-500 border-slate-200 bg-slate-50' },
+  conflicting: { label: '⚠ 存在冲突', cls: 'text-red-700 border-red-200 bg-red-50' },
 }
 
 /** RAG + KG 双校验报告面板（产出物附带 output.verification 时展示） */
@@ -194,10 +194,10 @@ export function VerificationPanel({ verification }: { verification: Verification
   const s = verification.summary
   const rate = s.total > 0 ? Math.round(((s.verified + s.partial) / s.total) * 100) : 0
   return (
-    <div className="card p-4 border-aurora-400/20">
-      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-        <h3 className="sec-label !mb-0">🛡️ RAG + KG 双校验</h3>
-        <span className="text-[10px] text-slate-500">
+    <div className="card p-5 !border-emerald-200/70">
+      <div className="flex items-center justify-between mb-2.5 flex-wrap gap-2">
+        <h3 className="sec-label !mb-0">RAG + KG 双校验</h3>
+        <span className="text-[10px] font-sans text-slate-500">
           共 {s.total} 条断言 · 证据覆盖 {rate}% · 平均置信度 {s.avg_confidence}
         </span>
       </div>
@@ -205,18 +205,18 @@ export function VerificationPanel({ verification }: { verification: Verification
         {verification.items.map((it, i) => {
           const m = VERIFY_STATUS_META[it.status] ?? VERIFY_STATUS_META.unverified
           return (
-            <div key={i} className="flex items-start gap-2 rounded-lg bg-white/[0.03] border border-white/10 px-3 py-2">
-              <span className={`text-[9px] shrink-0 px-1.5 py-0.5 rounded border ${m.cls}`}>{m.label}</span>
+            <div key={i} className="flex items-start gap-2.5 rounded-xl bg-slate-50/70 border border-slate-100 px-3.5 py-2.5">
+              <span className={`text-[9px] shrink-0 px-2 py-0.5 rounded-full border font-medium ${m.cls}`}>{m.label}</span>
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] text-slate-300 leading-snug">{it.claim}</p>
+                <p className="text-[11px] text-slate-600 leading-snug">{it.claim}</p>
                 {(it.rag_evidence || it.kg_match) && (
-                  <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                  <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">
                     {it.rag_evidence && <>RAG 证据：{it.rag_evidence}</>}
                     {it.rag_evidence && it.kg_match && ' ｜ '}
                     {it.kg_match && <>KG 匹配：{it.kg_match}</>}
                   </p>
                 )}
-                {it.notes && <p className="text-[9px] text-slate-600 mt-0.5">{it.notes}</p>}
+                {it.notes && <p className="text-[9px] text-slate-400 mt-0.5">{it.notes}</p>}
               </div>
             </div>
           )

@@ -1,48 +1,92 @@
 /** @type {import('tailwindcss').Config} */
+// ═══════════════ 云观星传 V3.0 设计系统 — 他山世界学术风 ═══════════════
+// 依据《他山世界-设计风格调研.md》：宋体衬线 + 大留白 + 低饱和青蓝 + 浅色主调
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
-        // 深空基底
-        abyss: { 950: '#040810', 900: '#060d1c', 800: '#0a1428', 700: '#0e1c38', 600: '#132548' },
-        // 星辉青（主色）
-        astro: { 300: '#7de8ff', 400: '#38d4f8', 500: '#0cb8e8', 600: '#0891c4', glow: 'rgba(12,184,232,0.35)' },
-        // 星金（洞察）
-        nova: { 300: '#ffe08a', 400: '#fbbf24', 500: '#f59e0b', glow: 'rgba(251,191,36,0.3)' },
-        // 极光绿（验证通过）
-        aurora: { 400: '#34d399', 500: '#10b981' },
-        // 警报玫红
-        flare: { 400: '#fb7185', 500: '#f43f5e' },
-        // 旧名兼容
-        'space-dark': '#0a1428',
-        'star-blue': '#0cb8e8',
-        'star-gold': '#fbbf24',
-        'star-orange': '#ff6b35',
+        // ── 品牌蓝（交互态 / 主 CTA 配套）──
+        brand: {
+          100: '#DBEAFE', 200: '#BFDBFE', 300: '#93C5FD',
+          400: '#60A5FA', 500: '#3B82F6', 600: '#2563EB', 700: '#1D4ED8', 800: '#1E40AF',
+        },
+        // ── 强调天蓝（激活态 / 链接 / 雷达装饰）──
+        accent: {
+          100: '#E0F2FE', 200: '#BAE6FD', 300: '#7DD3FC',
+          400: '#38BDF8', 500: '#0EA5E9', 600: '#0284C7', 700: '#0369A1',
+        },
+        // ── 青绿（数据可视化 / 装饰光晕）──
+        teal: {
+          100: '#CCFBF1', 200: '#99F6E4', 300: '#5EEAD4',
+          400: '#2DD4BF', 500: '#14B8A6', 600: '#0D9488',
+        },
+        // ── 琥珀橙（暖色点缀 / 灵感共创）──
+        amber: {
+          100: '#FEF3C7', 200: '#FDE68A', 300: '#FCD34D',
+          400: '#FBBF24', 500: '#F59E0B', 600: '#D97706',
+        },
+        // ── 状态色（语义）──
+        success: { 400: '#34D399', 500: '#10B981', 600: '#059669' },
+        danger: { 400: '#F87171', 500: '#EF4444', 600: '#DC2626' },
+        // ── 页脚深海军蓝（全站唯一大面积深色）──
+        footer: '#0E2E4F',
+        // 兼容旧深色主题的少量遗留引用（无实际使用）
+        abyss: { 900: '#0F172A', 800: '#1E293B', 700: '#334155' },
       },
       fontFamily: {
-        display: ['"Space Grotesk"', '"Noto Sans SC"', 'sans-serif'],
-        body: ['"Noto Sans SC"', 'system-ui', 'sans-serif'],
-        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        // 中文正文/标题：宋体衬线（他山风核心）
+        serif: ['"Noto Serif SC"', 'Georgia', 'STSong', 'SimSun', 'serif'],
+        display: ['"Noto Serif SC"', 'Georgia', 'STSong', 'SimSun', 'serif'],
+        body: ['"Noto Serif SC"', 'Georgia', 'STSong', 'SimSun', 'serif'],
+        // 无衬线（英文小标签 / 少量场景）
+        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        // 等宽（代码 / URL / 数字）
+        mono: ['"MonaspaceRadonFrozen"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+      },
+      borderRadius: {
+        // 他山标志性大圆角体系
+        card: '1.75rem',        // 28px
+        cardlg: '2rem',         // 32px
+        mid: '1.25rem',         // 20px
+        btn: '1rem',            // 16px
       },
       boxShadow: {
-        'glow-cyan': '0 0 24px rgba(12,184,232,0.18), inset 0 1px 0 rgba(255,255,255,0.06)',
-        'glow-gold': '0 0 24px rgba(251,191,36,0.15)',
-        panel: '0 8px 32px rgba(0,0,0,0.45)',
+        // 极克制的浅阴影（他山：卡片几乎不用阴影）
+        card: '0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04)',
+        cardh: '0 10px 15px rgba(0,0,0,.08), 0 4px 6px rgba(0,0,0,.05)',
+        btn: '0 1px 2px rgba(0,0,0,.08)',
+      },
+      letterSpacing: {
+        // 他山字距体系
+        tag: '0.22em',   // 英文大写小标签
+        tagwide: '0.28em',
+        tightitle: '-0.04em', // 大标题收紧
+        ctag: '0.08em',  // 中文标签
       },
       animation: {
-        'pulse-slow': 'pulse 3.5s cubic-bezier(0.4,0,0.6,1) infinite',
-        'orbit': 'orbit 12s linear infinite',
-        'scan': 'scan 3s ease-in-out infinite',
-        'rise': 'rise 0.5s cubic-bezier(0.22,1,0.36,1) both',
+        'rise': 'rise .45s cubic-bezier(.22,1,.36,1) both',
+        'breathe': 'breathe 3.2s ease-in-out infinite',
+        'float': 'floatDrift 5.5s ease-in-out infinite',
+        'sweep': 'cardSweep 2.8s ease-in-out infinite',
         'shimmer': 'shimmer 2.4s linear infinite',
+        'radar': 'radarSpin 10s linear infinite',
+        'flow': 'flowDash 1.2s linear infinite',
+        'scanline': 'scanline 3s ease-in-out infinite',
       },
       keyframes: {
-        orbit: { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } },
-        // 扫描线：top 百分比相对父容器高度，使光带扫满整个面板（translateY 百分比只相对自身高度，行程过短）
-        scan: { '0%,100%': { top: '-30%' }, '50%': { top: '100%' } },
-        rise: { '0%': { opacity: '0', transform: 'translateY(16px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+        rise: { '0%': { opacity: '0', transform: 'translateY(18px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+        breathe: { '0%,100%': { opacity: '.45', transform: 'scale(1)' }, '50%': { opacity: '.9', transform: 'scale(1.05)' } },
+        floatDrift: { '0%,100%': { transform: 'translateY(0) translateX(0)' }, '50%': { transform: 'translateY(-12px) translateX(6px)' } },
+        // 卡片扫光：105deg 半透明白斜条从左侧扫过（他山 cardSpecularSweep）
+        cardSweep: {
+          '0%': { transform: 'translateX(-120%) skewX(-18deg)' },
+          '60%,100%': { transform: 'translateX(220%) skewX(-18deg)' },
+        },
         shimmer: { '0%': { backgroundPosition: '-200% 0' }, '100%': { backgroundPosition: '200% 0' } },
+        radarSpin: { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } },
+        flowDash: { to: { strokeDashoffset: '-24' } },
+        scanline: { '0%,100%': { top: '-30%' }, '50%': { top: '100%' } },
       },
     },
   },
