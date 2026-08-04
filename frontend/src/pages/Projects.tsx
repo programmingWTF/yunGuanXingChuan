@@ -6,6 +6,7 @@
  */
 import { useEffect, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import axios from 'axios'
 import { useStore } from '../store'
 import { exportWorkflowProject } from '../api'
 import type { ResearchProject } from '../api'
@@ -86,8 +87,11 @@ export default function Projects() {
       setSelectedId(p.id)
       setTitle('')
       setInterest('')
-    } catch {
-      setError('创建项目失败，请确认后端服务已启动')
+    } catch (err: unknown) {
+      const status = axios.isAxiosError(err) ? err.response?.status : null
+      setError(status === 404
+        ? '后端尚未包含 /api/workflow 路由（需先合并后端 PR #52），或服务未启动'
+        : '创建项目失败，请确认后端服务已启动')
     } finally {
       setCreating(false)
     }
@@ -111,8 +115,9 @@ export default function Projects() {
         content,
         fmt === 'md' ? 'text/markdown' : 'application/json',
       )
-    } catch {
-      setError('导出失败，请确认后端服务已启动')
+    } catch (err: unknown) {
+      const status = axios.isAxiosError(err) ? err.response?.status : null
+      setError(status === 404 ? '导出接口不可用（后端需先合并 PR #52）' : '导出失败，请确认后端服务已启动')
     } finally {
       setExporting(false)
     }

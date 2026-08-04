@@ -5,6 +5,8 @@
  * 由配套 Issue（前端科研流程页面组）开发实现。本组件先承载路由与后端 API 契约，
  * 保证 9 页面科研工作台框架完整可达，并展示当前项目在该阶段的状态。
  */
+import { useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useStore } from '../store'
 import ResearchPipeline, { PIPELINE_NODES } from '../components/ResearchPipeline'
 import type { PipelineNode } from '../components/ResearchPipeline'
@@ -17,8 +19,12 @@ export default function StagePlaceholder({ stage }: StagePlaceholderProps) {
   const { currentProject, loadProject, projects } = useStore()
   const meta = PIPELINE_NODES.find(n => n.stage === stage)
 
-  // 若侧边栏/首页跳转未加载项目，自动加载最新项目
-  const hasContext = currentProject || projects.length === 0
+  // 侧边栏直达流程页且未选中项目时，自动加载最新项目作为上下文
+  useEffect(() => {
+    if (!currentProject && projects.length > 0) {
+      loadProject(projects[0].id).catch(() => { /* ignore */ })
+    }
+  }, [currentProject, projects, loadProject])
 
   return (
     <div className="space-y-6">
@@ -66,7 +72,7 @@ GET  /api/workflow/projects/{id}/export?fmt=md|json    汇总导出`}
           </pre>
         </div>
 
-        {hasContext && currentProject && (
+        {currentProject && (
           <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
             <span>当前项目：{currentProject.title}</span>
             <span className="text-slate-600">·</span>
@@ -77,6 +83,11 @@ GET  /api/workflow/projects/{id}/export?fmt=md|json    汇总导出`}
             >
               刷新状态
             </button>
+          </div>
+        )}
+        {!currentProject && (
+          <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
+            <span>暂无项目上下文 —— 请先到 <Link to="/projects" className="text-astro-400 hover:text-astro-300">我的项目</Link> 创建研究项目</span>
           </div>
         )}
       </div>

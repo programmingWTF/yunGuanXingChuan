@@ -9,6 +9,7 @@
  */
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import axios from 'axios'
 import { useStore } from '../store'
 import ResearchPipeline from '../components/ResearchPipeline'
 
@@ -46,8 +47,11 @@ export default function Home() {
     try {
       const project = await createProject('', interest.trim())
       navigate(`/projects?focus=${project.id}`)
-    } catch {
-      setError('创建项目失败，请确认后端服务已启动（uvicorn api.main:app）')
+    } catch (err: unknown) {
+      const status = axios.isAxiosError(err) ? err.response?.status : null
+      setError(status === 404
+        ? '后端尚未包含 /api/workflow 路由（需先合并后端 PR #52），或服务未启动'
+        : '创建项目失败，请确认后端服务已启动（uvicorn api.main:app）')
     } finally {
       setCreating(false)
     }
