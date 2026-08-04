@@ -48,9 +48,12 @@ class MethodAdvisorAgent(BaseAgent):
 主题建模、深度访谈等），每个方法给出：
 - name：方法名；method_type：quantitative/qualitative/mixed
 - fit_score：方法适配度评分 0-100（评估该方法与研究问题的匹配度）
-- representative_papers：1-3 篇代表论文/范文（可基于检索线索或公认经典文献）
+- representative_papers：1-3 篇代表论文/范文。**每条必须是一段纯文本字符串**
+  （可含作者、年份、期刊信息，例如："Entman, R. M. (1993). Framing: Toward
+  clarification of a fractured paradigm. Journal of Communication."），
+  不要用对象/JSON 结构包裹（不要加 title/author 等键）
 - operation_steps：3-6 步具体可执行的操作步骤（如内容分析的编码流程、
-  框架分析的类目构建步骤、扎根理论的三级编码）
+  框架分析的类目构建步骤、扎根理论的三级编码）。**每步同样为纯文本字符串**
 - rationale：推荐理由（30-80 字，说明为何适配该研究问题）"""
         return prompt
 

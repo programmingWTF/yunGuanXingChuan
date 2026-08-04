@@ -818,3 +818,45 @@ class TestWorkflowEnhancements:
         # scores 浮点/字符串数值归一为整数
         assert d["reviewers"][0]["scores"]["innovation"] == 93
         assert d["reviewers"][0]["scores"]["literature"] == 79
+
+    def test_method_representative_papers_normalize_dict_output(self):
+        """方法推荐代表论文 LLM 格式漂移（对象列表）时归一化为字符串，不抛 Schema 校验失败"""
+        from src.schemas import MethodRecommendationResult, MethodRecommendation
+        # 复现 NAS 报错场景：representative_papers 每条为 {"title": "..."}
+        r = MethodRecommendationResult(
+            topic="嫦娥七号",
+            methods=[
+                MethodRecommendation(
+                    name="框架分析",
+                    representative_papers=[
+                        {"title": "全球南方媒体中的科技合作叙事：以中国空间站报道为例"},
+                        "Entman, R. M. (1993). Framing. Journal of Communication.",
+                    ],
+                    operation_steps=[{"step": "构建初始框架类目"}, "确定分析单位"],
+                ),
+            ],
+        )
+        d = r.model_dump()
+        papers = d["methods"][0]["representative_papers"]
+        assert papers[0] == "全球南方媒体中的科技合作叙事：以中国空间站报道为例"
+        assert papers[1].startswith("Entman")
+        steps = d["methods"][0]["operation_steps"]
+        assert steps[0] == "构建初始框架类目"
+        assert steps[1] == "确定分析单位"
+
+    def test_topic_direction_reasons_keywords_normalize(self):
+        """选题 reasons/keywords 对象列表同样归一化（StrList 通用防漂移）"""
+        from src.schemas import InspirationResult, TopicDirection
+        r = InspirationResult(
+            topic="t",
+            directions=[
+                TopicDirection(
+                    title="方向A",
+                    reasons=[{"reason": "理由一"}, "理由二"],
+                    keywords=[{"keyword": "关键词A"}, "关键词B"],
+                ),
+            ],
+        )
+        d = r.model_dump()
+        assert d["directions"][0]["reasons"] == ["理由一", "理由二"]
+        assert d["directions"][0]["keywords"] == ["关键词A", "关键词B"]
