@@ -64,3 +64,4 @@ logs/
 .coverage
 htmlcov/
 .coverage.*
+data/projects
