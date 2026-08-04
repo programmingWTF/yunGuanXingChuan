@@ -490,7 +490,7 @@ class WorkflowEngine:
         for claim in claims:
             result = self._run_with_timeout(
                 lambda c=claim, ents=entities: validator.cross_validate_claim(c, entities=ents),
-                8.0, None, "交叉校验",
+                25.0, None, "交叉校验",
             )
             if result is None:
                 items.append({
