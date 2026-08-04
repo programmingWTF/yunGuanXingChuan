@@ -40,7 +40,9 @@ class ReviewerSimulatorAgent(BaseAgent):
 模拟 3 位审稿人（perspective 分别为：方法专家、理论专家、实践专家），每位给出：
 1. reviewer_id：Reviewer 1/2/3
 2. scores：innovation/methodology/argumentation/literature/language 五项 0-100 评分
-3. suggestions：3-5 条具体可执行的修改建议（指出问题 + 给出改法）
+3. suggestions：3-5 条具体可执行的修改建议。**每条必须是一段纯文本字符串**，
+   直接"指出问题并给出改法"（不要用对象/JSON 结构包裹，不要加 problem/suggestion 等键），
+   例如："方法部分缺少样本量论证，建议补充抽样依据与最终样本量。"
 
 最后 revision_notes：整合三位审稿人意见的"一键修改说明"（150-250 字，
 按优先级列出需要修改的关键点与操作指引）。"""

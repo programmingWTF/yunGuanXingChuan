@@ -72,7 +72,9 @@ export default function Review() {
                   {r.suggestions?.length > 0 && (
                     <ul className="space-y-1.5 pt-2 border-t border-white/[0.06]">
                       {r.suggestions.map((s, j) => (
-                        <li key={j} className="text-[11px] text-slate-400 leading-relaxed">· {s}</li>
+                        <li key={j} className="text-[11px] text-slate-400 leading-relaxed">
+                          · {typeof s === 'string' ? s : JSON.stringify(s)}
+                        </li>
                       ))}
                     </ul>
                   )}

@@ -5,6 +5,7 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Dict, List, Optional
 from enum import Enum
+import json
 
 
 class FrameworkType(str, Enum):
@@ -596,6 +597,21 @@ class ReviewerScores(BaseModel):
     literature: int = Field(ge=0, le=100, default=0)      # 文献覆盖度
     language: int = Field(ge=0, le=100, default=0)        # 学术语言
 
+    @field_validator("innovation", "methodology", "argumentation", "literature", "language", mode="before")
+    @classmethod
+    def _coerce_numeric(cls, v):
+        """LLM 偶发输出浮点/字符串数值时归一为整数（防 Schema 校验失败）"""
+        if isinstance(v, bool):
+            return int(v)
+        if isinstance(v, (int, float)):
+            return int(round(v))
+        if isinstance(v, str):
+            try:
+                return int(round(float(v.strip())))
+            except (TypeError, ValueError):
+                return 0
+        return v
+
 
 class ReviewerOpinion(BaseModel):
     """单个审稿人意见"""
@@ -604,12 +620,52 @@ class ReviewerOpinion(BaseModel):
     scores: ReviewerScores = Field(default_factory=ReviewerScores)
     suggestions: List[str] = Field(default_factory=list)
 
+    @field_validator("suggestions", mode="before")
+    @classmethod
+    def _normalize_suggestions(cls, v):
+        """LLM 输出格式漂移容错：suggestions 应为字符串列表，
+        若模型输出为对象列表（如 {"problem": "..."}）则提取文本键归一化，
+        避免整阶段 Schema 校验失败。"""
+        if not isinstance(v, list):
+            return []
+        out = []
+        for item in v:
+            if isinstance(item, str):
+                text = item.strip()
+            elif isinstance(item, dict):
+                text = (
+                    item.get("suggestion") or item.get("suggest") or item.get("text")
+                    or item.get("issue") or item.get("problem") or item.get("content")
+                    or ""
+                )
+                if not text and item:
+                    text = json.dumps(item, ensure_ascii=False)
+                text = str(text).strip()
+            else:
+                text = str(item).strip()
+            if text:
+                out.append(text)
+        return out
+
 
 class ReviewerFeedback(BaseModel):
     """⑦评审模拟器输出"""
     topic: str = ""  # 允许 LLM 漏填，由 WorkflowEngine 兜底补全
     reviewers: List[ReviewerOpinion] = Field(default_factory=list)
     revision_notes: str = ""                  # 一键修改说明
+
+    @field_validator("revision_notes", mode="before")
+    @classmethod
+    def _normalize_revision_notes(cls, v):
+        """revision_notes 偶发输出为对象时提取文本，防 Schema 校验失败"""
+        if isinstance(v, str):
+            return v
+        if isinstance(v, dict):
+            text = v.get("notes") or v.get("content") or v.get("text") or ""
+            return str(text).strip() if text else json.dumps(v, ensure_ascii=False)
+        if v is None:
+            return ""
+        return str(v)
 
 
 class StageStatus(str, Enum):

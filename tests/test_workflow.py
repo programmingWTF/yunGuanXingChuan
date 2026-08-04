@@ -794,3 +794,27 @@ class TestWorkflowEnhancements:
                 assert r.content.startswith(magic), f"{fmt} 魔数不符: {r.content[:8]}"
                 cd = r.headers.get("content-disposition", "")
                 assert "filename*=UTF-8''" in cd, f"{fmt} 未做 RFC5987 编码: {cd}"
+
+    def test_reviewer_suggestions_normalize_dict_output(self):
+        """评审建议 LLM 格式漂移（对象列表）时归一化为字符串，不抛 Schema 校验失败"""
+        from src.schemas import ReviewerFeedback, ReviewerOpinion, ReviewerScores
+        # 复现用户报错场景：suggestions 每条为 {"problem": "..."}
+        fb = ReviewerFeedback(
+            topic="t",
+            reviewers=[
+                ReviewerOpinion(
+                    reviewer_id="Reviewer 1",
+                    suggestions=[{"problem": "方法部分缺少样本量论证，建议补充抽样依据及最终样本量。"}],
+                    scores={"innovation": "92.6", "methodology": 88, "argumentation": "85", "literature": 79.4, "language": 90},
+                ),
+                ReviewerOpinion(reviewer_id="Reviewer 2", suggestions=["正常字符串建议"]),
+            ],
+            revision_notes={"notes": "一键修改说明文本"},
+        )
+        d = fb.model_dump()
+        assert d["reviewers"][0]["suggestions"] == ["方法部分缺少样本量论证，建议补充抽样依据及最终样本量。"]
+        assert d["reviewers"][1]["suggestions"] == ["正常字符串建议"]
+        assert d["revision_notes"] == "一键修改说明文本"
+        # scores 浮点/字符串数值归一为整数
+        assert d["reviewers"][0]["scores"]["innovation"] == 93
+        assert d["reviewers"][0]["scores"]["literature"] == 79
