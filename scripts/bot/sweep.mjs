@@ -118,6 +118,21 @@ function log(...args) {
   console.log(`[${ts}]`, ...args);
 }
 
+/**
+ * 容错 JSON 解析：LLM 输出偶发在字符串字面量里夹裸控制字符（未转义的换行/制表符等），
+ * 导致 JSON.parse 抛 "Bad control character"。先原样尝试，失败后剥离
+ * U+0000–U+001F / U+007F 控制字符再解析——JSON 结构层允许的空白（空格/换行/制表/回车）
+ * 被移除不影响语义，而字符串里的裸控制字符本就是非法来源。
+ */
+function safeJsonParse(text) {
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    const cleaned = String(text).replace(/[\u0000-\u001F\u007F]/g, "");
+    return JSON.parse(cleaned);
+  }
+}
+
 /** 简单字符串哈希（djb2），用于内容指纹比较 */
 function hashString(str) {
   let hash = 5381;
@@ -341,7 +356,9 @@ function callDeepSeek(messages) {
   writeFileSync(tmpFile, body, "utf-8");
 
   const cmd = [
-    "curl -s --connect-timeout 15 --max-time 180",
+    // qwen3.8-max 推理生成长回复可能超过 3 分钟，原 180s 超时导致「API 已计费但响应被提前断开」，
+    // 放宽到 20 分钟（1200s），让慢响应能完整返回
+    "curl -s --connect-timeout 15 --max-time 1200",
     `-H "Authorization: Bearer ${CONFIG.DEEPSEEK_KEY}"`,
     `-H "Content-Type: application/json"`,
     `--data-binary @${tmpFile}`,
@@ -352,10 +369,10 @@ function callDeepSeek(messages) {
     try {
       const stdout = execSync(cmd, {
         encoding: "utf-8",
-        timeout: 185000,
+        timeout: 1210000,
         stdio: ["pipe", "pipe", "pipe"],
       });
-      const data = JSON.parse(stdout);
+      const data = safeJsonParse(stdout);
       if (data.error) {
         throw new Error(`API error: ${JSON.stringify(data.error)}`);
       }
@@ -569,7 +586,7 @@ async function analyzeItem(item) {
       return null;
     }
 
-    const result = JSON.parse(jsonMatch[0]);
+    const result = safeJsonParse(jsonMatch[0]);
     // 规范化 labels：确保是数组，过滤空值（GLM 等模型可能返回空字符串）
     if (result.labels) {
       result.labels = (Array.isArray(result.labels) ? result.labels : [result.labels])
