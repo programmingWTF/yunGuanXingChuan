@@ -150,6 +150,28 @@ class TestProjectStore:
         assert store.delete(p.id) is True
         assert store.get(p.id) is None
 
+    def test_path_traversal_blocked(self, store):
+        """project_id 含路径穿越字符时仍落在 base_dir 内"""
+        p = store.create(title="A", interest="议题A")
+        # 直接构造恶意 id 路径（内部用 _path）
+        path = store._path("../evil")
+        assert path.resolve().parent == store.base_dir.resolve()
+        assert "../" not in str(path)
+
+    def test_list_skips_corrupted_file(self, store, tmp_path):
+        store.create(title="A", interest="议题A")
+        # 写入一个损坏 JSON
+        bad = store.base_dir / "proj_bad.json"
+        bad.write_text("{not json", encoding="utf-8")
+        projects = store.list()
+        assert len(projects) == 1  # 损坏文件被跳过
+        assert projects[0].title == "A"
+
+    def test_list_sorted_by_created_at_desc(self, store):
+        p1 = store.create(title="A", interest="议题A")
+        p2 = store.create(title="B", interest="议题B")
+        assert [p.id for p in store.list()] == [p2.id, p1.id]  # 后创建在前
+
 
 # ---------------------------------------------------------------------------
 # WorkflowEngine 编排
@@ -226,6 +248,53 @@ class TestWorkflowEngine:
         final = engine.get_project(p.id)
         assert final.current_stage == 7
         assert final.status == "completed"
+
+    def test_6_stages_not_completed(self, engine):
+        """回归：完成前 6 阶段时项目不得标记 completed（第 7 阶段尚未执行）"""
+        p = engine.create_project(interest="朱雀2号火箭")
+        for stage in range(1, 7):
+            engine.run_stage(p.id, stage, {})
+            engine.approve_stage(p.id, stage)
+        project = engine.get_project(p.id)
+        assert project.current_stage == 7
+        assert project.status == "active", "第 7 阶段未执行前不得标记 completed"
+
+    def test_rerun_after_failure_clears_output(self, engine):
+        """回归：阶段执行失败后 output 清空，重跑成功恢复"""
+        p = engine.create_project(interest="朱雀2号火箭")
+        agent = engine._get_agent(1)
+        agent.run.side_effect = [RuntimeError("LLM 不可用"), {"topic": "t", "directions": []}]
+        with pytest.raises(RuntimeError):
+            engine.run_stage(p.id, 1, {})
+        failed = engine.get_project(p.id)
+        assert failed.stages["1"].status == StageStatus.FAILED
+        assert failed.stages["1"].output is None
+        assert failed.stages["1"].run_count == 1
+        # 重跑成功
+        rec = engine.run_stage(p.id, 1, {})
+        assert rec.status == StageStatus.AWAITING_REVIEW
+        assert rec.run_count == 2
+        assert rec.output == {"topic": "t", "directions": []}
+
+    def test_previous_outputs_injected(self, engine):
+        """跨阶段数据流：执行阶段 2 时自动注入阶段 1 的产出物"""
+        p = engine.create_project(interest="朱雀2号火箭")
+        engine.run_stage(p.id, 1, {})
+        engine.approve_stage(p.id, 1)
+        agent = engine._get_agent(2)
+        agent.run.side_effect = lambda inputs: dict(inputs)  # 原样返回输入以检查
+        engine.run_stage(p.id, 2, {})
+        called_inputs = agent.run.call_args[0][0]
+        assert "inspiration_result" in called_inputs
+        assert called_inputs["inspiration_result"]["directions"][0]["title"] == "方向A"
+
+    def test_run_count_increments(self, engine):
+        """每次 run_stage 递增 run_count"""
+        p = engine.create_project(interest="朱雀2号火箭")
+        engine.run_stage(p.id, 1, {})
+        assert engine.get_project(p.id).stages["1"].run_count == 1
+        engine.run_stage(p.id, 1, {})  # 重跑
+        assert engine.get_project(p.id).stages["1"].run_count == 2
 
     def test_export_markdown_contains_stages(self, engine):
         p = engine.create_project(interest="朱雀2号火箭")

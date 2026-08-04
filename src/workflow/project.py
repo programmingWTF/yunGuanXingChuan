@@ -6,6 +6,7 @@
 """
 import json
 import logging
+import os
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -55,8 +56,12 @@ class ProjectStore:
     def _write(self, project: ResearchProject) -> None:
         with self._lock:
             project.updated_at = datetime.now().isoformat(timespec="seconds")
-            with open(self._path(project.id), "w", encoding="utf-8") as f:
+            path = self._path(project.id)
+            # 原子写盘：先写临时文件再 os.replace，避免崩溃留下损坏 JSON
+            tmp_path = path.with_suffix(".json.tmp")
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(project.model_dump(), f, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, path)
 
     # ------------------------------------------------------------------
     # CRUD
@@ -89,6 +94,8 @@ class ProjectStore:
                     projects.append(ResearchProject.model_validate(json.load(f)))
             except Exception as e:
                 logger.warning(f"[ProjectStore] 跳过损坏项目文件 {path.name}: {e}")
+        # 按创建时间倒序（与 glob 文件名顺序解耦）
+        projects.sort(key=lambda p: p.created_at, reverse=True)
         return projects
 
     def delete(self, project_id: str) -> bool:
@@ -105,38 +112,44 @@ class ProjectStore:
                      status: Optional[StageStatus] = None,
                      output: Optional[Dict] = None,
                      error: Optional[str] = None,
+                     increment_run_count: bool = False,
                      append_history: Optional[Dict] = None) -> Optional[ResearchProject]:
-        """更新某阶段状态并写盘，返回更新后的项目"""
-        project = self.get(project_id)
-        if project is None:
-            return None
-        key = str(stage)
-        record = project.stages.get(key)
-        if record is None:
-            record = StageRecord(stage=stage)
-            project.stages[key] = record
+        """更新某阶段状态并写盘（read-modify-write 整体持锁，返回更新后的项目）"""
+        with self._lock:
+            project = self.get(project_id)
+            if project is None:
+                return None
+            key = str(stage)
+            record = project.stages.get(key)
+            if record is None:
+                record = StageRecord(stage=stage)
+                project.stages[key] = record
 
-        now = datetime.now().isoformat(timespec="seconds")
-        if status is not None:
-            record.status = status
-        if output is not None:
-            record.output = output
-        if error is not None:
-            record.error = error
-        record.updated_at = now
-        if append_history:
-            item = dict(append_history)
-            item.setdefault("timestamp", now)
-            project.history.append(item)
+            now = datetime.now().isoformat(timespec="seconds")
+            if status is not None:
+                record.status = status
+            if output is not None:
+                record.output = output
+            if error is not None:
+                record.error = error
+            if increment_run_count:
+                record.run_count += 1
+            record.updated_at = now
+            if append_history:
+                item = dict(append_history)
+                item.setdefault("timestamp", now)
+                project.history.append(item)
 
-        # 推进当前阶段：完成 stage 后解锁下一阶段
-        if status == StageStatus.COMPLETED and stage == project.current_stage:
-            project.current_stage = min(stage + 1, TOTAL_STAGES)
-            if project.current_stage >= TOTAL_STAGES:
-                project.status = "completed"
+            # 推进当前阶段：仅在阶段 == 当前阶段且确认完成时推进
+            if status == StageStatus.COMPLETED and stage == project.current_stage:
+                if stage >= TOTAL_STAGES:
+                    project.current_stage = TOTAL_STAGES
+                    project.status = "completed"
+                else:
+                    project.current_stage = stage + 1
 
-        self._write(project)
-        return project
+            self._write(project)
+            return project
 
 
 # 单例

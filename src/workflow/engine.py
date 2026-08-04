@@ -111,19 +111,22 @@ class WorkflowEngine:
         if agent is None:
             raise RuntimeError(f"阶段 {stage} 无对应智能体")
 
-        # 标记运行中
+        # 标记运行中（清空旧产出物避免失败残留；递增运行次数）
         self.store.update_stage(
             project_id, stage,
             status=StageStatus.RUNNING,
+            output=None,
+            increment_run_count=True,
             append_history={"stage": stage, "action": "run_start", "summary": f"开始执行{STAGE_META[WorkflowStage(stage)]['name']}"},
         )
 
-        # 合并输入 + 注入知识库/搜索上下文
+        # 合并输入 + 注入知识库/搜索上下文 + 前序阶段产出物
         full_inputs = dict(inputs or {})
         full_inputs.setdefault("topic", project.interest)
         full_inputs.setdefault("project_title", project.title)
         context = self._build_stage_context(stage, full_inputs)
         full_inputs.update(context)
+        self._inject_previous_outputs(project, stage, full_inputs)
 
         try:
             output = agent.run(full_inputs)
@@ -212,6 +215,29 @@ class WorkflowEngine:
                 context["kg_entities"] = []
 
         return context
+
+    # 阶段输出 → 下游 Agent 输入 key 映射
+    _STAGE_OUTPUT_KEYS: Dict[int, str] = {
+        1: "inspiration_result",
+        2: "literature_review",
+        3: "research_design",
+        4: "method_result",
+        5: "analysis_result",
+        6: "paper_draft",
+    }
+
+    def _inject_previous_outputs(self, project, stage: int, inputs: Dict[str, Any]) -> None:
+        """自动注入已完成前序阶段的产出物，保证跨阶段数据流连续。
+
+        下游 Agent 无需前端手动拼 inputs；用户显式传入的 key 优先（setdefault）。
+        """
+        for prev_stage in range(1, stage):
+            rec = project.stages.get(str(prev_stage))
+            if rec is None or rec.status != StageStatus.COMPLETED or not rec.output:
+                continue
+            key = self._STAGE_OUTPUT_KEYS.get(prev_stage)
+            if key:
+                inputs.setdefault(key, rec.output)
 
     def _extract_keywords(self, inputs: Dict[str, Any]) -> List[str]:
         """从输入中提取检索关键词"""
