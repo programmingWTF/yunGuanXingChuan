@@ -1,137 +1,191 @@
 # 云观星传 — 智能体调用关系与完整流程
 
-> 本文档精确描述 Pipeline 与 Parliament 两种模式的调用关系、它们在代码中如何互调、以及完整的执行路径。
+> 本文档描述系统当前的**智能体调用链路**。当前架构下存在两条调用链：
+>
+> - **主链路（前端主入口）**：科研工作台 → 7 阶段工作流（`WorkflowEngine`）
+> - **后端保留能力**：认知议会（Parliament）+ Pipeline + 成果中心（Output Center），通过 API 直接调用
 
 ---
 
-## 一、正确认知：Parliament 包裹 Pipeline
+## 一、架构总览
 
-之前可能认为"系统有两套并列的协作模式，用户选择用哪个"。**实际代码中，当前前端只调用 Parliament，Parliament 内部再调用 Pipeline**。
+```
+                    ┌──────────────────────────────────────────────┐
+                    │              前端（React SPA）                │
+                    │  Workspace（科研工作台） + 7 个科研子页        │
+                    └──────────────┬───────────────────────────────┘
+                                   │
+        ┌──────────────────────────┼──────────────────────────┐
+        ▼                          ▼                          ▼
+┌───────────────┐        ┌─────────────────┐        ┌─────────────────┐
+│ /api/workflow │        │ /api/parliament │        │ /api/outputs    │
+│ 7 阶段工作流   │        │ 认知议会（保留）  │        │ 成果中心（保留）  │
+└───────┬───────┘        └────────┬────────┘        └────────┬────────┘
+        │                         │                          │
+        ▼                         ▼                          │
+┌────────────────────────────────────────────────────┐       │
+│               WorkflowEngine（src/workflow/）        │       │
+│  7 阶段 Agent + RAG/KG 双校验 + 确认推进             │       │
+└────────────────────────────────────────────────────┘       │
+        │                                                     │
+        └────────── 复用相同 Agent / 校验层 / 搜索 ─────────────┘
+```
+
+> 历史上前端主入口是 TaskCenter → Parliament（V2），**V3 起前端统一到 7 阶段科研工作台**。Parliament / Pipeline / 成果中心仍作为后端能力保留，`POST /api/parliament/convene`、`POST /api/analyze/run`、`POST /api/outputs/generate` 均可独立调用。
+
+---
+
+## 二、主链路：7 阶段科研工作流
+
+### 2.1 前端入口
+
+**文件**：`frontend/src/pages/Workspace.tsx`（工作台）、`frontend/src/components/ResearchPipeline.tsx`（阶段进度）
+
+```
+用户输入研究兴趣 → 新建项目（POST /api/workflow/projects）
+  → 「一键生成全部」（POST /api/workflow/projects/{id}/run-all，后台串行 7 阶段）
+  → 或逐阶段操作（run / approve / rerun / polish）
+  → 前端轮询项目状态，展示各阶段产出物
+```
+
+工作台支持：项目列表/详情/删除（`DELETE /api/workflow/projects/{id}`，二次确认）、阶段产出物查看、重新生成（二次确认弹窗防误触覆盖）、导出（`GET /projects/{id}/export?fmt=md|json|word|pdf`）。
+
+### 2.2 后端 Workflow 路由
+
+**文件**：`api/routes/workflow.py`
+
+| 端点 | 说明 |
+|------|------|
+| `GET /api/workflow/stages` | 阶段元数据（前端 Research Pipeline 渲染） |
+| `POST /api/workflow/projects` | 创建研究项目 |
+| `GET /api/workflow/projects` | 项目列表（按创建时间倒序） |
+| `GET /api/workflow/projects/{id}` | 项目详情（阶段进度/产出物摘要） |
+| `DELETE /api/workflow/projects/{id}` | 删除项目（物理移除项目文件与产出物） |
+| `POST /api/workflow/projects/{id}/stages/{s}/run` | 执行阶段 s（同步，产出物落盘 awaiting_review） |
+| `GET /api/workflow/projects/{id}/stages/{s}/result` | 获取阶段产出物 |
+| `POST /api/workflow/projects/{id}/stages/{s}/approve` | 研究者确认，推进到下一阶段 |
+| `POST /api/workflow/projects/{id}/run-all` | 一键全流程（后台串行 7 阶段） |
+| `GET /api/workflow/projects/{id}/export?fmt=...` | 项目导出（md/json/word/pdf） |
+| `POST /api/workflow/projects/{id}/stages/{s}/polish` | 章节 AI 润色（仅学术写作阶段） |
+| `GET /api/workflow/hot-topics` | 今日科技热点（工作台驾驶舱） |
+
+### 2.3 WorkflowEngine 内部执行顺序
+
+**文件**：`src/workflow/engine.py`
+
+```
+WorkflowEngine.run_stage(project_id, stage, inputs)
+  │
+  ├─ 1. 注入该阶段知识库检索上下文（engine.py:293-389）
+  │     按 stages.py 的 STAGE_META[stage]["library"] 检索四库：
+  │     文献库 / 理论库 / 顶刊论文库 / 方法库
+  ├─ 2. 调对应 Agent 生成（阶段 → Agent 映射见 stages.py）
+  ├─ 3. RAG + KG 双校验产出物（engine.py:467-538）
+  │     RAG 向量校验 + 知识图谱校验，校验异常自动容错重试
+  ├─ 4. 产出物落盘为 awaiting_review，写运行历史
+  └─ 5. 研究者 approve 后解锁下一阶段（engine.py:167）
+
+WorkflowEngine.run_all(project_id)（engine.py:193-271）
+  └─ 后台任务串行执行 1→7 阶段，跳过已 confirmed 的阶段
+```
+
+### 2.4 七阶段与 Agent 映射
+
+**文件**：`src/workflow/stages.py`
+
+| 阶段 | key | Agent | 注入知识库 | 产出 Schema |
+|------|-----|-------|-----------|-------------|
+| ① 选题孵化 | `inspiration` | `research_inspiration_agent` | 文献库、理论库 | `InspirationResult` |
+| ② 文献综述 | `literature` | `literature_review_agent` | 文献库、理论库 | `LiteratureReview` |
+| ③ 研究设计 | `design` | `research_question_agent` | 顶刊论文库 | `ResearchDesignResult` |
+| ④ 方法推荐 | `method` | `method_advisor_agent` | 方法库、顶刊论文库 | `MethodRecommendationResult` |
+| ⑤ 数据分析 | `data-analysis` | `data_analysis_agent` | 方法库 | `AnalysisResult` |
+| ⑥ 学术写作 | `writing` | `paper_writer_agent` | 顶刊论文库 | `PaperDraft` |
+| ⑦ 同行评审 | `review` | `reviewer_simulator_agent` | 顶刊论文库 | `ReviewerFeedback` |
+
+> 各阶段执行统一走 `base_agent`（LLM 调用 / JSON 修复 / 重试 / Tool Use），产出物 LLM 格式漂移均有归一化容错（如评审 `suggestions`、方法推荐 `representative_papers` 对象列表归一化）。
+
+---
+
+## 三、后端能力一：认知议会（Parliament）包裹 Pipeline
+
+> 以下链路仍然可用（`POST /api/parliament/convene`），但**不再是前端主入口**。
 
 ```
 用户输入议题
       │
       ▼
 ┌─────────────────────────────────────┐
-│  CognitiveParliament.convene()      │  ← 唯一的用户入口（当前前端）
+│  CognitiveParliament.convene()      │
 │                                     │
 │  ① 开幕（Scientist + Humanist）      │
 │  ② 多轮辩论 + 加权投票               │
-│  ③ 调用 Pipeline.run_with_motions() │  ← 内部自动调用 Pipeline
+│  ③ 调用 Pipeline.run_with_motions() │
 │  ④ 策略整合                          │
 │  ⑤ 闭幕总结 + 最终报告                │
 └─────────────────────────────────────┘
 ```
 
-Pipeline 的独立入口 `POST /api/analyze/run` 仍然保留可用，但前端 TaskCenter 目前只走 Parliament 路径。
-
----
-
-## 二、完整调用链路（从前端到 LLM）
-
-### 2.1 前端入口
-
-**文件**: `frontend/src/pages/TaskCenter.tsx` (行 69-93)
+### 3.1 调用链速查
 
 ```
-用户输入"嫦娥六号" → 点击"启动认知议会"
-  → conveneParliament("嫦娥六号", maxRounds=5, maxPipelineRounds=3)
-  → POST /api/parliament/convene
-  → 返回 { task_id: "parl_20260725..." }
-  → 前端每2秒轮询 GET /api/parliament/status/{task_id}
-  → 完成后跳转到 /parliament 页面展示结果
+POST /api/parliament/convene                    [api/routes/parliament.py:283]
+  └─ run_parliament_task()                      [api/routes/parliament.py:232]
+     └─ CognitiveParliament.convene(topic)      [src/pipeline.py:760]
+        ├─ debate_engine.open_parliament()      [src/parliament/debate_engine.py:77]
+        │   ├─ ScienceAgent.run(task_type="opening_report")
+        │   └─ HumanistAgent.run(task_type="opening_report")
+        ├─ while not should_close():            [src/parliament/debate_engine.py:508]
+        │   └─ debate_engine.debate_round()     [src/parliament/debate_engine.py:188]
+        │       ├─ SpeakerAgent.plan_round()
+        │       ├─ 联网搜索（统一搜索：Tavily + 百炼 WebSearch + 他山）
+        │       ├─ for speaker in next_speakers:
+        │       │   └─ agent.run(task_type="debate_speech")
+        │       └─ vote_on_motion() → 僵持由 Speaker 裁定
+        ├─ Pipeline.run_with_motions()          [src/pipeline.py:298]
+        │   ├─ 联网搜索
+        │   ├─ CrossValidator 四路校验（RAG + KG + Wikidata + Wikipedia）
+        │   └─ for round in range(max_pipeline_rounds):
+        │       ├─ StrategyAgent.run()  → 生成策略
+        │       └─ EvaluatorAgent.run() → 五维评分（≥75 通过，否则迭代）
+        ├─ StrategyAgent.run() → 最终策略整合
+        ├─ SpeakerAgent.close_parliament()      [src/parliament/debate_engine.py:468]
+        └─ LLM → 结构化最终报告
 ```
 
-关键代码 (`TaskCenter.tsx:73`):
-```ts
-const { task_id } = await conveneParliament(t, maxRounds, maxPipelineRounds)
-```
-
-前端**只有这一个入口**——没有同时调用 Pipeline 的地方。
-
-### 2.2 后端 Parliament 路由
-
-**文件**: `api/routes/parliament.py` (行 223-263)
-
-```python
-def run_parliament_task(task_id, topic, max_rounds, max_pipeline_rounds):
-    parliament = CognitiveParliament(
-        max_rounds=max_rounds,                       # 辩论轮次（默认5）
-        max_pipeline_rounds=max_pipeline_rounds,      # Pipeline评测轮次（默认3）
-        progress_callback=make_parliament_callback(task_id),
-    )
-    transcript = parliament.convene(topic=topic, science_facts=science_facts)
-```
-
-### 2.3 CognitiveParliament.convene() 内部执行顺序
-
-**文件**: `src/pipeline.py` (行 744-850)
-
-| 步骤 | 操作 | 涉及哪些 Agent | 代码位置 |
-|------|------|---------------|---------|
-| ① | **开幕** | Scientist + Humanist 做开场报告 | `pipeline.py:766-773` |
-|   | `debate_engine.open_parliament()` | Scientist 生成科学动议（最多3条） | `debate_engine.py:97-126` |
-|   |   | Humanist 生成文化动议（最多2条） | `debate_engine.py:129-159` |
-| ② | **辩论循环** | Speaker 主持，所有 Agent 参与 | `pipeline.py:777-792` |
-|   | `while not should_close():` | 每轮：Speaker规划 → 联网搜索 → 发言 → 投票 | `debate_engine.py:188-348` |
-|   | `debate_engine.debate_round()` | 循环直到 should_close() 返回 True | |
-| ③ | **Pipeline 接驳** | Pipeline 对通过的动议做校验+策略+评测 | `pipeline.py:794-828` |
-|   | `Pipeline.run_with_motions()` | 跳过前3步，直接从校验层开始 | `pipeline.py:291-454` |
-| ④ | **策略整合** | StrategyAgent 融合辩论 + Pipeline 结果 | `pipeline.py:821-828` |
-| ⑤ | **闭幕** | Speaker 生成闭幕总结 | `pipeline.py:832-834` |
-| ⑥ | **最终报告** | LLM 生成结构化总结报告（核心结论/TOP3策略/风险/受众建议） | `pipeline.py:838-843` |
-
----
-
-## 三、辩论循环详解
-
-**文件**: `src/parliament/debate_engine.py`
-
-### 3.1 单轮辩论 (`debate_round()`, 行 188-348)
+### 3.2 辩论循环详解（`debate_round()`, debate_engine.py:188）
 
 ```
 ┌────────────────────────────────────────────┐
 │ Speaker.plan_round()                       │
-│ → 决定本轮讨论主题（current_topic）          │
-│ → 决定谁发言（next_speakers, 2-4人）        │
-│ → 决定投票权重（speaker_weights）           │
-│ → 决定表决哪个动议（motion_to_vote）         │
+│ → 决定本轮讨论主题 / 发言者(2-4人) / 投票权重 │
+│ → 决定表决哪个动议                          │
 ├────────────────────────────────────────────┤
-│ 联网搜索（Tavily + 百炼 WebSearch）          │
-│ → 每轮一次，所有发言者共享                   │
+│ 联网搜索（统一搜索：Tavily + 百炼 + 他山）     │
 ├────────────────────────────────────────────┤
 │ 顺序发言（for speaker_name in next_speakers）│
-│   agent.run({                               │
-│     task_type: "debate_speech",             │
-│     current_motion: ...,                    │
-│     previous_speeches: [...],               │
-│   })                                        │
+│   agent.run({ task_type: "debate_speech", … })│
 │   → 返回 { stance, content, references }    │
-│   → 相似度检查（bigram重叠>0.8标记为"重述"） │
+│   → 相似度检查（bigram 重叠>0.8 标记"重述"）  │
 ├────────────────────────────────────────────┤
 │ 投票表决 vote_on_motion()                   │
-│   每个Agent独立投票 → 加权计算 → 判定结果    │
-│   → 僵持→Speaker裁定                        │
-│   → 记录少数派意见                           │
+│   每个 Agent 独立投票 → 加权计算 → 判定结果    │
+│   → 僵持 → Speaker 裁定 → 记录少数派意见      │
 └────────────────────────────────────────────┘
 ```
 
-### 3.2 Agent 辩论中的角色转换
-
-同一个 Agent 类在 Pipeline 和辩论中扮演不同角色：
+### 3.3 Agent 辩论中的角色转换
 
 | Agent 类 | Pipeline 角色 | 辩论角色 | 发言风格 |
 |----------|-------------|---------|---------|
 | ScienceAgent | 科学事实提取者 | **Scientist** 科学专家 | 从证据角度评价动议 |
-| HypothesisAgent | 假设生成者 | **Skeptic** 质疑者 | 强制找漏洞（至少1个），温度提高到0.5 |
-| HumanistAgent | （不参与Pipeline） | **Humanist** 人文学者 | 文化风险审查，温度提高到0.5 |
+| HypothesisAgent | 假设生成者 | **Skeptic** 质疑者 | 强制找漏洞（至少1个），温度 0.5 |
+| HumanistAgent | （不参与 Pipeline） | **Humanist** 人文学者 | 文化风险审查，温度 0.5 |
 | StrategyAgent | 策略转译师 | **Strategist** 策略师 | 可操作性评估 |
 | EvaluatorAgent | 评测员 | **Evaluator** 评估者 | 五维标准独立评估 |
 | ContextAgent | 语境分析师 | **不参与辩论** | — |
 
-### 3.3 动态权重
-
-Speaker 根据辩论主题自动切换投票权重（`speaker.py:18-35`）：
+### 3.4 动态投票权重（speaker.py）
 
 | 讨论类型 | Scientist | Skeptic | Humanist | Strategist | Evaluator |
 |---------|-----------|---------|----------|------------|-----------|
@@ -140,81 +194,7 @@ Speaker 根据辩论主题自动切换投票权重（`speaker.py:18-35`）：
 | 策略可行性 | 0.10 | 0.15 | 0.15 | **0.35** | 0.25 |
 | 方法论 | 0.25 | **0.35** | 0.10 | 0.10 | 0.20 |
 
-谁的权重高，谁在投票时的话语权就大。
-
-### 3.4 闭幕条件 (`should_close()`, 行 500-516)
-
-满足任一即闭幕：
-- 辩论轮次 ≥ 5 轮
-- 所有动议已表决完毕
-- 连续 2 轮评分无提升
-
----
-
-## 四、Parliament 如何调用 Pipeline
-
-最关键的一段代码在 `CognitiveParliament.convene()` 第 794-828 行：
-
-```python
-# 筛选通过的动议
-passed_motions = [
-    m for m in self.debate_engine.motions
-    if any(v.motion_id == m.motion_id and v.result == "passed"
-           for v in self.debate_engine.votes)
-]
-
-# 调用 Pipeline（跳过前3步，直接从校验开始）
-pipeline = Pipeline(
-    progress_callback=self.progress_callback,
-    max_iterations=self.max_pipeline_rounds
-)
-pipeline_result = pipeline.run_with_motions(
-    topic=topic,
-    motions=[m.model_dump() for m in passed_motions],
-    minority_opinions=self.debate_engine.minority_opinions,
-    debate_transcript=[r.model_dump() for r in self.debate_engine.rounds],
-    science_facts=science_facts,
-    context_analysis=context_analysis,
-)
-```
-
-### run_with_motions() 做了什么（`pipeline.py:291-454`）
-
-```
-议会通过的动议
-      │
-      ▼
-┌──────────────────────────────────────────┐
-│ 动议 → 假设格式转换                        │
-│ motion.content  → hypothesis.statement    │
-│ motion.evidence → hypothesis.evidence_chain│
-│ 少数派意见 → hypothesis.falsification_criteria│
-├──────────────────────────────────────────┤
-│ 联网搜索（Tavily + 百炼 WebSearch）         │
-├──────────────────────────────────────────┤
-│ 交叉校验                                  │
-│ CrossValidator 四路投票（RAG+KG+Wikidata+Wikipedia）│
-├──────────────────────────────────────────┤
-│ 策略+评测+迭代（循环，最多 max_pipeline_rounds 轮）│
-│                                          │
-│  for round in range(max_pipeline_rounds): │
-│    StrategyAgent → 生成策略                │
-│    EvaluatorAgent → 五维评分+受众模拟      │
-│    → 加权总分 ≥ 75 → 通过 ✓               │
-│    → 未通过 → 生成迭代反馈 → 下一轮         │
-│                                          │
-│  迭代的额外输入：                          │
-│  - minority_opinions（少数派意见）          │
-│  - debate_transcript_summary（辩论摘要）   │
-└──────────────────────────────────────────┘
-      │
-      ▼
-返回 { verification_results, strategies, evaluation, search_sources }
-```
-
-随后这些结果被传回 `CognitiveParliament`，用于整合策略和生成最终报告。
-
-### run_with_motions() 与 run() 的对比
+### 3.5 run_with_motions() 与 run() 的对比
 
 | 对比维度 | `Pipeline.run()` | `Pipeline.run_with_motions()` |
 |---------|------------------|------------------------------|
@@ -230,168 +210,68 @@ pipeline_result = pipeline.run_with_motions(
 
 ---
 
-## 五、完整端到端执行序列（一次"嫦娥六号"任务）
+## 四、后端能力二：成果中心（Output Center）
+
+Parliament / Pipeline / Workflow 运行完成后，原始结果可通过**统一的成果接口**加工为标准化的「科研成果 + 传播成果」：
 
 ```
-用户输入 "嫦娥六号"
-│
-├─ [前端] TaskCenter → POST /api/parliament/convene
-│
-├─ [后端] CognitiveParliament.convene("嫦娥六号")
-│
-│   ╔══════════════════════════════════════════╗
-│   ║ 阶段一：开幕（~2次 LLM调用）              ║
-│   ╠══════════════════════════════════════════╣
-│   ║ Scientist.run(task_type="opening_report") ║
-│   ║   → 生成 3 条科学动议                     ║
-│   ║ Humanist.run(task_type="opening_report")  ║
-│   ║   → 生成 2 条文化动议                     ║
-│   ╚══════════════════════════════════════════╝
-│
-│   ╔══════════════════════════════════════════╗
-│   ║ 阶段二：辩论循环（每轮~8次 LLM调用）       ║
-│   ╠══════════════════════════════════════════╣
-│   ║ 第1轮：                                   ║
-│   ║   Speaker.plan_round() → 事实讨论          ║
-│   ║   联网搜索（1次）                          ║
-│   ║   Scientist 发言（stance: support）         ║
-│   ║   Skeptic 发言（stance: oppose，强制找漏洞）║
-│   ║   投票 M_S001（5个Agent各1次）              ║
-│   ║   → yes=0.55 > no=0.30 → passed ✓         ║
-│   ║                                           ║
-│   ║ 第2轮：                                   ║
-│   ║   Speaker.plan_round() → 文化适配          ║
-│   ║   Humanist 发言（stance: amend）           ║
-│   ║   Strategist 发言（stance: support）        ║
-│   ║   投票 M_H001：僵持 → Speaker裁定          ║
-│   ║   → 附条件通过（amended）                   ║
-│   ║                                           ║
-│   ║ ...最多5轮，直至 should_close()              ║
-│   ╚══════════════════════════════════════════╝
-│
-│   ╔══════════════════════════════════════════╗
-│   ║ 阶段三：Pipeline 接驳（每轮~2次+校验）     ║
-│   ╠══════════════════════════════════════════╣
-│   ║ 筛选通过的动议（M_S001, M_H001...）        ║
-│   ║                                           ║
-│   ║ run_with_motions():                       ║
-│   ║   → 联网搜索（Tavily + 百炼 双引擎）       ║
-│   ║   → 四路交叉校验（每个断言4条路径）         ║
-│   ║                                           ║
-│   ║   第1轮策略：                              ║
-│   ║     StrategyAgent → 3条传播策略             ║
-│   ║     EvaluatorAgent → 加权总分 68          ║
-│   ║     ✗ 未达75分 → 迭代                      ║
-│   ║                                           ║
-│   ║   第2轮策略：                              ║
-│   ║     StrategyAgent → 改进后策略（注入少数派意见）║
-│   ║     EvaluatorAgent → 加权总分 82          ║
-│   ║     ✓ 通过！                               ║
-│   ╚══════════════════════════════════════════╝
-│
-│   ╔══════════════════════════════════════════╗
-│   ║ 阶段四：收尾（~3次 LLM调用）               ║
-│   ╠══════════════════════════════════════════╣
-│   ║ StrategyAgent → 融合辩论+Pipeline的最终策略║
-│   ║ Speaker.close_parliament() → 闭幕总结     ║
-│   ║ LLM → 结构化最终报告                       ║
-│   ║   {                                        ║
-│   ║     one_line_takeaway: "一句话结论",        ║
-│   ║     core_conclusion: "150-250字核心结论",   ║
-│   ║     top_strategies: [TOP3策略],            ║
-│   ║     risk_warnings: [风险提示],              ║
-│   ║     audience_recommendations: [受众建议]    ║
-│   ║   }                                        ║
-│   ╚══════════════════════════════════════════╝
-│
-├─ [前端] 轮询检测到 completed
-│         → GET /parliament/result/{task_id}
-│         → 跳转 /parliament → 展示辩论记录+策略+校验报告
+研究中间结果（科学事实、校验报告、策略集、工作台产出物）
+                │
+                ▼
+     成果中心（Output Center）
+       POST /api/outputs/generate
+       ├── research_plan   研究计划（助研）
+       ├── strategy_report 策略报告（助传）
+       ├── paper_outline   论文大纲（助研）
+       ├── press_release   新闻建议稿
+       ├── science_script  科普脚本
+       └── ...（按议题逐步填充）
+                │
+                ▼
+    标准化成果文件（JSON 落盘 + 多格式导出 JSON/MD/HTML/PDF/Word/KG-PNG）
 ```
+
+**关键点**：成果中心复用研究中间结果作为生成素材（`_load_source_material`），**不重复跑研究过程**，而是做面向交付的表达加工。这正是『助研 + 助传』双主线的落地。
 
 ---
 
-## 六、关键调用关系速查
+## 五、统一搜索层
+
+**文件**：`src/search/`（`unified_search.py` 为默认入口，`get_unified_search_service`）
 
 ```
-前端 TaskCenter.tsx
-  └─ conveneParliament(topic, maxRounds, maxPipelineRounds)
-     └─ POST /api/parliament/convene
-        └─ run_parliament_task()                    [api/routes/parliament.py:223]
-           └─ CognitiveParliament(max_rounds, max_pipeline_rounds)
-              └─ parliament.convene(topic)          [src/pipeline.py:744]
-                 │
-                 ├─ debate_engine.open_parliament() [src/parliament/debate_engine.py:77]
-                 │   ├─ ScienceAgent.run(task_type="opening_report")
-                 │   └─ HumanistAgent.run(task_type="opening_report")
-                 │
-                 ├─ while not should_close():       [src/pipeline.py:777]
-                 │   └─ debate_engine.debate_round() [src/parliament/debate_engine.py:188]
-                 │       ├─ SpeakerAgent.plan_round()
-                 │       ├─ 联网搜索（Tavily + 百炼）
-                 │       ├─ for speaker in next_speakers:
-                 │       │   └─ agent.run(task_type="debate_speech")
-                 │       └─ vote_on_motion()
-                 │           ├─ 5个Agent各.run(task_type="vote")
-                 │           └─ 僵持 → SpeakerAgent.rule_deadlock()
-                 │
-                 ├─ Pipeline(max_iterations)        [src/pipeline.py:805]
-                 │   └─ .run_with_motions()         [src/pipeline.py:291]
-                 │       ├─ 联网搜索
-                 │       ├─ CrossValidator 四路校验
-                 │       ├─ for round in range(max_rounds):
-                 │       │   ├─ StrategyAgent.run()
-                 │       │   └─ EvaluatorAgent.run()
-                 │       └─ 返回结果
-                 │
-                 ├─ StrategyAgent.run() → 最终策略整合
-                 ├─ SpeakerAgent.close_parliament()
-                 └─ LLM → 结构化最终报告
+统一搜索 UnifiedSearchService
+  ├─ qwen_websearch.py   百炼 WebSearch MCP（需 DASHSCOPE_API_KEY）
+  ├─ tavily_search.py    Tavily REST（需 TAVILY_API_KEY，可选 TAVILY_PROXY）
+  └─ tashan_search.py    他山世界 TopicLab（需 TASHAN_TOKEN，可选）
+      → 三引擎并行调用 → 结果合并去重 → 返回结构化引用
 ```
+
+Pipeline、议会辩论、工作流阶段（engine.py:308-313, 580-586）全部走统一搜索。
 
 ---
 
-## 七、为什么这样设计
-
-### 辩论层与校验层的分离
-
-辩论中 Agent 说"法国媒体对嫦娥六号的报道以竞争框架为主"——这只是一个**观点**。Parliament 负责多角度讨论一个观点是否合理，Pipeline 负责验证这个观点的**事实基础**。
-
-### 少数派意见不丢失
-
-辩论中被多数票否决的观点，在 `run_with_motions()` 中作为 `minority_opinions` 注入。这意味着即使某个观点被投票否决，它仍然影响后续策略生成——通常体现在"风险提示"中。
-
-### 分工角色清晰
-
-| 层 | 职责 | 谁做 |
-|----|------|-----|
-| **辩论层** (Parliament) | 提出观点、质疑观点、达成共识 | 6个 Agent + 1个 Speaker |
-| **校验层** (Pipeline → CrossValidator) | 验证事实真伪 | RAG + KG + Wikidata + Wikipedia |
-| **策略层** (Pipeline → StrategyAgent) | 生成可执行传播策略 | StrategyAgent + EvaluatorAgent 迭代 |
-
----
-
-## 八、一次完整运行的 LLM 调用次数估算
+## 六、一次完整运行的 LLM 调用次数估算（议会模式）
 
 以默认参数（5 轮辩论 + 3 轮 Pipeline 评测）为例：
 
 | 阶段 | 调用次数 | 明细 |
 |------|---------|------|
-| 开幕 | 2 | Scientist + Humanist 各1次 |
-| 辩论（每轮） | 7-9 | Speaker 1次 + 2-4个发言者 + 5个投票 |
-| 辩论总计（按5轮） | 35-45 | |
+| 开幕 | 2 | Scientist + Humanist 各 1 次 |
+| 辩论（每轮） | 7-9 | Speaker 1 次 + 2-4 个发言者 + 5 个投票 |
+| 辩论总计（按 5 轮） | 35-45 | |
 | Pipeline 校验 | 4-6 | 取决于断言数量 |
 | Pipeline 策略+评测（每轮） | 2 | StrategyAgent + EvaluatorAgent |
-| Pipeline 总计（按2轮通过） | 6-10 | |
+| Pipeline 总计（按 2 轮通过） | 6-10 | |
 | 策略整合 | 1 | |
-| 闭幕+最终报告 | 2 | Speaker总结 + LLM结构化报告 |
-| **总计** | **约 46-64 次 LLM调用** | |
+| 闭幕+最终报告 | 2 | Speaker 总结 + LLM 结构化报告 |
+| **总计** | **约 46-64 次 LLM 调用** | |
 
-这是当前架构最大的成本点。优化方向见下文。
+> 对比：7 阶段工作台模式每次只调 1 个阶段 Agent（+双校验），成本远低于议会全流程，这也是前端主入口迁移到工作台的原因之一。
 
 ---
 
-## 九、经验池的当前覆盖范围
+## 七、经验池的当前覆盖范围
 
 ```
 Pipeline 评测每轮完成后:
@@ -399,7 +279,7 @@ Pipeline 评测每轮完成后:
     ├─ 写入内存 pool（会话级）
     └─ 写入 SQLite experience_store
          ├─ experiences 表：五维评分 + 低分维度 + 反馈
-         └─ topic_embeddings 表：议题embedding（相似议题检索）
+         └─ topic_embeddings 表：议题 embedding（相似议题检索）
 
 下次处理相似议题时:
   EvaluationEngine.load_past_experience(topic)
@@ -408,31 +288,24 @@ Pipeline 评测每轮完成后:
     └─ 全局改进趋势
 ```
 
-**当前局限性**：经验池只记录 Pipeline 评测层的经验（评分数据），**不记录辩论层的经验**。比如"哪种权重模板效果好""哪个 Agent 组合发言质量高"这类辩论策略的经验目前没有被积累。
+**当前局限性**：经验池只记录 Pipeline 评测层的经验（评分数据），**不记录辩论层的经验**。
 
 ---
 
-## 十、成果中心：从研究中间结果到交付成果
+## 八、关键文件索引
 
-Parliament / Pipeline 运行完成后，原始结果（科学事实、校验报告、策略集等）不会直接交付给用户，而是通过**统一的成果接口**进一步加工为标准化的「科研成果 + 传播成果」。
-
-```
-Parliament / Pipeline 结果（三库证据、策略、校验）
-                │
-                ▼
-     成果中心（Output Center）— 统一成果接口
-       POST /api/outputs/generate
-       ├── research_plan   研究计划（助研）
-       ├── strategy_report 策略报告（助传）
-       ├── paper_outline   论文大纲（助研，无正文）
-       └── ... （新闻建议稿 / 科普脚本 / KG 报告等，按议题逐步填充）
-                │
-                ▼
-    标准化成果文件（JSON 落盘 + 前端成果中心展示 + 多格式导出）
-```
-
-**关键点**：成果中心复用 Pipeline / Parliament 的中间结果作为生成素材（`_load_source_material`），因此成果生成**不重复跑研究过程**，而是在已有三库证据基础上做面向交付的表达加工。这也正是平台『助研 + 助传』双主线的落地：研究阶段产出经过验证的中间成果，成果中心把它们转化为可直接交付与导出的最终成果。
+| 模块 | 文件 |
+|------|------|
+| 工作流引擎 | `src/workflow/engine.py`、`src/workflow/stages.py`、`src/workflow/project.py` |
+| 工作流 API | `api/routes/workflow.py` |
+| 议会引擎 | `src/parliament/debate_engine.py`、`src/parliament/speaker.py` |
+| 编排器 | `src/pipeline.py`（`run()` / `run_with_motions()` / `CognitiveParliament.convene()`） |
+| 校验层 | `src/verification/`（rag_checker / kg_checker / cross_validator / external_validator / report_generator） |
+| 知识层 | `src/knowledge/`（libraries / vector_store / kg_builder / wikidata_enricher / preprocessor / experience_store） |
+| 搜索层 | `src/search/`（unified_search / qwen_websearch / tavily_search / tashan_search） |
+| 成果中心 | `api/routes/outputs.py`、`src/export_service.py` |
+| Agent 基类 | `src/agents/base_agent.py`（LLM 调用 / JSON 修复 / 重试 / Tool Use） |
 
 ---
 
-*最后更新：2026-08-01*
+*最后更新：2026-08-05*

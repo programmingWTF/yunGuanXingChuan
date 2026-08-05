@@ -5,66 +5,46 @@
 > 🌟 **AI Scientist 范式**：假设生成 → 验证 → 迭代
 > 🔍 **RAG + 知识图谱双校验**：确保科学事实准确性
 > 📊 **五维评分 + 自迭代闭环**：自动评估与改进
-> 🦞 **多智能体协作**：六个核心 Agent + 议会辩论引擎（Parliament）+ 成果生成 Agent 互相配合
+> 🧩 **七阶段科研工作台**：选题孵化 → 文献综述 → 研究设计 → 方法推荐 → 数据分析 → 学术写作 → 同行评审
 > 📦 **成果中心**：研究计划 / 策略报告 / 新闻建议稿 / 论文大纲 / 科普脚本 / KG 报告 / 表达适配，一键生成与多格式导出（JSON/MD/HTML/PDF/Word/KG-PNG）
 
 ---
 
 ## 📖 项目简介（给所有人看）
 
-“云观星传”是一个 **AI Scientist 科技议题研究与国际传播辅助平台**，围绕 **『助研（Research Assistant）＋助传（Communication Assistant）』** 双主线：既帮助研究者完成科研（事实提取、证据校验、假设生成、论文大纲），也服务传播工作（国际传播策略、新闻建议稿、科普脚本）。
+“云观星传”是一个 **AI Scientist 科技议题研究与国际传播辅助平台**，围绕 **『助研（Research Assistant）＋助传（Communication Assistant）』** 双主线：既帮助研究者完成科研（选题、文献、研究设计、方法推荐、数据分析、写作、评审），也服务传播工作（国际传播策略、新闻建议稿、科普脚本）。
 
 ### 它做什么？
 
 简单来说，你输入一个科技议题（比如"嫦娥六号月球背面采样返回"），系统会自动：
 
-1. **搜集信息** — 从互联网搜索相关的中文、英文、法文报道
-2. **提取事实** — 用 AI 提取关键科学事实（时间线、参与方、技术参数等）
-3. **分析语境** — 分析不同国家媒体是如何报道这个议题的（用了什么框架、什么情感倾向）
-4. **生成假设** — 自动提出可验证的传播学假设（比如"美国精英媒体倾向于用安全化框架报道中国航天"）
-5. **事实校验** — 用知识图谱 + 文档检索双重验证每个科学事实的准确性
-6. **策略建议** — 输出面向不同受众（美国政策精英 / 全球南方公众 / 国内青年）的传播策略
-7. **自动评分** — 用五维评分矩阵自动评估输出质量，不够好的会自动迭代改进
+1. **选题孵化** — 结合文献库与理论库，生成研究方向候选与选题建议
+2. **文献综述** — 检索相关文献与理论，产出综述章节与理论关系图
+3. **研究设计** — 拆解研究问题（RQ）与假设（H），设计检验路径
+4. **方法推荐** — 匹配顶刊论文库中的研究方法，给出适配度评估
+5. **数据分析** — 上传素材（文本/访谈/表格），执行内容/文本/框架分析，输出编码表与词云
+6. **学术写作** — 按顶刊风格生成论文草稿，支持分章节 AI 润色
+7. **同行评审** — 模拟三位审稿人评审，输出修改建议与修改说明
 
-### 完整闭环工作流
+每个阶段产出物都经过 **RAG + 知识图谱双校验**，并支持一键生成全部、任意阶段重新生成（带二次确认防误触）、项目删除、多格式导出（MD/JSON/Word/PDF）。
 
-系统围绕 **『助研（Research Assistant）+ 助传（Communication Assistant）』** 双主线的完整闭环：
+### 科研工作台（当前主入口）
+
+当前前端的主入口是 **7 阶段科研工作台**（`/projects`），围绕一个「研究项目」串行推进：
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                      AI Scientist 完整闭环工作流                     │
-└─────────────────────────────────────────────────────────────────────┘
-
-  ① 三库知识获取 ──→ ② 知识图谱构建 ──→ ③ 证据推理
-       科学事实库       实体/关系/时间线     RAG + KG + Wikidata + Wikipedia
-       媒体传播库         可视化              四路交叉校验
-       知识图谱库             │                    │
-                             ▼                    ▼
-                        ④ 科学假设生成（AI 提出可验证假设）
-                                    │
-                                    ▼
-                        ⑤ 人机协同修订（议会辩论 + 五维评分 + 迭代；研究者介入）
-                                    │
-                                    ▼
-                        ⑥ 国际传播策略（面向不同受众的传播策略与叙事框架）
-                                    │
-                                    ▼
-                        ⑦ 成果生成（新闻传播建议稿 / 论文大纲 / 科普脚本）
-                                    │
-                                    ▼
-                        ⑧ 标准化成果导出（成果中心：一键生成 + 多格式导出）
+新建项目（输入研究兴趣）
+      │
+      ▼
+① 选题孵化 ──→ ② 文献综述 ──→ ③ 研究设计 ──→ ④ 方法推荐
+      │
+      ▼
+⑤ 数据分析 ──→ ⑥ 学术写作 ──→ ⑦ 同行评审 ──→ 导出成果
+（每阶段：产出物落盘 awaiting_review → 研究者确认 approve → 解锁下一阶段；
+  产出前后均做 RAG + KG 双校验；一键生成全部可串行跑完 7 阶段）
 ```
 
-| 环节 | 说明 | 对应成果/能力 |
-|------|------|--------------|
-| **① 三库知识获取** | 科学事实库 / 国际媒体传播库 / 知识图谱库 | 多语种报道检索与事实提取 |
-| **② 知识图谱构建** | 实体 / 关系 / 时间线建模 | 图谱可视化（知识图谱页） |
-| **③ 证据推理** | RAG + 知识图谱 + Wikidata + Wikipedia 四路交叉校验 | 校验报告 |
-| **④ 科学假设生成** | 基于事实与语境提出可验证假设 | 科学假设集 |
-| **⑤ 人机协同修订** | 议会辩论 + 五维评分 + 迭代改进，研究者可介入修订 | 迭代后策略 |
-| **⑥ 国际传播策略** | 面向不同受众的传播策略与叙事框架 | 策略报告 |
-| **⑦ 成果生成** | 新闻传播建议稿 / 论文大纲 / 科普脚本等 | 成果中心多类生成器 |
-| **⑧ 标准化成果导出** | 统一成果接口，一键生成与多格式导出 | 研究计划 / 策略报告 / 论文大纲等成果 |
+> 后端同时保留 **认知议会（Parliament）** 与 **成果中心（Output Center）** 能力（`/api/parliament/*`、`/api/outputs/*`），供技术同学通过 API 调用；前端主流程已统一到科研工作台。
 
 ### 为什么叫"云观星传"？
 
@@ -100,7 +80,7 @@
 |------|---------------|-----------|
 | **新闻传播方向** | 数据文件、Prompt 模板 | 编辑 `data/` 下的语料和受众画像，微调 `config/prompts/` 中的提示词 |
 | **计算机/AI 方向** | 全部代码 | 系统架构、API 集成、Agent 编排、前端开发 |
-| **美术设计方向** | 前端样式、可视化 | 修改 `frontend/src/` 下的组件样式、图表配色、星空背景 |
+| **美术设计方向** | 前端样式、可视化 | 修改 `frontend/src/` 下的组件样式、图表配色、页面布局（他山学术风） |
 
 ---
 
@@ -192,8 +172,9 @@ cd yunGuanXingChuan
    | `QWEN_API_KEY` | 调用通义千问大模型 | [百炼控制台](https://bailian.console.aliyun.com/) |
    | `DASHSCOPE_API_KEY` | 联网搜索能力 | 同上（可与 QWEN_API_KEY 共用一个） |
    | `TAVILY_API_KEY` | 搜索国际新闻 | [Tavily 官网](https://app.tavily.com/) |
+   | `TASHAN_TOKEN` | 他山世界 TopicLab 搜索（可选） | 组长处获取 |
 
-   > 💡 **最小启动配置**：只填 `QWEN_API_KEY` 和 `DASHSCOPE_API_KEY`（可以是同一个 Key），项目就能跑起来。Tavily 是可选的。
+   > 💡 **最小启动配置**：只填 `QWEN_API_KEY` 和 `DASHSCOPE_API_KEY`（可以是同一个 Key），项目就能跑起来。Tavily、他山都是可选的。
 
 ---
 
@@ -254,14 +235,15 @@ uvicorn api.main:app --reload --port 8000
 
 **第三步 — 打开浏览器访问 [http://localhost:8000](http://localhost:8000)**，你会看到：
 
-- **任务中心**：输入一个科技议题（如"嫦娥六号"），点击启动，系统自动分析（约 2-5 分钟）
-- **议会页 / 知识图谱 / 校验报告 / 策略页**：查看分析结果
+- **科研工作台**：新建研究项目（输入兴趣，如"嫦娥六号"），一键生成全部 7 个阶段，或逐阶段生成/确认/重新生成
+- **七个科研子页**：选题孵化 / 文献综述 / 研究设计 / 方法推荐 / 数据分析 / 学术写作 / 同行评审
+- **产出物导出**：每个项目支持 MD / JSON / Word / PDF 导出
+
+> 想深入调试后端接口的技术同学，可以额外访问 [http://localhost:8000/docs](http://localhost:8000/docs)（Swagger 文档）直接测试 API。
 
 #### 方式 B：访问已部署的地址（可选，最简单）
 
 如果系统已经部署到服务器（如内网 NAS），直接打开浏览器访问部署地址就能用，**连本地环境都不用装**。部署地址找组长要（例如 `http://192.168.0.150:8123`，以实际为准）。
-
-> 💡 想深入调试后端接口的技术同学，可以额外访问 [http://localhost:8000/docs](http://localhost:8000/docs)（Swagger 文档）直接测试 API。
 
 ---
 
@@ -287,9 +269,9 @@ uvicorn api.main:app --reload --port 8000
 
 **三个最重要的规矩**：
 
-1. **永远不要在 `main` 上直接改代码** — 先开自己的分支，做完 PR 合并
+1. **永远不要在 `main` 上直接改代码** — 先开自己的分支，做完 PR 合并（`main` 已开启分支保护，直接 push 会被拒绝）
 2. **开工前先 `git pull origin main`** — 拉最新代码，别在旧代码上改（会把队友的工作覆盖掉）
-3. **提交信息用 `<type>(<scope>): <描述>`** — 例如 `fix(parliament): 修复辩论显示`；类型：`feat`（新功能）/ `fix`（修bug）/ `docs`（文档）/ `data`（数据）/ `style`（样式）...
+3. **提交信息用 `<type>(<scope>): <描述>`** — 例如 `fix(workflow): 修复阶段重跑确认`；类型：`feat`（新功能）/ `fix`（修bug）/ `docs`（文档）/ `data`（数据）/ `style`（样式）...
 
 > 📖 每一步具体怎么操作、遇到报错怎么办，看 **[docs/github-guide.md](docs/github-guide.md)**；完整规范见 **[CONTRIBUTING.md](CONTRIBUTING.md)**。
 
@@ -302,7 +284,7 @@ yunGuanXingChuan/
 ├── README.md                   # 项目说明（你正在看）
 ├── CONTRIBUTING.md             # 团队协作规范（分支/提交/PR）
 ├── SETUP_GUIDE.md              # API Key 获取详细指南
-├── .github/                    # GitHub 模板（Issue / PR）
+├── .github/                    # GitHub 模板（Issue / PR）与 Actions 工作流
 ├── .env.example                # 配置模板（复制为 .env 后填写）
 ├── requirements.txt            # Python 依赖列表
 │
@@ -310,98 +292,121 @@ yunGuanXingChuan/
 │   ├── github-guide.md         # GitHub 协作入门（新手必读）
 │   ├── team.md                 # 团队分工与职责
 │   ├── labels.md               # Issue/PR 标签规范
-│   └── architecture-invocation.md  # 多智能体调用链路（技术）
+│   ├── architecture-invocation.md  # 智能体调用链路（技术）
+│   ├── bot-automation.md       # Bot 自动化系统
+│   └── rag-platform-research.md    # RAG 平台调研
 │
 ├── config/                     # 配置文件
 │   ├── settings.py             # 全局配置（读取 .env）
-│   └── prompts/                # 各 Agent 的 System Prompt
-│       ├── science_agent.txt   # 科学理解 Agent 提示词
-│       ├── context_agent.txt   # 语境分析 Agent 提示词
-│       ├── hypothesis_agent.txt
-│       ├── strategy_agent.txt
-│       └── evaluator_agent.txt
+│   └── prompts/                # 各 Agent 的 System Prompt（19 个）
 │
 ├── data/                       # 数据（新闻传播同学主要编辑这里）
-│   ├── science/                # 科学知识库（嫦娥六号、天宫等）
-│   ├── media/                  # 多语种媒体语料
-│   │   ├── france/reports.json # 法国媒体报道
-│   │   └── brazil/reports.json # 巴西媒体报道
+│   ├── science/                # 科学知识库（嫦娥六号、天问二号、嫦娥七号、天宫等）
+│   ├── media/                  # 多语种媒体语料（11 国）
 │   ├── audience_profiles/      # 受众画像
-│   │   ├── us_policy_elite.json
-│   │   ├── global_south_public.json
-│   │   └── domestic_youth.json
-│   └── kg/                     # 知识图谱数据
+│   ├── kg/                     # 知识图谱数据
+│   └── libraries/              # 四库：文献库 / 理论库 / 顶刊论文库 / 方法库
 │
 ├── src/                        # 核心代码
-│   ├── agents/                 # AI Agent（核心分析 + 成果生成）
-│   │   ├── base_agent.py       # Agent 基类
-│   │   ├── science_agent.py    # 科学理解
-│   │   ├── context_agent.py    # 语境分析
-│   │   ├── hypothesis_agent.py # 假设生成
-│   │   ├── strategy_agent.py   # 策略转译
-│   │   ├── evaluator_agent.py  # 评测迭代
-│   │   ├── humanist_agent.py   # 人文审查（文化/伦理）
-│   │   ├── research_plan_agent.py        # 研究计划生成
-│   │   ├── strategy_report_agent.py      # 国际传播策略报告生成
-│   │   ├── press_release_agent.py        # 新闻传播建议稿生成
-│   │   ├── paper_outline_agent.py        # 论文大纲生成
-│   │   ├── science_script_agent.py       # 科普视频脚本生成
-│   │   ├── expression_adaptation_agent.py  # 表达适配（中英对照术语/隐喻）
-│   │   └── kg_report_generator.py        # 知识图谱报告（数据驱动）
+│   ├── agents/                 # AI Agent（核心分析 + 成果生成，20 个）
+│   ├── workflow/               # 7 阶段科研工作流引擎
+│   │   ├── engine.py           # WorkflowEngine（阶段执行/确认/run-all/导出）
+│   │   ├── project.py          # ProjectStore（项目文件读写/删除，带锁）
+│   │   └── stages.py           # 7 阶段元数据与 Agent 绑定
 │   ├── parliament/             # 议会辩论引擎（Speaker + 辩论循环）
+│   ├── pipeline.py             # 编排器（核心流程控制，供议会/API 使用）
 │   ├── verification/           # 校验层
 │   │   ├── rag_checker.py      # RAG 向量检索校验
 │   │   ├── kg_checker.py       # 知识图谱校验
 │   │   ├── cross_validator.py  # 交叉验证
+│   │   ├── external_validator.py # Wikidata/Wikipedia 外部校验（并行）
 │   │   └── report_generator.py # 校验报告生成
 │   ├── knowledge/              # 知识层
 │   │   ├── data_loader.py      # 数据加载
+│   │   ├── libraries.py        # 四库管理（文献/理论/顶刊/方法）
 │   │   ├── vector_store.py     # FAISS 向量存储
-│   │   └── kg_builder.py       # 知识图谱构建
-│   ├── search/                 # 搜索引擎
-│   │   ├── unified_search.py   # 统一搜索接口
+│   │   ├── kg_builder.py       # 知识图谱构建
+│   │   ├── wikidata_enricher.py# Wikidata 图谱扩充
+│   │   ├── preprocessor.py     # 文档预处理/智能切片
+│   │   └── experience_store.py # 经验池（SQLite）
+│   ├── search/                 # 搜索引擎（三引擎统一）
+│   │   ├── unified_search.py   # 统一搜索接口（并行合并去重）
 │   │   ├── qwen_websearch.py   # 百炼 WebSearch
-│   │   └── tavily_search.py    # Tavily 搜索
-│   ├── pipeline.py             # 编排器（核心流程控制）
+│   │   ├── tavily_search.py    # Tavily 搜索
+│   │   └── tashan_search.py    # 他山世界 TopicLab 搜索
 │   ├── evaluation.py           # 评测引擎
 │   ├── export_service.py       # 成果多格式导出（JSON/MD/HTML/PDF/Word/KG-PNG）
 │   ├── schemas.py              # 数据模型定义
 │   └── llm_client.py           # LLM 客户端封装
 │
 ├── api/                        # FastAPI 后端接口
-│   ├── main.py                 # 入口（含 SPA 静态托管）
+│   ├── main.py                 # 入口（含 SPA 静态托管，9 个 router）
 │   └── routes/                 # 各模块 API 路由
 │       ├── analyze.py          # 分析任务（Pipeline）
+│       ├── workflow.py         # 科研工作流（项目 CRUD + 7 阶段 + run-all + 导出 + 润色 + 热点）
 │       ├── parliament.py       # 认知议会
 │       ├── outputs.py          # 成果生成与导出
-│       ├── verify.py           # 四路交叉校验
+│       ├── verify.py           # 交叉校验
+│       ├── knowledge.py        # 四库管理
+│       ├── knowledge_graph.py  # 知识图谱
 │       ├── hypotheses.py       # 假设
-│       ├── strategies.py       # 策略
-│       └── knowledge_graph.py  # 知识图谱
+│       └── strategies.py       # 策略
 │
-├── frontend/                   # React 前端
+├── frontend/                   # React 前端（他山世界学术风）
 │   ├── src/pages/
-│   │   ├── Dashboard.tsx       # 数据驾驶舱
-│   │   ├── TaskCenter.tsx      # 任务中心（启动议会）
-│   │   ├── Parliament.tsx      # 议会辩论结果页
-│   │   ├── Hypotheses.tsx      # 假设浏览
-│   │   ├── Strategy.tsx        # 策略推演
-│   │   ├── KnowledgeGraph.tsx  # 知识图谱可视化
-│   │   ├── VerifyReport.tsx    # 校验报告
-│   │   ├── ResearchOutput.tsx  # 成果中心（生成与多格式导出）
-│   │   └── CrossCultural.tsx   # 跨文化对照（术语/隐喻/表达建议）
+│   │   ├── Workspace.tsx       # 科研工作台（历史项目/新建/一键生成/删除/导出）
+│   │   ├── Inspiration.tsx     # ① 选题孵化
+│   │   ├── Literature.tsx      # ② 文献综述（含理论关系图）
+│   │   ├── Design.tsx          # ③ 研究设计
+│   │   ├── Method.tsx          # ④ 方法推荐
+│   │   ├── DataAnalysis.tsx    # ⑤ 数据分析（词云/编码表）
+│   │   ├── Writing.tsx         # ⑥ 学术写作（分栏 + 章节润色）
+│   │   └── Review.tsx          # ⑦ 同行评审
 │   └── src/components/
-│       └── StarfieldBackground.tsx  # 星空背景动画
+│       ├── ResearchPipeline.tsx    # 7 阶段进度条
+│       ├── StageUI.tsx             # 阶段通用 UI（状态/评分/操作/二次确认）
+│       ├── ConfirmDialog.tsx       # 危险操作二次确认弹窗
+│       └── StarfieldBackground.tsx # 浅色光晕装饰背景
 │
-└── scripts/                    # 工具脚本
-    ├── run_demo.py             # 命令行 Demo
-    ├── build_index.py          # 构建向量索引
-    └── gen_science_data.py     # 生成科学数据
+├── scripts/                    # 工具脚本
+│   ├── run_demo.py             # 命令行 Demo
+│   ├── build_index.py          # 构建向量索引
+│   ├── gen_science_data.py     # 生成科学数据
+│   ├── ingest_docs.py          # 文档录入（txt/md/pdf/docx）
+│   ├── seed_libraries.py       # 四库种子入库
+│   ├── deploy_nas.py           # NAS 部署
+│   ├── check_syntax.py         # 语法检查
+│   ├── test_api.py             # API Key 连通性测试
+│   └── bot/sweep.mjs           # AI 维护 Bot
+│
+└── tests/                      # pytest 测试（23 个文件，350+ 用例）
 ```
 
 ---
 
+## 🧩 七阶段科研工作流详解
+
+| 阶段 | Agent | 注入知识库 | 产出物 |
+|------|-------|-----------|--------|
+| ① 选题孵化 | `research_inspiration_agent` | 文献库、理论库 | 研究方向候选（含价值/覆盖/创新评分） |
+| ② 文献综述 | `literature_review_agent` | 文献库、理论库 | 综述章节 + 理论关系图数据 |
+| ③ 研究设计 | `research_question_agent` | 顶刊论文库 | 研究问题 RQ + 假设 H + 检验路径 |
+| ④ 方法推荐 | `method_advisor_agent` | 方法库、顶刊论文库 | 方法推荐（适配度/理由/代表论文） |
+| ⑤ 数据分析 | `data_analysis_agent` | 方法库 | 编码表 + 解读（前端词云/条形图） |
+| ⑥ 学术写作 | `paper_writer_agent` | 顶刊论文库 | 论文草稿（分章节，支持润色） |
+| ⑦ 同行评审 | `reviewer_simulator_agent` | 顶刊论文库 | 三位审稿人意见 + 修改说明 |
+
+> 阶段产出物统一落盘为 `awaiting_review`，研究者确认（approve）后解锁下一阶段；每个阶段执行前后做 **RAG + KG 双校验**，校验不通过自动容错重试。工作台支持「一键生成全部」（串行 7 阶段）、「重新生成本阶段」（二次确认防误触）、「删除项目」（二次确认）、「导出 MD/JSON/Word/PDF」。
+
+---
+
 ## 🦞 多智能体系统详解
+
+### 科研工作流 Agent（7 阶段）
+
+见上表，7 个 Agent 一一对应 7 个科研阶段。
+
+### 核心分析 Agent（Pipeline / 议会）
 
 | Agent | 中文名 | 做什么 | 输出 |
 |-------|--------|--------|------|
@@ -412,9 +417,11 @@ yunGuanXingChuan/
 | Evaluator Agent | 评测迭代 | 五维评分 + 迭代反馈，驱动自改进闭环 | `EvaluationResult`（JSON） |
 | Humanist Agent | 人文审查 | 审查文化敏感性与伦理风险，在议会中担任人文守护者 | `CulturalReview`（JSON） |
 
-> 除上述六位 Agent 外，系统还有 **议会辩论引擎（Parliament）**：由 Speaker 主持多轮辩论与加权投票，先通过辩论筛出有价值的动议，再交给 Pipeline 做四路事实校验与策略评测。完整的调用链路见 **[docs/architecture-invocation.md](docs/architecture-invocation.md)**。
+> 上述六位 Agent 供 **认知议会（Parliament）** 与 **Pipeline** 使用（`/api/parliament/*`、`/api/analyze/*`）：议会由 Speaker 主持多轮辩论与加权投票，通过辩论筛出动议后再交给 Pipeline 做交叉校验与策略评测。当前前端主流程为 7 阶段科研工作台，议会/Pipeline 作为后端能力保留。完整调用链路见 **[docs/architecture-invocation.md](docs/architecture-invocation.md)**。
 
-> 此外，**成果中心（Research Output Center）** 还包含一组面向交付的成果生成器：研究计划、国际传播策略报告、新闻传播建议稿、论文大纲、科普视频脚本、知识图谱报告、中英表达适配建议——统一走异步任务 + 多格式导出（详见 `src/agents/` 与 `api/routes/outputs.py`）。
+### 成果生成 Agent（成果中心）
+
+研究计划、国际传播策略报告、新闻建议稿、论文大纲、科普视频脚本、知识图谱报告、中英表达适配建议——统一走异步任务 + 多格式导出（详见 `src/agents/` 与 `api/routes/outputs.py`）。
 
 ---
 
@@ -434,9 +441,9 @@ yunGuanXingChuan/
 
 | 维度 | 内容 |
 |------|------|
-| **科学议题** | 嫦娥六号（月球背面采样返回）、天宫空间站 |
-| **目标国家** | 美国、法国、巴西 |
-| **分析语言** | 中文 + 英文 + 法文 |
+| **科学议题** | 嫦娥六号（月球背面采样返回）、天问二号、嫦娥七号、天宫空间站 |
+| **目标国家** | 美国、法国、巴西等（媒体语料覆盖 11 国） |
+| **分析语言** | 中文 + 英文 + 法文等（随语料） |
 | **时间窗口** | 2024 — 2026 |
 
 ---
@@ -461,7 +468,7 @@ yunGuanXingChuan/
 **A**：首次运行需要下载模型和构建索引，可能需要几分钟。如果超过 10 分钟还没反应，检查网络连接和 API Key 是否正确。
 
 ### Q：我想分析其他议题（不是嫦娥六号/天宫），可以吗？
-**A**：可以！系统支持任意议题。打开前端页面，在**任务中心**输入你想分析的议题（比如"天问三号"），点击启动即可，系统会自动联网搜索并生成分析结果。
+**A**：可以！系统支持任意议题。打开前端页面，在**科研工作台**输入你的议题兴趣（比如"天问三号"），点击启动即可，系统会自动联网搜索并生成分析结果。
 
 ### Q：文科同学需要学编程吗？
 **A**：不需要！你只需要会用浏览器打开前端页面、会填输入框、会看结果就够了。如果你想编辑数据（媒体语料、受众画像等），只需编辑 JSON 或文本文件，用记事本就能打开。
@@ -472,13 +479,14 @@ yunGuanXingChuan/
 
 | 层级 | 技术 |
 |------|------|
-| 大模型 | 通义千问 Qwen（阿里云百炼平台） |
-| 向量检索 | FAISS + text-embedding-v3 |
-| 知识图谱 | NetworkX + JSON |
+| 大模型 | 通义千问 Qwen（阿里云百炼平台，qwen3 系列） |
+| 向量检索 | FAISS + text-embedding |
+| 知识图谱 | NetworkX + JSON（Wikidata 自动扩充） |
 | 后端 | FastAPI + Pydantic + uvicorn |
 | 前端 | React 18 + TypeScript + Vite + ECharts + Tailwind CSS |
-| 搜索引擎 | Tavily Search API + 百炼 WebSearch MCP |
-| 视觉风格 | 星空主题（深蓝 #0A1628 + 青蓝 #00D4FF） |
+| 搜索引擎 | Tavily + 百炼 WebSearch + 他山世界 TopicLab（三引擎统一） |
+| 部署 | Docker（docker-compose，端口 8123）+ NAS 脚本 |
+| 视觉风格 | 他山世界学术风（宋体衬线 Noto Serif SC + 低饱和青蓝 + 大留白 + 光晕/扫光微动效） |
 
 ---
 

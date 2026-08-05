@@ -15,6 +15,7 @@
   - changed-files:
       - any-glob-to-any-file:
           - "src/pipeline.py"
+          - "src/workflow/**"
 
 模块：校验层:
   - changed-files:
