@@ -10,7 +10,7 @@ const INFO: StageInfo = {
 }
 
 export default function Inspiration() {
-  const { projectId, status, rec, running, error, exec } = useStageExec(1)
+  const { projectId, status, rec, running, error, confirmRerun, rerunConfirmEl } = useStageExec(1)
 
   const output = (rec?.output ?? null) as {
     directions?: { title: string; summary: string; research_value: number; existing_coverage: number; innovation_potential: number; reasons: string[]; keywords: string[] }[]
@@ -25,7 +25,7 @@ export default function Inspiration() {
           <div className="flex items-center gap-3">
             <StatusBadge status={status} />
             {status !== 'running' && (
-              <button onClick={() => exec({})} disabled={running}
+              <button onClick={confirmRerun} disabled={running}
                 className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
                 {running ? '生成中…' : '重新生成本阶段'}
               </button>
@@ -71,6 +71,7 @@ export default function Inspiration() {
           )}
         </div>
       )}
+      {rerunConfirmEl}
     </StageLayout>
   )
 }

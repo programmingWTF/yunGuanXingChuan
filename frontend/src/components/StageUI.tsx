@@ -3,10 +3,14 @@
  *
  * 7 个科研流程页面（选题孵化/文献综述/研究设计/方法推荐/数据分析/学术写作/同行评审）
  * 统一复用：阶段头部、评分条、运行/确认操作、产出物展示。
+ *
+ * 「重新运行」属覆盖型危险操作（后端 clear_output 清空旧产出物），
+ * 点击前弹二次确认（ConfirmDialog），避免误触覆盖已确认产出物（issue #66）。
  */
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store'
+import ConfirmDialog from './ConfirmDialog'
 
 export interface StageInfo {
   stage: number
@@ -71,10 +75,17 @@ export function StageActions({
   error: string
   runLabel?: string
 }) {
+  // 重新运行属覆盖型危险操作：仅当该阶段已有已确认/产出物待覆盖时才需二次确认
+  const [confirming, setConfirming] = useState(false)
+  const isRerun = status === 'completed'
+  const handleRunClick = () => {
+    if (isRerun) setConfirming(true) // 先确认再执行，避免误触清空旧产出物
+    else onRun()
+  }
   return (
     <div className="flex items-center gap-3 flex-wrap">
       {status === 'pending' || status === 'failed' ? (
-        <button onClick={onRun} disabled={running}
+        <button onClick={handleRunClick} disabled={running}
           className="btn-primary text-xs disabled:opacity-45 disabled:cursor-not-allowed">
           {running ? 'AI 生成中…' : runLabel}
         </button>
@@ -83,7 +94,7 @@ export function StageActions({
           确认产出，进入下一阶段 →
         </button>
       ) : status === 'completed' ? (
-        <button onClick={onRun} disabled={running} className="text-xs px-3.5 py-2 rounded-btn border border-slate-200 text-slate-600 hover:border-sky-300 hover:text-sky-700 hover:bg-sky-50 disabled:opacity-45 transition-all">
+        <button onClick={handleRunClick} disabled={running} className="text-xs px-3.5 py-2 rounded-btn border border-slate-200 text-slate-600 hover:border-sky-300 hover:text-sky-700 hover:bg-sky-50 disabled:opacity-45 transition-all">
           重新运行
         </button>
       ) : null}
@@ -93,6 +104,20 @@ export function StageActions({
         </span>
       )}
       {error && <span className="text-[11px] text-red-600">{error}</span>}
+      {/* 二次确认：确认后才会 onRun，后端会 clear_output 清空旧产出物 */}
+      <ConfirmDialog
+        open={confirming}
+        title="确认重新运行？"
+        description={
+          <>
+            重新运行将<strong className="text-red-600 font-medium">清空并覆盖当前已确认的产出物</strong>
+            ，此操作<strong className="text-red-600 font-medium">不可撤销</strong>。已确认请继续，否则点「取消」保留现有产出。
+          </>
+        }
+        confirmText="重新运行"
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => { setConfirming(false); onRun() }}
+      />
     </div>
   )
 }
@@ -111,6 +136,8 @@ export function useStageExec(stage: number) {
   const { currentProject, loadProject, runStage, approveStage } = useStore()
   const [running, setRunning] = useState(false)
   const [error, setError] = useState('')
+  // 「重新生成本阶段」二次确认（覆盖型危险操作，issue #66）
+  const [confirming, setConfirming] = useState(false)
 
   const projectId = currentProject?.id ?? null
   const rec = currentProject?.stages ? currentProject.stages[String(stage)] : null
@@ -131,6 +158,34 @@ export function useStageExec(stage: number) {
     }
   }
 
+  // 打开/关闭「重新生成本阶段」二次确认弹窗
+  // 仅当已有产出物（completed / awaiting_review）时才需确认覆盖；其余首次生成直接执行
+  const hasProduced = status === 'completed' || status === 'awaiting_review'
+  const confirmRerun = () => {
+    if (hasProduced) setConfirming(true)
+    else void exec({})
+  }
+  const cancelRerun = () => setConfirming(false)
+  const doRerun = () => { setConfirming(false); void exec({}) }
+
+  // 确认弹窗元素：子页直接 {rerunConfirmEl} 渲染即可
+  const rerunConfirmEl = (
+    <ConfirmDialog
+      open={confirming}
+      title="确认重新生成本阶段？"
+      description={
+        <>
+          重新生成将<strong className="text-red-600 font-medium">清空并覆盖该阶段当前产出物</strong>
+          ，此操作<strong className="text-red-600 font-medium">不可撤销</strong>。确认将覆盖，否则点「取消」保留现有产出。
+        </>
+      }
+      confirmText="重新生成"
+      cancelText="取消"
+      onCancel={cancelRerun}
+      onConfirm={doRerun}
+    />
+  )
+
   const approve = async () => {
     if (!projectId) return
     setRunning(true)
@@ -145,7 +200,7 @@ export function useStageExec(stage: number) {
     }
   }
 
-  return { projectId, status, rec, running, error, exec, approve, loadProject }
+  return { projectId, status, rec, running, error, exec, approve, loadProject, confirmRerun, rerunConfirmEl }
 }
 
 /** 产出物 JSON 展示 */

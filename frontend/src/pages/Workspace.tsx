@@ -12,6 +12,7 @@ import { useStore } from '../store'
 import { runAllWorkflow, getWorkflowProject, exportWorkflowProject, getHotTopics } from '../api'
 import type { ResearchProject } from '../api'
 import ResearchPipeline from '../components/ResearchPipeline'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 const STAGE_NAMES: Record<string, string> = {
   '1': '选题孵化', '2': '文献综述', '3': '研究设计',
@@ -47,6 +48,8 @@ export default function Workspace() {
   const [generatingAll, setGeneratingAll] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState('')
+  // 「一键生成全部」二次确认（会串行重跑 7 阶段并覆盖全部产出物，issue #66）
+  const [confirmingAll, setConfirmingAll] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -292,7 +295,7 @@ export default function Workspace() {
                 </div>
                 <div className="flex gap-2 flex-wrap shrink-0">
                   {detail.status !== 'completed' && (
-                    <button onClick={() => handleRunAll(detail.id)} disabled={generatingAll}
+                    <button onClick={() => setConfirmingAll(true)} disabled={generatingAll}
                       className="text-xs px-3 py-1.5 rounded-lg border border-sky-300 bg-sky-50 text-sky-600 hover:bg-sky-100 disabled:opacity-40 transition-all">
                       {generatingAll ? '⏳ 生成中…' : '🚀 一键生成全部'}
                     </button>
@@ -349,6 +352,23 @@ export default function Workspace() {
           )}
         </div>
       </div>
+
+      {/* 二次确认：一键生成全部会串行重跑 7 阶段并覆盖全部已确认产出物 */}
+      <ConfirmDialog
+        open={confirmingAll}
+        title="确认一键生成全部？"
+        description={
+          <>
+            将<strong className="text-red-600 font-medium">串行重跑全部 7 个阶段</strong>（约 8-12 分钟），
+            <strong className="text-red-600 font-medium">覆盖当前项目的全部已确认产出物</strong>，此操作
+            <strong className="text-red-600 font-medium">不可撤销</strong>。确认后点「继续」，否则点「取消」。
+          </>
+        }
+        confirmText="继续生成"
+        cancelText="取消"
+        onCancel={() => setConfirmingAll(false)}
+        onConfirm={() => { setConfirmingAll(false); void handleRunAll(detail?.id) }}
+      />
     </div>
   )
 }

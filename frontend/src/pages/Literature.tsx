@@ -123,7 +123,7 @@ function TheoryRelationGraph({ relations }: { relations: TheoryRelation[] }) {
 }
 
 export default function Literature() {
-  const { projectId, status, rec, running, error, exec } = useStageExec(2)
+  const { projectId, status, rec, running, error, confirmRerun, rerunConfirmEl } = useStageExec(2)
 
   const output = (rec?.output ?? null) as {
     sections?: { theme: string; content: string }[]
@@ -141,7 +141,7 @@ export default function Literature() {
           <div className="flex items-center gap-3">
             <StatusBadge status={status} />
             {status !== 'running' && (
-              <button onClick={() => exec({})} disabled={running}
+              <button onClick={confirmRerun} disabled={running}
                 className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
                 {running ? '生成中…' : '重新生成本阶段'}
               </button>
@@ -203,6 +203,7 @@ export default function Literature() {
           )}
         </div>
       )}
+      {rerunConfirmEl}
     </StageLayout>
   )
 }

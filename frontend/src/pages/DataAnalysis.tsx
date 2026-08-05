@@ -104,7 +104,7 @@ function HBar({ label, value, color = 'bg-sky-500' }: { label: string; value: nu
 }
 
 export default function DataAnalysis() {
-  const { projectId, status, rec, running, error, exec } = useStageExec(5)
+  const { projectId, status, rec, running, error, exec, confirmRerun, rerunConfirmEl } = useStageExec(5)
   const [materials, setMaterials] = useState<Material[]>([])
   const [pasteText, setPasteText] = useState('')
   const [reading, setReading] = useState(false)
@@ -166,7 +166,7 @@ export default function DataAnalysis() {
           <div className="flex items-center gap-3">
             <StatusBadge status={status} />
             {status !== 'running' && (
-              <button onClick={() => exec({})} disabled={running}
+              <button onClick={confirmRerun} disabled={running}
                 className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
                 {running ? '分析中…' : '重新生成本阶段（框架性分析）'}
               </button>
@@ -281,6 +281,7 @@ export default function DataAnalysis() {
           )}
         </div>
       )}
+      {rerunConfirmEl}
     </StageLayout>
   )
 }
