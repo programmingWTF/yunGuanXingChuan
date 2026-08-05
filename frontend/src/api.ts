@@ -501,6 +501,12 @@ export async function getWorkflowProject(id: string) {
   return res.data as { project: ResearchProject }
 }
 
+/** 删除项目（物理移除项目文件与产出物） */
+export async function deleteWorkflowProject(id: string) {
+  const res = await api.delete(`/workflow/projects/${id}`)
+  return res.data as { status: string; project_id: string }
+}
+
 /** 执行阶段智能体（同步，产出物落盘为 awaiting_review） */
 export async function runWorkflowStage(id: string, stage: number, inputs: Record<string, unknown> = {}) {
   const res = await api.post(`/workflow/projects/${id}/stages/${stage}/run`, { inputs })
