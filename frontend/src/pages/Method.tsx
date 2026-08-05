@@ -11,7 +11,7 @@ const INFO: StageInfo = {
 }
 
 export default function Method() {
-  const { projectId, status, rec, running, error, exec } = useStageExec(4)
+  const { projectId, status, rec, running, error, confirmRerun, rerunConfirmEl } = useStageExec(4)
   const [expanded, setExpanded] = useState<number | null>(null)
 
   const output = (rec?.output ?? null) as {
@@ -26,7 +26,7 @@ export default function Method() {
           <div className="flex items-center gap-3">
             <StatusBadge status={status} />
             {status !== 'running' && (
-              <button onClick={() => exec({})} disabled={running}
+              <button onClick={confirmRerun} disabled={running}
                 className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
                 {running ? '生成中…' : '重新生成本阶段'}
               </button>
@@ -75,6 +75,7 @@ export default function Method() {
           )}
         </div>
       )}
+      {rerunConfirmEl}
     </StageLayout>
   )
 }
