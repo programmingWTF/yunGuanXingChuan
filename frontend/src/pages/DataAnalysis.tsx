@@ -12,6 +12,32 @@ const INFO: StageInfo = {
   description: '上传素材（文本/访谈/表格）执行内容/文本/框架分析，输出编码表与初步解读',
 }
 
+/** 稳定字符串哈希（djb2）→ 0..1 伪随机；保证词云每次渲染布局一致、不因 re-render 跳动 */
+function hashUnit(s: string): number {
+  let h = 5381
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0
+  return (h % 1000) / 1000  // 0..1
+}
+
+/** 词云排版：基于权重 + 稳定 hash 产出 { fontSize, rotate, offsetY, cls }，增强真实词云的错落/疏密/层次感 */
+function wordStyle(category: string, count: number, maxCount: number) {
+  const w = maxCount > 0 ? count / maxCount : 0
+  const u = hashUnit(category)
+  // 字号梯度加大：权重最高明显更大（12 → 38px 随权重拉陡）
+  const fontSize = 12 + Math.round(w * 26)
+  // 轻旋转（高权重略大角度朝向不同，低权重微顺/逆时针随机）
+  const rotate = Math.round((u * 22 - 8) * (0.6 + w * 0.5))
+  // 纵向错落：上下偏移 -10..10px，打破横向基线对齐形成疏密
+  const offsetY = Math.round(u * 20 - 10)
+  // 深浅色层级：>0.7 深蓝加粗前景 / >0.4 青绿 / 低 浅灰（远景弱化）
+  const cls =
+    w > 0.7 ? 'text-sky-700 font-semibold'
+    : w > 0.4 ? 'text-emerald-600 font-medium'
+    : 'text-slate-400'
+  const transform = `rotate(${rotate}deg) translateY(${offsetY}px)`
+  return { fontSize, transform, cls }
+}
+
 interface Material {
   name: string
   content: string
@@ -205,12 +231,13 @@ export default function DataAnalysis() {
               )}
               <div className="card p-4">
                 <h4 className="sec-label !mb-2">词云（类目权重）</h4>
-                <div className="flex flex-wrap items-center justify-center gap-2 p-4 min-h-24">
+                {/* 伪词云：纵向错落 + 轻微旋转 + 深浅色层级 + 加大字号梯度（纯前端渲染，沿用 coding_table 数据） */}
+                <div className="flex flex-wrap items-center justify-center px-3 pt-3 pb-4 min-h-28 gap-x-4 gap-y-3">
                   {codingTable.map((c, i) => {
-                    const size = 12 + Math.min(14, Math.round((c.count / maxCount) * 14))
+                    const s = wordStyle(c.category, c.count, maxCount)
                     return (
-                      <span key={i} style={{ fontSize: size }}
-                        className={c.count / maxCount > 0.7 ? 'text-sky-600' : c.count / maxCount > 0.4 ? 'text-emerald-600' : 'text-slate-500'}>
+                      <span key={`${c.category}-${i}`} style={{ fontSize: s.fontSize, transform: s.transform }}
+                        className={`inline-block leading-tight whitespace-nowrap ${s.cls}`}>
                         {c.category}
                       </span>
                     )
