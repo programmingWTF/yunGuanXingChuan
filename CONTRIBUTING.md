@@ -21,7 +21,7 @@ main  ← 主分支（所有代码最终合并到这里）
 ```
 
 > **规则**：永远从 `main` 拉最新 → 创建自己的功能分支 → 完成后通过 Pull Request 合并回 `main`。
-> **红线**：任何人都不直接 push 到 `main`（虽然目前没开保护，但这是团队纪律）。
+> **红线**：任何人都不直接 push 到 `main`（**已开启分支保护**，直接 push 会被 GitHub 拒绝；只能通过 PR 合并）。
 
 ### 提交信息规范
 
@@ -44,15 +44,16 @@ main  ← 主分支（所有代码最终合并到这里）
 | `chore` | 杂项（构建、依赖、CI） |
 | `test` | 测试 |
 
-**scope（必填）**：`agents`（智能体）/ `parliament`（议会辩论）/ `pipeline`（流程编排）/ `verification`（校验层）/ `api`（后端接口）/ `frontend`（前端）/ `kg`（知识图谱）/ `data`（数据）/ `docs`（文档）/ `scripts`（脚本）
+**scope（必填）**：`agents`（智能体）/ `workflow`（7 阶段科研工作流）/ `parliament`（议会辩论）/ `pipeline`（流程编排）/ `verification`（校验层）/ `knowledge`（知识层/四库）/ `search`（搜索引擎）/ `api`（后端接口）/ `frontend`（前端）/ `kg`（知识图谱）/ `data`（数据）/ `docs`（文档）/ `scripts`（脚本）
 
 **示例**：
 ```
 feat(kg): 知识图谱增加连通分量分区浏览
+fix(workflow): 修复阶段重跑缺少二次确认
 fix(parliament): 修复辩论发言全文换行显示
 data(media): 添加法国媒体嫦娥六号报道语料
 docs(collab): 更新项目文档导航
-style(frontend): 调整星空背景动画
+style(frontend): 收敛卡片扫光——仅主视觉卡片保留
 refactor(pipeline): 抽取验证层公共逻辑
 ```
 
@@ -117,9 +118,9 @@ refactor(pipeline): 抽取验证层公共逻辑
 
 ### 🎨 美术设计方向（视觉）
 
-**产出**：`frontend/src/components/`、`frontend/src/pages/` 中的样式与可视化（星空背景、图表配色、页面布局）。
+**产出**：`frontend/src/components/`、`frontend/src/pages/` 中的样式与可视化（他山学术风布局、图表配色、页面动效）。
 
-> 改动前端时尽量复用 `config/` 里的设计令牌，保持视觉一致性。
+> 改动前端时尽量复用 `tailwind.config.js` / `index.css` 里的设计令牌（品牌蓝 #3B82F6、天蓝 #0EA5E9、宋体衬线 Noto Serif SC），保持视觉一致性。
 
 ### 三方交接的通用规则
 
@@ -159,21 +160,22 @@ yunGuanXingChuan/
 │   └── pull_request_template.md # PR 模板
 │
 ├── src/                        # 💻 核心代码（计算机/AI 方向）
-│   ├── agents/                 # 智能体（Science/Context/Hypothesis/Strategy/Evaluator/Humanist）
+│   ├── agents/                 # 智能体（7 阶段 Agent + 核心分析 Agent + 成果生成 Agent，20 个）
+│   ├── workflow/               # 7 阶段科研工作流（engine / project / stages）
 │   ├── parliament/             # 议会辩论引擎（debate_engine + speaker）
 │   ├── pipeline.py             # 编排器
 │   ├── verification/           # 校验层（RAG + KG + Wikidata + Wikipedia）
-│   ├── knowledge/              # 知识层（向量库 / 知识图谱 / 经验池）
-│   ├── search/                 # 搜索引擎（Tavily + 百炼 WebSearch）
+│   ├── knowledge/              # 知识层（四库 / 向量库 / 知识图谱 / 经验池）
+│   ├── search/                 # 搜索引擎（统一搜索：Tavily + 百炼 WebSearch + 他山）
 │   └── evaluation.py           # 评测引擎
 │
 ├── api/                        # 💻 FastAPI 后端接口
-│   └── routes/                 # analyze / parliament / hypotheses / strategies / verify / knowledge_graph
+│   └── routes/                 # workflow / analyze / parliament / outputs / verify / knowledge / knowledge_graph / hypotheses / strategies
 │
 ├── frontend/                   # 💻🎨 React 前端
 │   └── src/
-│       ├── pages/              # Dashboard / TaskCenter / Parliament / KnowledgeGraph / ...
-│       └── components/         # 星空背景等组件
+│       ├── pages/              # Workspace（科研工作台）+ 7 个科研子页
+│       └── components/         # ResearchPipeline / StageUI / ConfirmDialog / StarfieldBackground
 │
 ├── config/                     # 📰 配置与提示词
 │   ├── settings.py             # 全局配置（读 .env）
@@ -181,9 +183,10 @@ yunGuanXingChuan/
 │
 ├── data/                       # 📰 数据（新闻传播方向主要编辑这里）
 │   ├── science/                # 科学知识库
-│   ├── media/                  # 多语种媒体语料
+│   ├── media/                  # 多语种媒体语料（11 国）
 │   ├── audience_profiles/      # 受众画像
-│   └── kg/                     # 知识图谱数据（运行时生成）
+│   ├── kg/                     # 知识图谱数据（运行时生成）
+│   └── libraries/              # 四库（文献 / 理论 / 顶刊论文 / 方法）
 │
 ├── scripts/                    # 💻 工具脚本（demo / 构建索引 / 部署）
 ├── tests/                      # 💻 pytest 测试

@@ -33,7 +33,7 @@
 |---------|---------|
 | `模块：智能体` | `src/agents/**` |
 | `模块：议会辩论` | `src/parliament/**` |
-| `模块：流程编排` | `src/pipeline.py` |
+| `模块：流程编排` | `src/pipeline.py`、`src/workflow/**` |
 | `模块：校验层` | `src/verification/**` |
 | `模块：知识图谱` | `src/knowledge/**`、`src/search/**`、`data/**` |
 | `模块：后端API` | `api/**` |
@@ -112,11 +112,30 @@ GH_TOKEN=ghp_xxx DEEPSEEK_KEY=sk-xxx node scripts/bot/sweep.mjs backfill
 ### AI 模型
 
 - **API 端点**：`https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions`（OpenAI 兼容接口）
-- **模型**：`qwen3.8-max-preview`
+- **模型**：`qwen3.8-max`
 
 ### 状态管理
 
 Bot 使用 `scripts/bot/state.json` 记录已处理的 Issue/PR，避免重复处理。
+
+---
+
+## 4. 持续集成（test.yml）
+
+`.github/workflows/test.yml` 在每次 push / PR 时自动运行 **pytest 全量测试**（350+ 用例），保证合并进 `main` 的改动不破坏已有功能。
+
+### 触发条件
+
+- push 到任意分支
+- PR 创建 / 更新
+
+### 运行内容
+
+```bash
+python -m pytest tests/ -q
+```
+
+> 本地提交 PR 前建议先跑一遍：`python -m pytest tests/`（后端）+ `cd frontend && npx tsc --noEmit && npm run build`（前端）。
 
 ---
 

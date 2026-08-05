@@ -603,6 +603,31 @@ class TestWorkflowAPI:
         with TestClient(app) as client:
             assert client.get("/api/workflow/projects/proj_nope").status_code == 404
 
+    def test_delete_project(self, api_engine):
+        """DELETE /api/workflow/projects/{id}：物理删除项目与产出物文件"""
+        from fastapi.testclient import TestClient
+        from api.main import app
+        with TestClient(app) as client:
+            pid = client.post("/api/workflow/projects", json={"interest": "朱雀2号"}).json()["project"]["id"]
+            # 删除前项目文件存在
+            assert api_engine.store.get(pid) is not None
+            r = client.delete(f"/api/workflow/projects/{pid}")
+            assert r.status_code == 200
+            assert r.json()["status"] == "deleted"
+            assert r.json()["project_id"] == pid
+            # 物理移除：store 中不再有该项目文件
+            assert api_engine.store.get(pid) is None
+            # 列表不再包含
+            ids = [p["id"] for p in client.get("/api/workflow/projects").json()["projects"]]
+            assert pid not in ids
+
+    def test_delete_project_404(self, api_engine):
+        """删除不存在的项目返回 404"""
+        from fastapi.testclient import TestClient
+        from api.main import app
+        with TestClient(app) as client:
+            assert client.delete("/api/workflow/projects/proj_nope").status_code == 404
+
 
 # ---------------------------------------------------------------------------
 # 增强功能：RAG+KG 双校验 / 章节润色 / Word 导出 / 今日热点
