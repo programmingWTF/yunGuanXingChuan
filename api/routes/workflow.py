@@ -6,6 +6,7 @@
 - POST   /projects                   创建研究项目
 - GET    /projects                   项目列表
 - GET    /projects/{id}              项目详情（阶段进度/产出物摘要）
+- DELETE /projects/{id}              删除项目（物理移除产出物）
 - POST   /projects/{id}/stages/{s}/run      执行阶段 s（同步，产出物落盘为 awaiting_review）
 - GET    /projects/{id}/stages/{s}/result   获取阶段产出物
 - POST   /projects/{id}/stages/{s}/approve  研究者确认，推进到下一阶段
@@ -69,6 +70,15 @@ def get_project(project_id: str):
     if project is None:
         raise HTTPException(status_code=404, detail="项目不存在")
     return {"project": project.model_dump()}
+
+
+@router.delete("/projects/{project_id}")
+def delete_project(project_id: str):
+    """删除项目（物理移除项目文件与其阶段产出物）"""
+    deleted = get_workflow_engine().delete_project(project_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="项目不存在")
+    return {"status": "deleted", "project_id": project_id}
 
 
 @router.post("/projects/{project_id}/stages/{stage}/run")

@@ -82,6 +82,10 @@ class WorkflowEngine:
     def get_project(self, project_id: str) -> Optional[ResearchProject]:
         return self.store.get(project_id)
 
+    def delete_project(self, project_id: str) -> bool:
+        """物理删除项目（含产出物文件）。返回是否确有删除（False=文件不存在）。"""
+        return self.store.delete(project_id)
+
     def get_stage_meta(self) -> list:
         """阶段元数据列表（前端 Research Pipeline 渲染）"""
         return get_stage_meta_list()

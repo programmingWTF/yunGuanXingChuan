@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import axios from 'axios'
 import { useStore } from '../store'
-import { runAllWorkflow, getWorkflowProject, exportWorkflowProject, getHotTopics } from '../api'
+import { runAllWorkflow, getWorkflowProject, exportWorkflowProject, getHotTopics, deleteWorkflowProject } from '../api'
 import type { ResearchProject } from '../api'
 import ResearchPipeline from '../components/ResearchPipeline'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -108,10 +108,42 @@ export default function Workspace() {
 
   const handleSelect = async (id: string) => {
     setSelected(id)
+    setConfirmDeleteId(null)  // 切换项目时收起未决的删除确认态
     try { await loadProject(id) } catch { /* ignore */ }
   }
 
+  /** 删除：第一击进入确认态（按钮变红），第二击才真正删除（防误触）；已在确认态再点时执行删除 */
+  const handleDeleteClick = (id: string) => {
+    if (confirmDeleteId === id && deletingId !== id) {
+      void handleConfirmDelete(id)
+    } else {
+      setConfirmDeleteId(prev => (prev === id ? null : id))
+    }
+  }
+
+  /** 删除当前选中项目后的回退：清空选中态与当前项目 */
+  const handleConfirmDelete = async (id: string) => {
+    setDeletingId(id)
+    setConfirmDeleteId(null)
+    try {
+      await deleteWorkflowProject(id)
+      await refreshProjects()
+      // 若删除的是当前选中/详情项目，回退到默认空态
+      if (selected === id) {
+        setSelected(null)
+        setCurrentProject(null)
+      }
+    } catch {
+      setError('删除失败，请确认后端已启动')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   const [selected, setSelected] = useState<string | null>(null)
+  // 删除历史记录：confirmDeleteId=待确认删除的项目 id（二次点击确认防误触）；deletingId=正在删除
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const detail: ResearchProject | null = currentProject?.id === selected ? currentProject : projects.find(p => p.id === selected) ?? projects[0] ?? null
 
   // ── 今日科技热点 + 最近任务（首页驾驶舱模块）──
@@ -252,7 +284,7 @@ export default function Workspace() {
                 <button
                   key={p.id}
                   onClick={() => handleSelect(p.id)}
-                  className={`w-full text-left rounded-xl border px-3 py-2.5 transition-all ${
+                  className={`group w-full text-left rounded-xl border px-3 py-2.5 transition-all ${
                     selected === p.id || (projects[0]?.id === p.id && selected === null)
                       ? 'border-sky-300 bg-sky-50'
                       : 'border-slate-200 bg-slate-50 hover:border-slate-300'
@@ -260,10 +292,28 @@ export default function Workspace() {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[13px] font-medium text-slate-700 truncate">{p.title}</p>
-                    <span className={`text-[9px] shrink-0 px-1.5 py-0.5 rounded border ${
-                      p.status === 'completed' ? 'text-emerald-600 border-emerald-200' : 'text-sky-600 border-sky-200'
-                    }`}>
-                      {p.status === 'completed' ? '已完成' : '进行中'}
+                    <span className="flex items-center gap-1.5 shrink-0">
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded border ${
+                        p.status === 'completed' ? 'text-emerald-600 border-emerald-200' : 'text-sky-600 border-sky-200'
+                      }`}>
+                        {p.status === 'completed' ? '已完成' : '进行中'}
+                      </span>
+                      {/* 删除（hover 显示防误触；第一击进确认态 → 第二击真正删除） */}
+                      <span
+                        role="button"
+                        tabIndex={-1}
+                        aria-label={`删除项目 ${p.title}`}
+                        onClick={e => { e.stopPropagation(); handleDeleteClick(p.id) }}
+                        className={`px-1.5 py-0.5 rounded text-[10px] border transition-all select-none ${
+                          deletingId === p.id
+                            ? 'opacity-60 cursor-wait bg-red-50 text-red-400 border-red-200'
+                            : confirmDeleteId === p.id
+                              ? 'bg-red-600 text-white border-red-600 font-medium'
+                              : 'opacity-0 group-hover:opacity-100 text-slate-400 border-transparent hover:text-red-600 hover:border-red-200 cursor-pointer'
+                        }`}
+                      >
+                        {deletingId === p.id ? '删除中…' : confirmDeleteId === p.id ? '确认删除？' : '🗑 删除'}
+                      </span>
                     </span>
                   </div>
                   <p className="text-[10px] text-slate-500 mt-0.5 truncate">{p.interest}</p>
