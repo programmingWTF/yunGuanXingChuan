@@ -15,7 +15,9 @@ interface TheoryRelation {
   target: string
 }
 
-/** 理论关系图（SVG 节点-连线，数据来自产出物 theory_relations） */
+/** 理论关系图（SVG 节点-连线，数据来自产出物 theory_relations）
+ * 布局修正（issue #59）：按节点累计宽度排布 + 最小间距，物理上避免节点重叠；
+ * 长名自动换行（不截断）；连线从节点底部偏向目标侧引出，关系标签错开下沉，避免交叉遮挡。 */
 function TheoryRelationGraph({ relations }: { relations: TheoryRelation[] }) {
   if (!relations || relations.length === 0) return null
   // 收集全部节点（去重，保持出现顺序）
@@ -27,43 +29,91 @@ function TheoryRelationGraph({ relations }: { relations: TheoryRelation[] }) {
   if (nodes.length < 2) return null
 
   const W = 860
-  const H = 170
   const NODE_Y = 26
-  const NODE_H = 34
-  const nameOf = (name: string) => (name.length > 10 ? `${name.slice(0, 10)}…` : name)
-  const xOf = (name: string) => (nodes.length === 1 ? W / 2 : 90 + (nodes.indexOf(name) * (W - 180)) / (nodes.length - 1))
-  // 宽度按截断后的显示名计算，避免超长名超出 viewBox 错位
-  const wOf = (name: string) => Math.max(84, nameOf(name).length * 13 + 28)
+  const LINE_H = 18 // 每行文本高度
+  const MIN_GAP = 28  // 节点最小水平间距
+  const textW = (t: string) => t.length * 13 + 28  // 文本近似宽 + 内边距
+  // 长名拆成多行（每行 ≤10 字），宽度按最长行计算
+  const wrap = (name: string): string[] => {
+    if (name.length <= 10) return [name]
+    const half = Math.ceil(name.length / 2)
+    return [name.slice(0, Math.min(10, half)), name.slice(Math.min(10, half))]
+  }
+  let rowsOf = nodes.map(wrap)
+  let nodeW = rowsOf.map(rs => Math.max(84, ...rs.map(textW)))
+
+  // 极端兜底：单行总宽仍溢出时，把每行字长上限压到 7，让超长名更多换行、变窄，尽量收进画布且不重叠
+  if (nodes.length > 1) {
+    const totalNode = nodeW.reduce((a, b) => a + b, 0)
+    if (totalNode > W - 24 * (nodes.length - 1)) {
+      const wrap2 = (name: string): string[] => {
+        if (name.length <= 7) return [name]
+        const out: string[] = []
+        for (let k = 0; k < name.length; k += 7) out.push(name.slice(k, k + 7))
+        return out
+      }
+      rowsOf = nodes.map(wrap2)
+      nodeW = rowsOf.map(rs => Math.max(76, ...rs.map((t: string) => t.length * 11 + 24)))
+    }
+  }
+
+  // 累积宽度布局：总宽 = Σ节点宽 + (n-1)*GAP，超 W 时收缩 GAP（不低于 10）
+  const totalNode = nodeW.reduce((a, b) => a + b, 0)
+  let gap = MIN_GAP
+  if (nodes.length > 1) {
+    const maxGap = Math.floor((W - totalNode) / (nodes.length - 1))
+    if (maxGap < gap) gap = Math.max(10, maxGap)
+  }
+  const offsets: number[] = []
+  let acc = 0
+  nodeW.forEach((w) => { offsets.push(acc + w / 2); acc += w + gap })
+
+  const nodeH = (rs: string[]) => rs.length * LINE_H + 12  // 节点矩形高度 = 文本总高 + 内边距
+  const H = 170
 
   return (
     <div className="card p-4">
       <h3 className="sec-label !mb-1">🧭 理论关系图</h3>
       <p className="text-[10px] text-slate-400 mb-2">与选题相关的理论及其关联（承继 / 互补 / 对比 / 应用）</p>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="理论关系图">
-        {/* 连线 */}
+        {/* 连线：从各自节点矩形底部引出（偏向目标侧），弧线下垂到节点下方空白区 */}
         {relations.map((r, i) => {
-          const x1 = xOf(r.source)
-          const x2 = xOf(r.target)
+          const si = nodes.indexOf(r.source)
+          const ti = nodes.indexOf(r.target)
+          const sx = offsets[si], tx = offsets[ti]
+          const dir = tx >= sx ? 1 : -1
+          const x1 = sx + dir * nodeW[si] * 0.22  // 连接点偏向目标侧，减少从节点中部引出
+          const x2 = tx - dir * nodeW[ti] * 0.22
+          const y1 = NODE_Y + nodeH(rowsOf[si])   // source 矩形底边
+          const y2 = NODE_Y + nodeH(rowsOf[ti])   // target 矩形底边
           const cx = (x1 + x2) / 2
+          const cy = Math.max(y1, y2) + 34        // 弧线控制点深度
+          // 标签错开：按关系索引错开下沉，避开节点与其它弧线交叉
+          const lblY = Math.max(y1, y2) + 12 + (i % 3) * 14
           return (
             <g key={i}>
-              <path d={`M ${x1} ${NODE_Y + NODE_H} Q ${cx} ${NODE_Y + 74} ${x2} ${NODE_Y + NODE_H}`}
+              <path d={`M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`}
                 fill="none" stroke="rgba(14,165,233,.45)" strokeWidth="1.5" />
-              <text x={cx} y={NODE_Y + 78} textAnchor="middle"
-                className="fill-slate-500" fontSize="10">{r.relation}</text>
+              {r.relation && (
+                <text x={cx} y={lblY} textAnchor="middle"
+                  className="fill-slate-500" fontSize="10">{r.relation}</text>
+              )}
             </g>
           )
         })}
         {/* 节点 */}
-        {nodes.map((n, i) => {
-          const x = xOf(n)
-          const w = wOf(n)
+        {nodes.map((_, i) => {
+          const x = offsets[i], w = nodeW[i], rs = rowsOf[i]
+          const h = nodeH(rs)
           return (
             <g key={i}>
-              <rect x={x - w / 2} y={NODE_Y} width={w} height={NODE_H} rx="10"
+              <rect x={x - w / 2} y={NODE_Y} width={w} height={h} rx="10"
                 fill="rgba(14,165,233,.08)" stroke="rgba(14,165,233,.4)" strokeWidth="1" />
-              <text x={x} y={NODE_Y + NODE_H / 2 + 4} textAnchor="middle"
-                className="fill-slate-700" fontSize="12">{nameOf(n)}</text>
+              <text x={x} textAnchor="middle" className="fill-slate-700" fontSize="12">
+                {rs.map((line, li) => (
+                  <tspan key={line} x={x} y={NODE_Y + LINE_H + li * LINE_H}>{line}</tspan>
+                ))}
+              </text>
             </g>
           )
         })}
