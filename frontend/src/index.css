@@ -158,9 +158,13 @@ body {
   }
   .panel-sweep:hover::after { transform: translateX(280%) skewX(-18deg); }
 
-  /* 旧卡片兼容（同 panel + hover 扫光） */
-  .card { @apply panel panel-beam panel-sweep; }
-  .glass-card { @apply panel panel-beam panel-sweep; }
+  /* 旧卡片兼容：默认克制（白底 + 右上光晕），不带 hover 扫光；
+   * 需要扫光点睛的关键/主视觉卡片请显式加 .card-sweep（issue #62 收敛） */
+  .card { @apply panel panel-beam; }
+  .glass-card { @apply panel panel-beam; }
+
+  /* 关键/主视觉卡片专用：白底 + 右上光晕 + hover 扫光（只给需要点睛的卡片启用） */
+  .card-sweep { @apply panel panel-beam panel-sweep; }
 
   /* ═══ 区块标题：英文大写小标签 + 中文主标题 ═══
    * 英文：12px / 600 / 字距 0.22em / #94A3B8（他山 5.2/5.3） */
