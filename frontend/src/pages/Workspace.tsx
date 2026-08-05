@@ -167,7 +167,7 @@ export default function Workspace() {
 
       {/* 科研驾驶舱：今日热点 + 最近任务 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div className="card p-4">
+        <div className="card-sweep p-4">
           <h3 className="sec-label !mb-2">🌐 今日科技热点</h3>
           {hotTopics.length === 0 ? (
             <p className="text-[11px] text-slate-400 py-2">暂无热点（后端搜索不可用时显示为空）</p>
@@ -196,7 +196,7 @@ export default function Workspace() {
             </ul>
           )}
         </div>
-        <div className="card p-4">
+        <div className="card-sweep p-4">
           <h3 className="sec-label !mb-2">📋 最近任务</h3>
           {pendingTasks.length === 0 ? (
             <p className="text-[11px] text-slate-400 py-2">暂无进行中的项目，从左侧创建第一个吧</p>
@@ -278,7 +278,7 @@ export default function Workspace() {
         </div>
 
         {/* 右：选中项目详情 */}
-        <div className="card p-5">
+        <div className="card-sweep p-5">
           {!detail ? (
             <p className="text-xs text-slate-400 text-center py-16">创建项目后，这里将展示 7 阶段进度与产出物</p>
           ) : (
