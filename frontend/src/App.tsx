@@ -23,6 +23,7 @@ import Method from './pages/Method'
 import DataAnalysis from './pages/DataAnalysis'
 import Writing from './pages/Writing'
 import Review from './pages/Review'
+import CrossCultural from './pages/CrossCultural'
 
 /* ── 导航定义：科研工作台 + 科研流程 ── */
 const PIPELINE_NAV = [
@@ -34,6 +35,7 @@ const PIPELINE_NAV = [
   { to: '/data-analysis', icon: '📊', label: '数据分析', en: 'ANALYSIS' },
   { to: '/writing', icon: '✍️', label: '学术写作', en: 'WRITING' },
   { to: '/review', icon: '👨‍⚖️', label: '同行评审', en: 'REVIEW' },
+  { to: '/cross-cultural', icon: '⇌', label: '跨文化对照', en: 'CROSS-CULT' },
 ]
 
 /* ── 实时时钟 ── */
@@ -165,6 +167,7 @@ function AppLayout() {
               <Route path="/data-analysis" element={<DataAnalysis />} />
               <Route path="/writing" element={<Writing />} />
               <Route path="/review" element={<Review />} />
+              <Route path="/cross-cultural" element={<CrossCultural />} />
 
               {/* 兜底：未知路径回科研工作台 */}
               <Route path="*" element={<Workspace />} />
