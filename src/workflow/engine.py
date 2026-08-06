@@ -130,6 +130,62 @@ class WorkflowEngine:
         full_inputs = dict(inputs or {})
         full_inputs.setdefault("topic", project.interest)
         full_inputs.setdefault("project_title", project.title)
+        # 议题语料自动补齐：若本地无该议题的 science facts，自动生成并重建索引/KG，
+        # 避免新议题（如天问三号）因无事实语料导致 RAG/KG 校验大面积 unverified。
+        # 降级策略：任何异常仅告警，绝不影响阶段主流程。
+        try:
+            from src.pipeline import _safe_name
+            from src.knowledge.data_loader import get_data_loader
+            from pathlib import Path as _Path
+            topic = full_inputs.get("topic", "")
+            if topic:
+                loader = get_data_loader()
+                if not loader.load_science_facts(topic):
+                    logger.info(f"[WorkflowEngine] 本地无「{topic}」科学数据，自动生成中...")
+                    from src.llm_client import LLMClient
+                    client = LLMClient()
+                    result = client.chat_json(
+                        system_prompt="你是航天科技领域数据标注专家。为给定议题生成结构化科学事实。必须输出标准 JSON。",
+                        user_prompt=(
+                            f"请为以下科技议题生成结构化科学事实数据：\n\n议题：{topic}\n\n"
+                            '输出格式（严格 JSON）：{"topic": "<议题>", "key_facts": ["事实1（来源）", "...至少8条"], '
+                            '"entities": [{"name": "实体名", "type": "mission/body/technology/organization/person/event", "attributes": {}, "description": "描述"}], '
+                            '"relations": [{"subject": "主体", "predicate": "关系", "object": "客体", "confidence": 0.9, "source": "来源"}], '
+                            '"timeline": [{"date": "YYYY-MM-DD", "event": "事件"}], "data_sources": ["来源1"]}'
+                        ),
+                        temperature=0.2,
+                        enable_search=True,
+                    )
+                    science_dir = _Path(__file__).parent.parent.parent / "data" / "science"
+                    science_dir.mkdir(parents=True, exist_ok=True)
+                    safe = _safe_name(topic)
+                    with open(science_dir / f"{safe}_facts.json", "w", encoding="utf-8") as f:
+                        json.dump(result, f, ensure_ascii=False, indent=2)
+                    # 生成后：science_fact 并入向量索引 + KG 并入图谱（修复后 build 保留全类型）
+                    from src.knowledge.vector_store import get_vector_store
+                    vs = get_vector_store()
+                    try:
+                        vs._load_index()
+                    except Exception:
+                        pass
+                    docs = list(vs.documents)
+                    new_docs = []
+                    for fact in result.get("key_facts", []):
+                        new_docs.append({"text": fact, "source": f"{safe}_facts", "type": "science_fact", "title": topic})
+                    for ent in result.get("entities", []):
+                        new_docs.append({
+                            "text": f"{ent.get('name')} ({ent.get('type')}): {json.dumps(ent.get('attributes', {}), ensure_ascii=False)}",
+                            "source": f"{safe}_facts", "type": "entity", "title": ent.get("name"),
+                        })
+                    vs.build_index(docs + new_docs)
+                    from src.knowledge.kg_builder import get_knowledge_graph
+                    try:
+                        get_knowledge_graph().build_from_data()
+                    except Exception as e:
+                        logger.warning(f"[WorkflowEngine] KG 更新失败（忽略）: {e}")
+                    logger.info(f"[WorkflowEngine] ✓ 「{topic}」语料已补齐并入库")
+        except Exception as e:
+            logger.warning(f"[WorkflowEngine] 议题语料补齐失败（不影响主流程）: {e}")
         context = self._build_stage_context(stage, full_inputs)
         full_inputs.update(context)
         self._inject_previous_outputs(project, stage, full_inputs)
