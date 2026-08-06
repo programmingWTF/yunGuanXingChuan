@@ -9,7 +9,11 @@
     "content": "Chinas Chang'e-6-Mission hat erstmals Gesteinsproben von der Rückseite des Mondes zur Erde gebracht. Während deutsche Wissenschaftler die wissenschaftliche Bedeutung würdigen, fragen sich politische Beobachter, ob Peking damit seine technologische Überlegenheit demonstrieren will. Die Mission zeigt Chinas Fähigkeit, komplexe Raumfahrtprojekte unabhängig durchzuführen.",
     "framework": "competition",
     "sentiment": "neutral",
-    "key_phrases": ["technologische Überlegenheit", "wissenschaftliche Bedeutung", "Machtdemonstration"]
+    "key_phrases": [
+      "technologische Überlegenheit",
+      "wissenschaftliche Bedeutung",
+      "Machtdemonstration"
+    ]
   },
   {
     "id": "de_002",
@@ -21,7 +25,11 @@
     "content": "German planetary researchers at the University of Münster and DLR are eager to study the Chang'e-6 lunar samples. Germany's participation in ESA's lunar exploration programme positions it well for potential sample-sharing agreements with China. The Max Planck Institute for Solar System Research has expressed interest in analyzing the far-side basalts for insights into early solar system dynamics.",
     "framework": "cooperation",
     "sentiment": "positive",
-    "key_phrases": ["eager to study", "sample-sharing agreements", "scientific interest"]
+    "key_phrases": [
+      "eager to study",
+      "sample-sharing agreements",
+      "scientific interest"
+    ]
   },
   {
     "id": "de_003",
@@ -33,7 +41,11 @@
     "content": "Während die NASA mit Verzögerungen beim Artemis-Programm kämpft, setzt China seine Mondambitionen planmäßig um. Der Erfolg von Chang'e-6 unterstreicht Pekings systematischen Ansatz in der Raumfahrt. Europäische Raumfahrtexperten warnen, dass die EU Gefahr läuft, zwischen den beiden Großmächten marginalisiert zu werden, wenn sie nicht eigene Ambitionen entwickelt.",
     "framework": "competition",
     "sentiment": "negative",
-    "key_phrases": ["Wettlauf im All", "systematischer Ansatz", "marginalisiert"]
+    "key_phrases": [
+      "Wettlauf im All",
+      "systematischer Ansatz",
+      "marginalisiert"
+    ]
   },
   {
     "id": "de_004",
@@ -45,7 +57,11 @@
     "content": "Die von Chang'e-6 zurückgebrachten Proben könnten unser Verständnis der Mondentstehung revolutionieren. Erste Analysen deuten auf vulkanische Aktivität hin, die deutlich jünger ist als bisher angenommen. Deutsche Geochemiker sehen darin eine Chance, Theorien über die thermische Entwicklung terrestrischer Planeten zu überprüfen.",
     "framework": "progress",
     "sentiment": "positive",
-    "key_phrases": ["neues Kapitel", "revolutionieren", "thermische Entwicklung"]
+    "key_phrases": [
+      "neues Kapitel",
+      "revolutionieren",
+      "thermische Entwicklung"
+    ]
   },
   {
     "id": "de_005",
@@ -57,7 +73,11 @@
     "content": "Trotz zunehmender geopolitischer Spannungen zwischen der EU und China bleibt die Raumfahrt ein Bereich möglicher Zusammenarbeit. Die Beteiligung europäischer Instrumente an chinesischen Mondmissionen zeigt, dass wissenschaftliche Interessen politische Differenzen überbrücken können. Die Bundesregierung prüft, ob deutsche Forscher direkten Zugang zu chinesischen Mondproben erhalten können.",
     "framework": "cooperation",
     "sentiment": "neutral",
-    "key_phrases": ["Zusammenarbeit trotz Spannungen", "wissenschaftliche Interessen", "politische Differenzen überbrücken"]
+    "key_phrases": [
+      "Zusammenarbeit trotz Spannungen",
+      "wissenschaftliche Interessen",
+      "politische Differenzen überbrücken"
+    ]
   },
   {
     "id": "de_006",
@@ -69,6 +89,48 @@
     "content": "Die chinesische Raumfahrtindustrie verzeichnet zweistellige Wachstumsraten und entwickelt zunehmend kommerzielle Anwendungen. Deutsche Unternehmen wie OHB und Airbus Defence beobachten die Entwicklung aufmerksam. Analysten sehen in Chinas Raumfahrtsektor sowohl eine Bedrohung für europäische Marktanteile als auch Kooperationsmöglichkeiten bei Satellitentechnologie und Erdbeobachtung.",
     "framework": "development",
     "sentiment": "neutral",
-    "key_phrases": ["zweistellige Wachstumsraten", "Kooperationsmöglichkeiten", "Marktanteile"]
+    "key_phrases": [
+      "zweistellige Wachstumsraten",
+      "Kooperationsmöglichkeiten",
+      "Marktanteile"
+    ]
+  },
+  {
+    "id": "germany_007",
+    "source": "Deutsche Welle",
+    "title": "Why Europe is sitting out the China-Russia moon base project",
+    "date": "2026-03-18",
+    "language": "en",
+    "country": "germany",
+    "content": "As China and Russia push ahead with plans for the International Lunar Research Station (ILRS), Europe finds itself on the sidelines of a new lunar race. The China-led project, announced in 2021 alongside Roscosmos, aims to establish a permanent base near the Moon's south pole by the mid-2030s, with construction missions slated to begin around 2031 aboard Long March 9 rockets. Beijing has courted dozens of nations to join, targeting participation from up to 50 countries. But the European Space Agency has made clear it will not take part, citing Russia's involvement and geopolitical tensions following Moscow's war against Ukraine. \"ESA will not engage with the ILRS due to the participation of Russia,\" an agency spokesperson told DW, adding that Europe's lunar ambitions remain anchored in the US-led Artemis program, to which Germany's DLR aerospace center contributes key technology. German space officials note that the Orion service module, built largely with German industrial input, gives the continent a stake in Artemis missions. Still, analysts warn that a bifurcated Moon could marginalize European science. \"We risk becoming spectators in a contest that will shape space governance for decades,\" said a space policy researcher at a Berlin think tank. With China deepening lunar partnerships in 2026 and Russia shifting focus toward the joint base, the diplomatic stakes around the Moon continue to rise.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "International Lunar Research Station",
+      "ESA",
+      "Artemis program",
+      "China-Russia space cooperation",
+      "European lunar policy",
+      "DLR"
+    ]
+  },
+  {
+    "id": "germany_009",
+    "source": "Der Spiegel",
+    "title": "The new moon race: How Beijing and Moscow want to beat the West to the lunar south pole",
+    "date": "2026-05-12",
+    "language": "en",
+    "country": "germany",
+    "content": "It is a project that few in Berlin openly discuss, but one that is redrawing the map of space power: the International Lunar Research Station, a lunar base conceived by Beijing and Moscow as a rival to America's Artemis program. While Western attention focuses on NASA's repeatedly delayed missions, China and Russia have quietly pressed ahead. Construction missions are planned from 2031, and Russia, having reset its lunar program earlier this year, now intends to contribute a nuclear power plant for the base. Chinese officials speak openly of enlisting dozens of partner nations, building a bloc both in orbit and on the lunar surface. Der Spiegel has learned that German policymakers view the development with growing unease. The concern is less about rockets than about rules: whoever establishes a foothold at the resource-rich lunar south pole will shape the norms governing its use. \"This is not a science project, it is a claim to power,\" a senior figure close to Germany's space establishment said. Europe, which has tied its lunar future to Artemis, excluded itself from the ILRS over Russia's role, a decision critics call short-sighted. The result, one diplomat warned, is that \"two autocratic space powers are writing the Moon's future lawbook while Europe watches from the sidelines.\" In this new moon race, Germany risks being left behind.",
+    "framework": "threat",
+    "sentiment": "negative",
+    "key_phrases": [
+      "International Lunar Research Station",
+      "lunar south pole",
+      "space geopolitics",
+      "Artemis rival",
+      "German space policy",
+      "nuclear power plant"
+    ]
   }
 ]

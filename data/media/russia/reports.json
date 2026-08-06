@@ -9,7 +9,11 @@
     "content": "Китайская миссия «Чанъэ-6» успешно вернула на Землю образцы лунного грунта с обратной стороны Луны. Роскосмос поздравил китайских коллег с этим достижением и выразил заинтересованность в совместных исследованиях. Успех миссии подтверждает лидерство азиатских стран в лунной программе на фоне неудач российской «Луны-25».",
     "framework": "cooperation",
     "sentiment": "positive",
-    "key_phrases": ["совместные исследования", "поздравил коллег", "лидерство азиатских стран"]
+    "key_phrases": [
+      "совместные исследования",
+      "поздравил коллег",
+      "лидерство азиатских стран"
+    ]
   },
   {
     "id": "ru_002",
@@ -21,7 +25,11 @@
     "content": "На фоне успеха «Чанъэ-6» Москва и Пекин активизируют работу над Международной научной лунной станцией (ILRS). Российские учёные получат доступ к образцам лунного грунта в обмен на экспертизу в области ядерных энергетических установок для космоса. Партнёрство двух стран формирует альтернативу западным космическим альянсам.",
     "framework": "cooperation",
     "sentiment": "positive",
-    "key_phrases": ["углубляют сотрудничество", "альтернатива западным альянсам", "лунная станция"]
+    "key_phrases": [
+      "углубляют сотрудничество",
+      "альтернатива западным альянсам",
+      "лунная станция"
+    ]
   },
   {
     "id": "ru_003",
@@ -33,7 +41,11 @@
     "content": "Успех китайской программы лунных исследований контрастирует с серией неудач Роскосмоса. После провала «Луны-25» Россия вынуждена пересмотреть свои лунные амбиции и искать пути интеграции в китайскую программу. Эксперты отмечают, что без китайского партнёрства российская лунная программа может быть отложена на неопределённый срок.",
     "framework": "competition",
     "sentiment": "negative",
-    "key_phrases": ["обгоняет Россию", "серия неудач", "пересмотр амбиций"]
+    "key_phrases": [
+      "обгоняет Россию",
+      "серия неудач",
+      "пересмотр амбиций"
+    ]
   },
   {
     "id": "ru_004",
@@ -45,7 +57,11 @@
     "content": "Образцы, доставленные «Чанъэ-6», представляют огромную научную ценность для всего человечества. Российские планетологи подчёркивают, что исследование лунного грунта с обратной стороны позволит проверить гипотезы о поздней тяжёлой бомбардировке и эволюции лунной коры. Наука не знает границ, и этот успех принадлежит всему миру.",
     "framework": "progress",
     "sentiment": "positive",
-    "key_phrases": ["научный прорыв", "всего человечества", "наука не знает границ"]
+    "key_phrases": [
+      "научный прорыв",
+      "всего человечества",
+      "наука не знает границ"
+    ]
   },
   {
     "id": "ru_005",
@@ -57,7 +73,11 @@
     "content": "Китайские инвестиции в лунную программу составляют часть более широкой стратегии развития космической экономики. Пекин рассматривает Луну как источник ресурсов и площадку для технологических инноваций. Российским компаниям предлагается участвовать в создании инфраструктуры лунной станции, что может стать новым направлением для отечественной космической отрасли.",
     "framework": "development",
     "sentiment": "neutral",
-    "key_phrases": ["космическая экономика", "источник ресурсов", "новое направление"]
+    "key_phrases": [
+      "космическая экономика",
+      "источник ресурсов",
+      "новое направление"
+    ]
   },
   {
     "id": "ru_006",
@@ -69,6 +89,46 @@
     "content": "Миссия «Чанъэ-6» полностью выполнена на китайских технологиях, что демонстрирует полную технологическую независимость Пекина в космической сфере. В условиях западных санкций это особенно значимо. Российские аналитики видят в этом модель для подражания и аргумент за углубление технологического сотрудничества между двумя странами.",
     "framework": "competition",
     "sentiment": "neutral",
-    "key_phrases": ["технологическая независимость", "модель для подражания", "западные санкции"]
+    "key_phrases": [
+      "технологическая независимость",
+      "модель для подражания",
+      "западные санкции"
+    ]
+  },
+  {
+    "id": "russia_007",
+    "source": "TASS",
+    "title": "Russian Academy of Sciences approves concept of Russian segment of International Lunar Research Station",
+    "date": "2026-04-01",
+    "language": "en",
+    "country": "russia",
+    "content": "MOSCOW, April 1. /TASS/. The Russian Academy of Sciences has approved the concept for creating the Russian segment of the International Lunar Research Station, a project being implemented jointly with China, TASS reports. The decision was announced after a meeting of the academy's scientific council on space, where experts reviewed plans for lunar infrastructure, robotic missions and energy systems. \"The concept was supported unanimously,\" a RAS representative said, adding that the document would guide Roscosmos and research institutes in the coming years. According to the materials, the Russian segment is expected to include landing and research facilities near the lunar south pole, automated scientific instruments, and elements of a future power supply system. Roscosmos chief Dmitry Bakanov said cooperation with the China National Space Administration remains a central element of Russia's long-term lunar strategy. In May 2025, Roscosmos and CNSA signed a memorandum on constructing a power plant for the station. The project is presented as open to other countries and scientific organizations. Analysts quoted by TASS said the station would allow Russia to preserve and develop its space competencies after restrictions on cooperation with Western agencies, while expanding its role in a multipolar space agenda. The academy said experiments will cover lunar geology, astrophysics, resource utilization and testing of life-support technologies. The ILRS is viewed in Moscow as a civilian, science-driven alternative to what Russian officials describe as the US-led, closed Artemis model.",
+    "framework": "cooperation/scientific progress",
+    "sentiment": "positive",
+    "key_phrases": [
+      "International Lunar Research Station",
+      "Russian Academy of Sciences",
+      "Roscosmos",
+      "China National Space Administration",
+      "lunar south pole"
+    ]
+  },
+  {
+    "id": "russia_009",
+    "source": "RIA Novosti",
+    "title": "Russia plans lunar nuclear power station by 2036 for International Lunar Research Station",
+    "date": "2025-12-24",
+    "language": "en",
+    "country": "russia",
+    "content": "MOSCOW, Dec 24 — RIA Novosti. Russia plans to create a lunar power station by 2036 to supply energy for national lunar programs and the joint Russian-Chinese International Lunar Research Station, RIA Novosti reports, citing the Russian Academy of Sciences. The project, approved under Russia's long-term lunar exploration plan, envisages deploying a nuclear-based power unit on the Moon's surface, with robotic systems carrying out most operations. A special rover will connect scientific instruments, rovers and observatories to a charging and distribution system, reducing the need for risky human involvement. \"We are talking about an energy foundation for a permanent presence on the Moon,\" a source in the rocket and space industry told RIA Novosti. Roscosmos has signed a contract with NPO Lavochkin for work on the station, according to industry sources. In May 2025, Roscosmos and the China National Space Administration signed a memorandum on building a power plant for the ILRS, underscoring Moscow and Beijing's intention to construct a permanent research base at the lunar south pole by the mid-2030s. Russian officials framed the plan as evidence of technological sovereignty and strategic cooperation with China, contrasting it with what they called politically conditioned restrictions by former Western partners. The academy said robotized exploration will lower costs and prepare for future crewed missions. The project is seen as strengthening Russia's status as an independent space power and supporting a broader multipolar model of Moon development.",
+    "framework": "strategic cooperation/technological sovereignty",
+    "sentiment": "positive",
+    "key_phrases": [
+      "lunar power station",
+      "nuclear power unit",
+      "NPO Lavochkin",
+      "International Lunar Research Station",
+      "multipolar space development"
+    ]
   }
 ]

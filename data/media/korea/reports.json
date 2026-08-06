@@ -9,7 +9,11 @@
     "content": "중국의 창어6호 임무 성공은 아시아 국가들의 우주 개발 경쟁을 한층 격화시키고 있다. 한국의 달 탐사 프로그램 'KPLO'의 후속 임무에도 영향을 미칠 것으로 보인다. 과학기술정보통신부는 중국의 월면 샘플 반환 성공을 분석하며 한국의 달 착륙 계획 일정을 검토 중이다.",
     "framework": "competition",
     "sentiment": "neutral",
-    "key_phrases": ["우주경쟁 가속화", "달 착륙 계획", "일정 검토"]
+    "key_phrases": [
+      "우주경쟁 가속화",
+      "달 착륙 계획",
+      "일정 검토"
+    ]
   },
   {
     "id": "kr_002",
@@ -21,7 +25,11 @@
     "content": "South Korea's space agency KARI is evaluating potential scientific cooperation with China on lunar sample research, despite security concerns from the US alliance. Korean scientists argue that participation in international lunar science is essential for building domestic capabilities ahead of Korea's planned 2032 lunar landing mission.",
     "framework": "cooperation",
     "sentiment": "neutral",
-    "key_phrases": ["scientific cooperation", "security concerns", "domestic capabilities"]
+    "key_phrases": [
+      "scientific cooperation",
+      "security concerns",
+      "domestic capabilities"
+    ]
   },
   {
     "id": "kr_003",
@@ -33,7 +41,11 @@
     "content": "창어6호가 가져온 달 뒷면 샘플은 한국 우주과학계에도 중요한 연구 기회를 제공한다. 한국지질자원연구원과 한국천문연구원은 중국 측에 샘플 공유를 요청했으며, 월면 지질학 연구 역량을 강화하는 계기로 삼고자 한다. 과학 협력은 안보 문제와 분리되어야 한다는 목소리가 커지고 있다.",
     "framework": "progress",
     "sentiment": "positive",
-    "key_phrases": ["연구 기회", "역량 강화", "과학 협력"]
+    "key_phrases": [
+      "연구 기회",
+      "역량 강화",
+      "과학 협력"
+    ]
   },
   {
     "id": "kr_004",
@@ -45,7 +57,11 @@
     "content": "China's growing space capabilities present both opportunities and challenges for Korean aerospace companies. While competition in satellite technology intensifies, potential collaboration in lunar infrastructure development could open new markets. Korean firms like Hanwha Aerospace are monitoring developments closely for strategic positioning.",
     "framework": "development",
     "sentiment": "neutral",
-    "key_phrases": ["opportunities and challenges", "new markets", "strategic positioning"]
+    "key_phrases": [
+      "opportunities and challenges",
+      "new markets",
+      "strategic positioning"
+    ]
   },
   {
     "id": "kr_005",
@@ -57,7 +73,11 @@
     "content": "중국의 달 탐사 성과는 동아시아 국가 간 우주과학 협력의 새로운 가능성을 보여준다. 한국, 일본, 중국이 월면 샘플 연구에서 협력한다면, 이는 지역 평화와 상호 이해를 증진하는 촉매제가 될 수 있다. 과학 외교는 전통적 외교가 해결하지 못하는 문제를 풀 열쇠가 될 수 있다.",
     "framework": "cooperation",
     "sentiment": "positive",
-    "key_phrases": ["동아시아 평화", "과학 외교", "상호 이해 증진"]
+    "key_phrases": [
+      "동아시아 평화",
+      "과학 외교",
+      "상호 이해 증진"
+    ]
   },
   {
     "id": "kr_006",
@@ -69,6 +89,49 @@
     "content": "창어6호 샘플 분석 결과 달 뒷면에서 28억 년 전 화산활동 흔적이 발견되었다. 이는 기존 달 진화 모델을 수정해야 함을 의미하며, 한국 행성과학자들에게도 새로운 연구 방향을 제시한다. 서울대 지구과학교육과 연구팀은 관련 논문 공동 저자 참여를 추진 중이다.",
     "framework": "progress",
     "sentiment": "positive",
-    "key_phrases": ["새 지평", "모델 수정", "공동 저자 참여"]
+    "key_phrases": [
+      "새 지평",
+      "모델 수정",
+      "공동 저자 참여"
+    ]
+  },
+  {
+    "id": "korea_007",
+    "source": "The Korea Herald",
+    "title": "Korea walks fine line as China-Russia-led lunar station gains momentum",
+    "date": "2026-07-21",
+    "language": "en",
+    "country": "korea",
+    "content": "SEOUL — South Korea is cautiously assessing whether to seek a role in the International Lunar Research Station, the China-Russia-led project to build a long-term robotic and eventually crewed outpost near the lunar south pole, as Seoul tries to expand its space presence without unsettling its alliance with Washington. The ILRS, first announced in 2021, has entered a more concrete planning phase, with Beijing and Moscow outlining precursor missions, lunar power and communications infrastructure and international participation before the end of the decade. Korea has already joined NASA's Artemis Accords and is developing its own lunar lander and cislunar probe, but officials in Daejeon say scientific cooperation with ILRS partners could offer access to landing sites, communications and surface operations too costly for a mid-sized space power to duplicate. 'Seoul should avoid being locked into a single bloc in lunar governance,' said a space policy researcher at a state-funded institute, speaking on condition of anonymity because of diplomatic sensitivity. 'If Korea wants a credible cislunar program, it must keep technical channels open with both Artemis and ILRS actors.' Critics warn that closer engagement with the China-Russia project could raise concerns over dual-use technologies and deepen space decoupling. Still, the dominant mood in Seoul is pragmatic science diplomacy: Korea seeks to convert its Danuri lunar orbiter experience into influence, while hedging against a Moon divided into rival camps.",
+    "framework": "strategic competition tempered by pragmatic scientific cooperation",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "International Lunar Research Station",
+      "China-Russia lunar cooperation",
+      "Artemis Accords",
+      "South Korea space policy",
+      "lunar south pole",
+      "cislunar program"
+    ]
+  },
+  {
+    "id": "korea_008",
+    "source": "The Korea Herald",
+    "title": "China's Chang'e-8 lunar mission sharpens moon race pressure on Seoul",
+    "date": "2026-07-15",
+    "language": "en",
+    "country": "korea",
+    "content": "As Beijing accelerates preparations for its next lunar landing campaign, attention is turning to Chang'e-8, a robotic mission scheduled for launch around 2028-29 targeting the Leibnitz Beta plateau near the lunar south pole. China's space authority says the mission — comprising a lander, a rover and an operation robot — will test in-situ resource utilization and lay the technical groundwork for the International Lunar Research Station, a China-led base envisioned for the mid-2030s. Ten international projects carrying payloads from 11 countries and regions have already been selected to fly aboard the probe. For South Korea, the announcement underscores a widening capability gap. The Korea Aerospace Administration, established in 2024, aims to place a lunar probe on the surface by 2032, more than a decade after the Danuri orbiter reached the moon in 2022. \"China's step-by-step progress is impressive and sobering at the same time,\" a Seoul-based space policy analyst said. \"Unless Korea secures its own launch vehicles and deep-space track record, it risks becoming a rule-taker rather than a rule-maker in lunar activities.\" Because Korea is a signatory to the US-led Artemis Accords, the rival framework to Beijing's ILRS, joining Chang'e-8's payload program is virtually impossible. Analysts argue the Chang'e program should serve as a wake-up call, urging Seoul to let competition — not confrontation — drive its lunar roadmap.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "Chang'e-8",
+      "lunar south pole",
+      "space race",
+      "Korea Aerospace Administration",
+      "International Lunar Research Station",
+      "Artemis Accords",
+      "Danuri"
+    ]
   }
 ]

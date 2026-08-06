@@ -9,7 +9,11 @@
     "content": "中国の嫦娥6号が月の裏側からサンプルを持ち帰ったことは、惑星科学にとって画期的な成果である。日本のJAXA関係者は、このサンプルが月形成理論に新たな知見をもたらすと期待している。一方で、アジアにおける宇宙開発競争が激化していることへの懸念も表明されている。",
     "framework": "progress",
     "sentiment": "neutral",
-    "key_phrases": ["画期的な成果", "宇宙開発競争", "新たな知見"]
+    "key_phrases": [
+      "画期的な成果",
+      "宇宙開発競争",
+      "新たな知見"
+    ]
   },
   {
     "id": "jp_002",
@@ -21,7 +25,11 @@
     "content": "Japan's SLIM mission achieved a precision landing in January 2024, but China's Chang'e-6 success raises the bar significantly. Japanese space policymakers are debating whether to accelerate the country's lunar exploration timeline. The competition between Asian space powers adds a new dimension to what was previously a US-Russia-China dynamic.",
     "framework": "competition",
     "sentiment": "neutral",
-    "key_phrases": ["raises the bar", "accelerate timeline", "Asian space powers"]
+    "key_phrases": [
+      "raises the bar",
+      "accelerate timeline",
+      "Asian space powers"
+    ]
   },
   {
     "id": "jp_003",
@@ -33,7 +41,11 @@
     "content": "嫦娥6号が持ち帰った月の裏側のサンプルは、地球と月の形成過程に関する新たな仮説を支持する証拠となる可能性がある。東京大学の研究チームは、中国側とのサンプル共有協定締結を働きかけており、日中科学協力の新たなモデルとなり得るとしている。",
     "framework": "cooperation",
     "sentiment": "positive",
-    "key_phrases": ["新たな仮説", "サンプル共有協定", "日中科学協力"]
+    "key_phrases": [
+      "新たな仮説",
+      "サンプル共有協定",
+      "日中科学協力"
+    ]
   },
   {
     "id": "jp_004",
@@ -45,7 +57,11 @@
     "content": "China's inclusion of payloads from Pakistan, Italy, and ESA on Chang'e-6 demonstrates a sophisticated space diplomacy strategy. Tokyo analysts note that Beijing is building a coalition of space partners that could reshape international space governance. Japan must consider whether to engage with or counter this expanding network.",
     "framework": "competition",
     "sentiment": "negative",
-    "key_phrases": ["space diplomacy", "coalition of partners", "reshape governance"]
+    "key_phrases": [
+      "space diplomacy",
+      "coalition of partners",
+      "reshape governance"
+    ]
   },
   {
     "id": "jp_005",
@@ -57,7 +73,11 @@
     "content": "月の裏側サンプルの分析により、ヘリウム3などの宇宙資源の分布に関する新たなデータが得られる可能性がある。中国は月資源開発において技術的優位を確立しつつあり、日本の宇宙資源戦略にも影響を与える。経済産業省は宇宙資源分野での国際連携強化を検討している。",
     "framework": "development",
     "sentiment": "neutral",
-    "key_phrases": ["宇宙資源開発", "技術的優位", "国際連携強化"]
+    "key_phrases": [
+      "宇宙資源開発",
+      "技術的優位",
+      "国際連携強化"
+    ]
   },
   {
     "id": "jp_006",
@@ -69,6 +89,67 @@
     "content": "中国が月サンプルの一部を国際科学コミュニティに開放する方針を示したことを受け、日本の惑星科学者たちは歓迎の意を表している。科学的協力は地政学的緊張を超越するべきであり、月サンプルの共有はその好例となるとの声が上がっている。",
     "framework": "cooperation",
     "sentiment": "positive",
-    "key_phrases": ["科学に国境なし", "国際科学コミュニティ", "緊張を超越"]
+    "key_phrases": [
+      "科学に国境なし",
+      "国際科学コミュニティ",
+      "緊張を超越"
+    ]
+  },
+  {
+    "id": "japan_007",
+    "source": "The Japan Times",
+    "title": "Japan anchors lunar strategy to U.S.-led Artemis as China's moon base project gains momentum",
+    "date": "2026-06-14",
+    "language": "en",
+    "country": "japan",
+    "content": "TOKYO - As China and Russia press ahead with the International Lunar Research Station (ILRS), Japan is doubling down on the rival, U.S.-led Artemis program, underscoring how the Moon has become the newest frontier of great-power rivalry. The ILRS, unveiled by Beijing and Moscow in 2021, is planned as a permanent robotic and eventually crewed outpost near the lunar south pole, with China targeting basic construction by 2035 and courting up to 50 partner nations. Chinese officials insist the project is \"open and inclusive,\" pointing to new signatories across Asia, Africa and Latin America. Japanese officials, however, remain firmly in Washington's camp. Japan was among the original signatories of the 2020 Artemis Accords and has pledged a pressurized lunar rover and the first Japanese astronaut to walk on the Moon. \"The lunar south pole is no longer just a scientific destination; it is a strategic space,\" said a Tokyo-based space policy analyst. \"Japan's choice reflects both technological calculation and alliance loyalty.\" Analysts note that Beijing's steady lunar momentum, following a string of successful Chang'e missions, puts pressure on the Artemis timeline. For Tokyo, success is about securing a rule-making seat in cislunar governance as much as advancing science.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "International Lunar Research Station",
+      "Artemis program",
+      "lunar south pole",
+      "U.S.-Japan alliance",
+      "Artemis Accords",
+      "cislunar governance"
+    ]
+  },
+  {
+    "id": "japan_008",
+    "source": "The Japan Times",
+    "title": "China's Chang'e-8 moon mission sharpens Japan's lunar strategy test",
+    "date": "2026-04-15",
+    "language": "en",
+    "country": "japan",
+    "content": "Tokyo — China's planned Chang'e-8 lunar mission, scheduled for launch around 2029, is emerging as a test of how far Beijing can move from lunar science to permanent moon infrastructure. The probe is to land near the Leibnitz-Beta Plateau in the lunar south pole region, an area prized for possible water ice and future exploration resources. Working with Chang'e-7, which is due to launch later this year, Chang'e-8 will help form the basic model of China's International Lunar Research Station, a Beijing-led alternative to the U.S.-centered Artemis program. China's space agency has selected international payloads from 11 countries and regions and one international organization, presenting the mission as an open platform for cooperation. In Japan, however, the project is being read through a strategic lens. Japanese officials and analysts note that China's rapid cadence — including Chang'e-6's far-side sample return — narrows the gap with Washington and its partners, including Tokyo. \"Chang'e-8 is not merely a science mission; it is groundwork for a sustained lunar presence,\" a Tokyo-based space policy analyst said. The Japan Times' assessment suggests concern, but not alarm: JAXA's precision landing technology and cooperation with NASA remain strong, yet Japan must deepen partnerships in the Indo-Pacific to avoid being marginalized in the next era of lunar governance.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "Chang'e-8",
+      "lunar south pole",
+      "International Lunar Research Station",
+      "Japan space strategy",
+      "Artemis"
+    ]
+  },
+  {
+    "id": "japan_009",
+    "source": "The Japan Times",
+    "title": "Chinese startup LandSpace to make second Zhuque-3 booster recovery attempt in challenge to SpaceX",
+    "date": "2026-08-05",
+    "language": "en",
+    "country": "japan",
+    "content": "TOKYO – Chinese commercial space company LandSpace is set to attempt a second recovery of its Zhuque-3 rocket's first stage on Monday, launching from the Jiuquan Satellite Launch Center in a test that will determine whether China's private space sector can master the reusability technology pioneered by SpaceX. The company said all key pre-launch verification for the Zhuque-3 Y2 mission has been completed, with liftoff scheduled within a window on Aug. 11. The rocket's maiden flight on Dec. 3 successfully delivered its upper stage to orbit, but the booster was lost after an anomaly during the landing burn. The attempt follows a landmark milestone for China's state sector: on July 10, a Long March 10B rocket achieved the country's first controlled recovery of an orbital-class booster, catching it with a net system on a sea-based platform off Hainan province. Analysts in Tokyo say the pace of progress is hard to ignore. \"If LandSpace lands and reuses its booster by the end of the year as planned, China will have closed most of the launch-cost gap with SpaceX within a decade,\" one space policy analyst said. For Japan, which relies on the expendable H3 rocket and has no reusable launcher in development, Zhuque-3's trajectory is a pointed reminder of widening cost disparities and the dual-use implications of Beijing's military-civil fusion in space.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "Zhuque-3",
+      "LandSpace",
+      "reusable rocket",
+      "booster recovery",
+      "SpaceX",
+      "military-civil fusion",
+      "H3 rocket"
+    ]
   }
 ]
