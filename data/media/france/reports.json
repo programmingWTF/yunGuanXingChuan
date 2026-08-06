@@ -9,7 +9,11 @@
     "content": "La mission chinoise Chang'e-6 a réussi à rapporter des échantillons de la face cachée de la Lune, une première dans l'histoire de l'exploration spatiale. Cette réussite intervient dans un contexte de compétition spatiale accrue entre les grandes puissances. La France, partenaire de la mission via son détecteur de radon, se positionne entre coopération scientifique et vigilance stratégique face à l'expansion des capacités spatiales chinoises.",
     "framework": "competition",
     "sentiment": "mixed",
-    "key_phrases": ["compétition spatiale", "coopération scientifique", "vigilance stratégique"]
+    "key_phrases": [
+      "compétition spatiale",
+      "coopération scientifique",
+      "vigilance stratégique"
+    ]
   },
   {
     "id": "fr_002",
@@ -21,7 +25,11 @@
     "content": "Avec le retour réussi de Chang'e-6, la Chine confirme son statut de puissance spatiale majeure. Cette mission, qui portait un instrument français, illustre la complexité des relations spatiales sino-européennes : entre collaboration scientifique fructueuse et rivalité technologique. L'Europe spatiale doit désormais définir sa position dans ce nouveau paysage dominé par la compétition américano-chinoise.",
     "framework": "competition",
     "sentiment": "neutral",
-    "key_phrases": ["rivalité technologique", "compétition américano-chinoise", "puissance spatiale majeure"]
+    "key_phrases": [
+      "rivalité technologique",
+      "compétition américano-chinoise",
+      "puissance spatiale majeure"
+    ]
   },
   {
     "id": "fr_003",
@@ -33,7 +41,11 @@
     "content": "Les premiers résultats de l'analyse des échantillons rapportés par Chang'e-6 révèlent des traces d'activité volcanique remontant à 2,8 milliards d'années. Cette découverte majeure pour la science planétaire démontre la valeur de la coopération internationale en matière d'exploration spatiale. Le détecteur de radon français embarqué a contribué à ces résultats, renforçant le partenariat spatial franco-chinois initié avec le satellite SVOM.",
     "framework": "cooperation",
     "sentiment": "positive",
-    "key_phrases": ["coopération internationale", "partenariat franco-chinois", "découverte majeure"]
+    "key_phrases": [
+      "coopération internationale",
+      "partenariat franco-chinois",
+      "découverte majeure"
+    ]
   },
   {
     "id": "fr_004",
@@ -45,6 +57,72 @@
     "content": "La réussite de Chang'e-6 met en lumière le paradoxe des relations spatiales franco-chinoises. D'un côté, le satellite SVOM lancé conjointement en juin 2024 et l'instrument français sur Chang'e-6 témoignent d'une coopération scientifique active. De l'autre, la compétition spatiale mondiale pousse chaque nation à protéger ses intérêts stratégiques. Les scientifiques français appellent à maintenir le dialogue malgré les tensions géopolitiques.",
     "framework": "cooperation",
     "sentiment": "mixed",
-    "key_phrases": ["coopération scientifique active", "intérêts stratégiques", "dialogue malgré les tensions"]
+    "key_phrases": [
+      "coopération scientifique active",
+      "intérêts stratégiques",
+      "dialogue malgré les tensions"
+    ]
+  },
+  {
+    "id": "france_005",
+    "source": "Le Monde",
+    "title": "China's Lunar Station Project Enters Construction Phase, Reshaping the New Space Race",
+    "date": "2026-07-20",
+    "language": "en",
+    "country": "france",
+    "content": "With the Chang'e-7 probe set to survey the lunar south pole this year, the International Lunar Research Station (ILRS) — the Chinese-Russian answer to NASA's Artemis programme — is entering its construction phase. Announced in 2021 by China's CNSA and Russia's Roscosmos, the project plans a robotic base at the Moon's south pole by 2035, powered eventually by a joint nuclear station.\n\nBeijing now claims commitments from more than a dozen partner countries, from Venezuela to Egypt, and says it hopes to involve up to fifty nations. \"The ILRS is designed as an open platform for international cooperation,\" Chinese officials insist, presenting the initiative as a counterweight to what they call the exclusionary American approach.\n\nEuropean scientists are watching closely but warily. ESA declined to join the project, citing strategic considerations and its commitments to Artemis, which France formally endorsed by signing the accords in January 2025. \"The Moon has become a theatre of geopolitical competition,\" notes a French space policy analyst. \"Europe cannot remain a spectator; it must defend its own access to lunar science.\"\n\nFor Le Monde's observers, the ILRS reflects China's broader ambition: to convert technological success into diplomatic influence, at a moment when Washington's priorities appear uncertain. The race for the Moon, once dormant, is fully back.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "International Lunar Research Station",
+      "Chang'e-7",
+      "CNSA",
+      "Roscosmos",
+      "Artemis Accords",
+      "lunar south pole",
+      "space geopolitics",
+      "ESA"
+    ]
+  },
+  {
+    "id": "france_006",
+    "source": "Le Monde",
+    "title": "With Chang'e-8, Beijing moves closer to a permanent foothold on the Moon",
+    "date": "2026-07-02",
+    "language": "en",
+    "country": "france",
+    "content": "China's planned Chang'e-8 mission, slated for launch around 2028 atop a Long March-5 rocket, has quietly become one of the most closely watched items on the global space agenda. Due to land near the Leibniz-Beta plateau at the lunar south pole, the probe is designed to test in-situ resource utilization, from 3D-printing structures out of regolith to extracting water from permanently shadowed craters, laying the groundwork for the International Lunar Research Station that Beijing intends to operate with a dozen or so partners by 2035. In April 2025, the China National Space Administration selected ten international payloads from dozens of applications, offering 200 kilograms of capacity, a carefully staged opening meant to contrast with what Chinese officials portray as American exclusivity under the Artemis Accords. \"Beijing is offering the countries of the Global South what Washington has so far refused them: a seat at the table,\" space policy analyst Laura Terzani told Le Monde. European scientists are watching closely. France's CNES has kept cautious dialogue with CNSA, but Paris remains wary of legitimizing a Sino-Russian-led architecture. \"The scientific interest is real, but no European institution can ignore the strategic subtext,\" Terzani added. \"The Moon is becoming a proving ground for influence.\"",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "Chang'e-8",
+      "International Lunar Research Station",
+      "lunar south pole",
+      "in-situ resource utilization",
+      "CNSA",
+      "Artemis Accords",
+      "CNES",
+      "space race"
+    ]
+  },
+  {
+    "id": "france_007",
+    "source": "Le Monde",
+    "title": "With Zhuque-3, China's LandSpace Takes Aim at SpaceX's Reusability Monopoly",
+    "date": "2026-08-05",
+    "language": "en",
+    "country": "france",
+    "content": "China's private space sector is pressing its challenge to American dominance. LandSpace, a Beijing-based rocket company, is preparing the second flight of its Zhuque-3 reusable launcher from Jiuquan, with a fresh attempt to land the first stage vertically — a feat so far achieved only by SpaceX. The 66-metre, methane-fuelled rocket, capable of lifting roughly 18.3 tonnes to low orbit in its reusable configuration, made its debut on 3 December 2025: its second stage reached orbit successfully, but the booster was destroyed after an anomaly during the landing burn near its Gansu recovery site. \"For Zhuque-3, the maiden flight was only the beginning,\" deputy chief designer Dong Kai said, adding that the company aimed to master recovery in 2026 and attempt a first reflight by year's end. The pace is striking: in July, China also recovered a Long March booster at sea. For Le Monde, the stakes extend beyond Beijing's rivalry with Elon Musk. With Ariane 6 lacking any reusability roadmap, Europe risks being priced out of the commercial launch market by a new generation of cheap, partially reusable Chinese rockets. The programme is less a single technical venture than a strategic signal: the launcher, long a European point of pride, is becoming a contested instrument of power.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "Zhuque-3",
+      "LandSpace",
+      "reusable rocket",
+      "SpaceX rivalry",
+      "first-stage landing",
+      "Ariane 6",
+      "European launch sovereignty"
+    ]
   }
 ]

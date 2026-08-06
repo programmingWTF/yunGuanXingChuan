@@ -9,7 +9,11 @@
     "content": "China's Chang'e-6 mission successfully returned 1,935.3 grams of lunar material from the far side of the Moon, marking a historic first in space exploration. The achievement intensifies the space competition between the US and China, as NASA's Artemis program faces delays. Analysts note that while the scientific value is undeniable, the geopolitical implications of China's growing space capabilities cannot be ignored.",
     "framework": "competition",
     "sentiment": "mixed",
-    "key_phrases": ["space competition", "geopolitical implications", "historic first"]
+    "key_phrases": [
+      "space competition",
+      "geopolitical implications",
+      "historic first"
+    ]
   },
   {
     "id": "us_002",
@@ -21,7 +25,11 @@
     "content": "In a milestone for space exploration, China's Chang'e-6 spacecraft returned to Earth carrying samples from the far side of the Moon. The mission, which included instruments from France, Italy, Pakistan and the European Space Agency, represents both scientific achievement and strategic positioning in an increasingly competitive space landscape. The samples could reveal new insights about the Moon's geological history.",
     "framework": "progress",
     "sentiment": "positive",
-    "key_phrases": ["milestone", "scientific achievement", "competitive space landscape"]
+    "key_phrases": [
+      "milestone",
+      "scientific achievement",
+      "competitive space landscape"
+    ]
   },
   {
     "id": "us_003",
@@ -33,7 +41,11 @@
     "content": "China's successful Chang'e-6 mission underscores the intensifying strategic competition in space. While Washington focuses on the Artemis program's delays, Beijing has methodically executed its lunar exploration roadmap. The mission's international payloads demonstrate China's ability to build space partnerships, potentially challenging US leadership in space governance. US policymakers must decide whether to engage cooperatively or double down on competition.",
     "framework": "competition",
     "sentiment": "negative",
-    "key_phrases": ["strategic competition", "challenging US leadership", "space governance"]
+    "key_phrases": [
+      "strategic competition",
+      "challenging US leadership",
+      "space governance"
+    ]
   },
   {
     "id": "us_004",
@@ -45,7 +57,11 @@
     "content": "Analysis of samples returned by China's Chang'e-6 mission from the Moon's far side reveals evidence of volcanic activity dating back 2.8 billion years. The findings, published in Nature, suggest the lunar far side remained geologically active much longer than previously thought. International scientists praised the mission's contribution to planetary science, noting the samples fill a critical gap in our understanding of lunar evolution.",
     "framework": "progress",
     "sentiment": "positive",
-    "key_phrases": ["scientific contribution", "fill a critical gap", "international scientists praised"]
+    "key_phrases": [
+      "scientific contribution",
+      "fill a critical gap",
+      "international scientists praised"
+    ]
   },
   {
     "id": "us_005",
@@ -57,7 +73,11 @@
     "content": "China's National Space Administration has opened applications for international researchers to study Chang'e-6 lunar samples. US scientists at MIT and Caltech have submitted proposals, though political restrictions on NASA-China collaboration may complicate access. The samples represent a unique opportunity to study the Moon's largest impact basin.",
     "framework": "cooperation",
     "sentiment": "neutral",
-    "key_phrases": ["international applications", "political restrictions", "unique opportunity"]
+    "key_phrases": [
+      "international applications",
+      "political restrictions",
+      "unique opportunity"
+    ]
   },
   {
     "id": "us_006",
@@ -69,7 +89,11 @@
     "content": "With each Chinese lunar success, the pressure mounts on NASA to deliver on Artemis promises. Congressional lawmakers are questioning whether the US can maintain its space leadership position when China consistently meets its milestones while Artemis faces repeated delays. The debate highlights tensions between ambitious goals and realistic budgeting.",
     "framework": "competition",
     "sentiment": "negative",
-    "key_phrases": ["pressure mounts", "space leadership", "repeated delays"]
+    "key_phrases": [
+      "pressure mounts",
+      "space leadership",
+      "repeated delays"
+    ]
   },
   {
     "id": "us_007",
@@ -81,7 +105,11 @@
     "content": "The far side of the Moon has always been a mystery, shielded from direct observation and sampling. Chang'e-6's returned materials are now revealing that the Moon's two hemispheres have strikingly different geological histories. This asymmetry challenges the prevailing giant-impact hypothesis and may require modifications to our understanding of how Earth's Moon formed.",
     "framework": "progress",
     "sentiment": "positive",
-    "key_phrases": ["strikingly different histories", "challenges hypothesis", "how Moon formed"]
+    "key_phrases": [
+      "strikingly different histories",
+      "challenges hypothesis",
+      "how Moon formed"
+    ]
   },
   {
     "id": "us_008",
@@ -93,6 +121,78 @@
     "content": "The US Space Force is closely tracking China's space programme advances, with Chang'e-6 cited in the latest threat assessment as evidence of Beijing's growing technical sophistication. While the mission is scientific in nature, officials note that the precision navigation, autonomous operations, and sample return capabilities have potential military applications in cislunar space.",
     "framework": "threat",
     "sentiment": "negative",
-    "key_phrases": ["threat assessment", "military applications", "cislunar space"]
+    "key_phrases": [
+      "threat assessment",
+      "military applications",
+      "cislunar space"
+    ]
+  },
+  {
+    "id": "us_009",
+    "source": "SpaceNews",
+    "title": "U.S. Officials See China-Led Lunar Station as Test of Artemis Strategy",
+    "date": "2026-05-12",
+    "language": "en",
+    "country": "us",
+    "content": "U.S. space officials say China's International Lunar Research Station is no longer a conceptual brochure but a program with hardware, funding lines and partner states, sharpening pressure on Washington to keep Artemis on schedule. Briefing reporters after a closed-door congressional hearing in May, a senior defense official said the ILRS 'is best understood as infrastructure for influence,' arguing that lunar surface presence will shape norms for operations, communications and resource use. NASA has repeatedly said it does not cooperate with China on bilateral lunar projects because of legal restrictions, but officials increasingly acknowledge that Beijing's outreach to science agencies in Asia, Africa, Latin America and the Middle East could produce a parallel lunar ecosystem centered on Chinese standards. Industry executives speaking at the Space Symposium said the U.S. response should not be a crash program but faster delivery of commercial landers, lunar power, and communications relays. 'The real contest is not flags; it is who provides dependable services,' one commercial lunar executive said. Analysts caution that ILRS remains technically demanding and dependent on Russian participation, especially nuclear power and launch reliability. Still, for U.S. policymakers, the station has become a benchmark for whether the Artemis architecture can convert alliance diplomacy into sustained lunar operations.",
+    "framework": "strategic competition",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "International Lunar Research Station",
+      "Artemis",
+      "lunar infrastructure",
+      "U.S. space policy"
+    ]
+  },
+  {
+    "id": "us_011",
+    "source": "Space.com",
+    "title": "China and Russia's Moon Base Plan: What the International Lunar Research Station Means for Lunar Science",
+    "date": "2026-02-10",
+    "language": "en",
+    "country": "us",
+    "content": "The International Lunar Research Station, a lunar base concept led by China and Russia, is moving from artist renderings toward early engineering milestones, and U.S. scientists are watching with a mixture of curiosity and caution. The project envisions robotic outposts, surface habitats, and a long-term research facility near the lunar south pole, where water ice could support science and possibly propellant production. Chinese officials have said they want the ILRS to be open to international partners, and several countries and scientific organizations have signed memoranda of understanding covering lunar science, ground systems and astronaut training. For Space.com readers, the key question is whether the station becomes a genuine science hub or a geopolitical counterweight to NASA's Artemis program. 'There are real scientific opportunities, especially in astronomy, planetary geology and resource utilization,' said a U.S. planetary scientist who follows lunar programs but is not authorized to speak for an agency. 'But access, data sharing and safety rules will determine how useful it is.' NASA has emphasized its own Artemis Accords approach, focused on transparent rules and commercial partnerships. Because U.S. law restricts most bilateral cooperation with China's space program, direct collaboration with the ILRS is unlikely. Even so, competition may accelerate lunar science overall, as more nations target the Moon's permanently shadowed craters.",
+    "framework": "science and competition",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "International Lunar Research Station",
+      "lunar south pole",
+      "NASA",
+      "lunar science"
+    ]
+  },
+  {
+    "id": "us_013",
+    "source": "The New York Times",
+    "title": "China's Lunar Station Plan Is a Challenge to U.S. Leadership",
+    "date": "2026-06-18",
+    "language": "en",
+    "country": "us",
+    "content": "The International Lunar Research Station has emerged as one of the clearest signs that space leadership is no longer an American assumption. The China-Russia project aims to establish a permanent research outpost on the Moon by the mid-2030s, with robotic missions already being planned to test construction, power and surface operations. U.S. officials increasingly describe it as more than a scientific venture: a bid to set rules for lunar activity at a time when the United States is promoting the Artemis Accords. 'Whoever builds the infrastructure also builds the expectations,' a former NASA official involved in international policy said. 'That is why this matters beyond science.' Washington's concern is not merely prestige. A Chinese-led station could give Beijing leverage over communications networks, landing zones, safety zones and eventually lunar resource use. It also underscores a political constraint: U.S. law largely bars NASA from bilateral cooperation with China, limiting America's ability to engage the project even if scientific interests align. The Artemis program has allies, but schedule slips and budget fights have made its timeline uncertain. China's lunar program, by contrast, appears disciplined and state-directed. For the United States, the ILRS is a reminder that the Moon may become a theater of strategic rivalry before it becomes a shared scientific commons.",
+    "framework": "geopolitical rivalry",
+    "sentiment": "negative",
+    "key_phrases": [
+      "International Lunar Research Station",
+      "China-Russia cooperation",
+      "Artemis Accords",
+      "U.S. leadership"
+    ]
+  },
+  {
+    "id": "us_015",
+    "source": "Scientific American",
+    "title": "Could China's Lunar Research Station Open a New Era in Moon Science?",
+    "date": "2026-04-14",
+    "language": "en",
+    "country": "us",
+    "content": "For scientists, the International Lunar Research Station is easier to admire than to ignore. The China-Russia initiative proposes a long-duration lunar base, likely near the south pole, equipped for astronomy, geophysics, biology and resource prospecting. If realized, it could provide continuous access to one of the most scientifically valuable regions in the solar system, where shadowed craters preserve a record of volatile delivery to the inner planets. U.S. researchers are cautious about endorsing a project associated with strategic rivalry, but several note that large observatories and field stations often advance science even when they arise from national ambition. 'The Moon is big enough for multiple laboratories,' said a U.S. lunar scientist familiar with international planning discussions. 'The question is whether the laboratories will share data.' That question sits at the center of lunar governance. NASA's Artemis Accords emphasize transparency, safety zones and open scientific exchange, while the ILRS has courted partners through separate bilateral arrangements. Scientific American has long argued that science benefits from cooperation, but also from clear norms that prevent conflict. A lunar station led by China could spur valuable research, especially in radio astronomy shielded from Earth's interference. Yet without interoperable standards and credible data-sharing commitments, the Moon risks becoming fragmented into rival zones rather than a coordinated research frontier. The scientific prize is real; so is the political test.",
+    "framework": "scientific cooperation and governance",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "International Lunar Research Station",
+      "lunar south pole",
+      "scientific governance",
+      "radio astronomy"
+    ]
   }
 ]
