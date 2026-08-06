@@ -885,3 +885,15 @@ class TestWorkflowEnhancements:
         d = r.model_dump()
         assert d["directions"][0]["reasons"] == ["理由一", "理由二"]
         assert d["directions"][0]["keywords"] == ["关键词A", "关键词B"]
+
+
+class TestTopicCorpusAutoFill:
+    """议题语料自动补齐（新议题冷启动防护）"""
+
+    def test_load_science_facts_empty_trigger(self):
+        """本地无该议题 facts 时应触发补齐分支（_ensure 逻辑判定）"""
+        from src.knowledge.data_loader import get_data_loader
+        loader = get_data_loader()
+        # 一个极不可能存在的议题 → 应返回空（触发补齐）
+        fake = "完全不存在的议题XYZ_2026"
+        assert loader.load_science_facts(fake) == []
