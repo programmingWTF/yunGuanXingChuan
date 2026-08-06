@@ -35,7 +35,6 @@ const PIPELINE_NAV = [
   { to: '/data-analysis', icon: '📊', label: '数据分析', en: 'ANALYSIS' },
   { to: '/writing', icon: '✍️', label: '学术写作', en: 'WRITING' },
   { to: '/review', icon: '👨‍⚖️', label: '同行评审', en: 'REVIEW' },
-  { to: '/cross-cultural', icon: '⇌', label: '跨文化对照', en: 'CROSS-CULT' },
 ]
 
 /* ── 实时时钟 ── */
