@@ -12,7 +12,7 @@ import faiss
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from config.settings import DATA_DIR, SCIENCE_DIR, MEDIA_DIR
+from config.settings import DATA_DIR, SCIENCE_DIR, MEDIA_DIR, AUDIENCE_DIR, KG_DIR
 from src.llm_client import get_llm_client
 
 logger = logging.getLogger(__name__)
@@ -304,6 +304,67 @@ class VectorStore:
                             })
                     except Exception as e:
                         logger.warning(f"加载 {json_file} 失败: {e}")
+
+        # 加载受众画像（data/audience_profiles/*.json）
+        for json_file in sorted(AUDIENCE_DIR.glob("*.json")):
+            try:
+                with open(json_file, "r", encoding="utf-8") as f:
+                    profile = json.load(f)
+                name = profile.get("name", json_file.stem)
+                # 画像结构化描述（便于语义检索到该受众群体）
+                desc_parts = [
+                    f"受众画像：{name}",
+                    f"国家/地区：{profile.get('country', '')}",
+                    f"细分群体：{profile.get('segment', '')}",
+                    f"文化价值观：{'、'.join(profile.get('cultural_values', []) or [])}",
+                    f"媒体偏好：{'、'.join(profile.get('media_preferences', []) or [])}",
+                    f"敏感点：{'、'.join(profile.get('sensitivity_points', []) or [])}",
+                    f"偏好语气：{profile.get('preferred_tone', '')}",
+                    f"偏好人设：{profile.get('preferred_persona', '')}",
+                    f"核心关切：{'、'.join(profile.get('key_concerns', []) or [])}",
+                    f"传播渠道：{'、'.join(profile.get('communication_channels', []) or [])}",
+                ]
+                documents.append({
+                    "text": "\n".join(p for p in desc_parts if p and not p.endswith("：")),
+                    "source": json_file.stem,
+                    "type": "audience_profile",
+                    "title": name,
+                })
+            except Exception as e:
+                logger.warning(f"加载受众画像 {json_file} 失败: {e}")
+
+        # 加载知识图谱三元组（data/kg/entities.json + relations.json）
+        entities_file = KG_DIR / "entities.json"
+        try:
+            if entities_file.exists():
+                with open(entities_file, "r", encoding="utf-8") as f:
+                    entities = json.load(f)
+                for ent in entities:
+                    attrs = ent.get("attributes", {})
+                    attrs_str = json.dumps(attrs, ensure_ascii=False) if attrs else ""
+                    documents.append({
+                        "text": f"{ent.get('name', '')} ({ent.get('type', 'unknown')}): {attrs_str}".strip(),
+                        "source": "kg/entities",
+                        "type": "kg_entity",
+                        "title": ent.get("name", ""),
+                    })
+        except Exception as e:
+            logger.warning(f"加载 KG 实体失败: {e}")
+
+        relations_file = KG_DIR / "relations.json"
+        try:
+            if relations_file.exists():
+                with open(relations_file, "r", encoding="utf-8") as f:
+                    relations = json.load(f)
+                for rel in relations:
+                    documents.append({
+                        "text": f"{rel.get('subject', '')} --{rel.get('predicate', '')}--> {rel.get('object', '')}",
+                        "source": "kg/relations",
+                        "type": "kg_relation",
+                        "title": f"{rel.get('subject', '')}_{rel.get('predicate', '')}",
+                    })
+        except Exception as e:
+            logger.warning(f"加载 KG 关系失败: {e}")
 
         logger.info(f"共加载 {len(documents)} 个文档")
         return documents
