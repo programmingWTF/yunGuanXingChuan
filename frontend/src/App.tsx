@@ -69,15 +69,15 @@ function BackendDot() {
 function TopNav() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-slate-200/80">
-      <div className="max-w-[1400px] mx-auto h-12 flex items-center justify-between gap-4 px-4 sm:px-8">
+      <div className="mx-auto h-12 flex items-center justify-between gap-4 px-4 sm:px-8 lg:px-10">
         <div className="flex items-center gap-6 min-w-0">
           {/* Logo：衬线 + 字间留白（他山 Logo 写法） */}
           <NavLink to="/" className="font-display font-bold text-[15px] text-slate-900 tracking-wide shrink-0 whitespace-nowrap">
             云观 · 星传
             <span className="ml-1.5 font-sans text-[10px] font-semibold text-slate-400 tracking-[0.22em] uppercase">AI Scientist</span>
           </NavLink>
-          {/* 科研流程导航（小屏横向滚动） */}
-          <nav className="flex items-center gap-0.5 overflow-x-auto no-scrollbar">
+          {/* 科研流程导航（窄屏横向滚动，滚动条隐藏） */}
+          <nav className="flex items-center gap-0.5 overflow-x-auto no-scrollbar min-w-0">
             {PIPELINE_NAV.map(item => (
               <NavLink key={item.to} to={item.to} end={item.end ?? false}
                 className={({ isActive }) => `nav-link whitespace-nowrap ${isActive ? 'active' : ''}`}>
