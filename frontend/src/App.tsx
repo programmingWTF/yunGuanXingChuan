@@ -23,6 +23,7 @@ import Method from './pages/Method'
 import DataAnalysis from './pages/DataAnalysis'
 import Writing from './pages/Writing'
 import Review from './pages/Review'
+import CrossCultural from './pages/CrossCultural'
 
 /* ── 导航定义：科研工作台 + 科研流程 ── */
 const PIPELINE_NAV = [
@@ -34,6 +35,7 @@ const PIPELINE_NAV = [
   { to: '/data-analysis', icon: '📊', label: '数据分析', en: 'ANALYSIS' },
   { to: '/writing', icon: '✍️', label: '学术写作', en: 'WRITING' },
   { to: '/review', icon: '👨‍⚖️', label: '同行评审', en: 'REVIEW' },
+  { to: '/cross-cultural', icon: '⇌', label: '跨文化对照', en: 'CROSS-CULT' },
 ]
 
 /* ── 实时时钟 ── */
@@ -119,6 +121,9 @@ function PageHeading() {
 function Footer() {
   return (
     <footer className="relative z-10 mt-20 bg-footer text-white/70">
+      {/* 顶部渐变：仅在页脚滚入视口时自然过渡（浅页背景 → 深海军蓝），不随固定背景层常驻 */}
+      <div aria-hidden="true" className="pointer-events-none absolute left-0 right-0 -top-20 h-20"
+        style={{ background: 'linear-gradient(180deg, var(--bg-page) 0%, var(--bg-footer) 100%)' }} />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-12 grid gap-10 md:grid-cols-3">
         <div>
           <p className="font-display text-lg font-semibold text-white tracking-wide">云观 · 星传</p>
@@ -165,6 +170,7 @@ function AppLayout() {
               <Route path="/data-analysis" element={<DataAnalysis />} />
               <Route path="/writing" element={<Writing />} />
               <Route path="/review" element={<Review />} />
+              <Route path="/cross-cultural" element={<CrossCultural />} />
 
               {/* 兜底：未知路径回科研工作台 */}
               <Route path="*" element={<Workspace />} />
