@@ -95,16 +95,24 @@ body {
     box-shadow: 0 8px 28px rgba(12, 184, 232, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
   }
   .btn-primary:active:not(:disabled) { transform: translateY(0); }
-  /* 扫光 */
+  /* 扫光：默认完全藏于按钮左侧之外且不可见，仅 hover 时白条从左扫过 */
   .btn-primary::after {
     content: '';
     position: absolute;
-    top: 0; left: -80%; width: 50%; height: 100%;
+    top: 0;
+    left: 0;
+    width: 50%;
+    height: 100%;
     background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.28), transparent);
-    transform: skewX(-20deg);
-    transition: left 0.55s ease;
+    transform: translateX(-150%) skewX(-20deg);
+    opacity: 0;
+    transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.15s ease;
+    pointer-events: none;
   }
-  .btn-primary:hover::after { left: 130%; }
+  .btn-primary:hover:not(:disabled)::after {
+    transform: translateX(250%) skewX(-20deg);
+    opacity: 1;
+  }
 
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-300;
