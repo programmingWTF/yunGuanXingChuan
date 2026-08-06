@@ -109,6 +109,14 @@ def build_library_index(library: str, preserve_existing: bool = True) -> int:
 
     vs = get_vector_store()
     existing = list(vs.documents) if preserve_existing else []
+    if preserve_existing and not existing:
+        # 新进程单例初始为空：先从磁盘加载现有索引（含 science_fact / media_report
+        # / entity 等非四库文档），避免增量入库时把其他类型文档覆盖丢失。
+        try:
+            vs._load_index()
+            existing = list(vs.documents)
+        except Exception as e:
+            logger.warning(f"[libraries] 加载现有索引失败（将只入库本库）: {e}")
     # 合并：已有块（去重，避免重复入库同源） + 新库文档
     seen = set()
     merged_documents = []
