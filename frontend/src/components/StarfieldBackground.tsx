@@ -31,9 +31,6 @@ export default function StarfieldBackground() {
             animationDelay: p.d,
           }} />
       ))}
-      {/* 底部页脚深蓝过渡区（他山：深色只做点缀） */}
-      <div className="absolute bottom-0 left-0 right-0 h-40"
-        style={{ background: 'linear-gradient(180deg, transparent, rgba(14,46,79,.9))', opacity: .96 }} />
     </div>
   )
 }

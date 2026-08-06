@@ -121,6 +121,9 @@ function PageHeading() {
 function Footer() {
   return (
     <footer className="relative z-10 mt-20 bg-footer text-white/70">
+      {/* 顶部渐变：仅在页脚滚入视口时自然过渡（浅页背景 → 深海军蓝），不随固定背景层常驻 */}
+      <div aria-hidden="true" className="pointer-events-none absolute left-0 right-0 -top-20 h-20"
+        style={{ background: 'linear-gradient(180deg, var(--bg-page) 0%, var(--bg-footer) 100%)' }} />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-12 grid gap-10 md:grid-cols-3">
         <div>
           <p className="font-display text-lg font-semibold text-white tracking-wide">云观 · 星传</p>
