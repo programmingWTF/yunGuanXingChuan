@@ -102,6 +102,7 @@ class VectorStore:
                     "title": doc.get("title", ""),
                     "date": doc.get("date", ""),
                     "type": doc.get("type", "unknown"),
+                    "library": doc.get("library", ""),  # 四库路由：journal_article/theory/top_journal_example/method
                 }
             )
             all_chunks.extend(chunks)
@@ -158,13 +159,15 @@ class VectorStore:
                         all_embeddings.append([0.0] * self.dimension)
         return all_embeddings
 
-    def search(self, query: str, top_k: int = 5) -> List[Dict]:
+    def search(self, query: str, top_k: int = 5, library: Optional[str] = None) -> List[Dict]:
         """
-        语义检索
+        语义检索（支持四库过滤）
 
         Args:
             query: 查询文本
             top_k: 返回最相关的 k 个文档块
+            library: 按库过滤（journal_article/theory/top_journal_example/method），
+                     None 时检索全部（向后兼容）
 
         Returns:
             检索结果列表，每项包含 text、score、metadata
@@ -184,19 +187,24 @@ class VectorStore:
         query_vector = np.array([query_embedding], dtype=np.float32)
         faiss.normalize_L2(query_vector)
 
-        # 检索
-        scores, indices = self.index.search(query_vector, min(top_k, self.index.ntotal))
+        # 候选池放大（library 过滤会丢弃部分结果），上限 64 避免过度检索
+        candidate_k = min(max(top_k * 4, top_k), 64, self.index.ntotal)
+        scores, indices = self.index.search(query_vector, candidate_k)
 
         results = []
         for score, idx in zip(scores[0], indices[0]):
             if idx < 0 or idx >= len(self.documents):
                 continue
             doc = self.documents[idx]
+            if library and doc["metadata"].get("library") != library:
+                continue
             results.append({
                 "text": doc["text"],
                 "score": float(score),
                 "metadata": doc["metadata"],
             })
+            if len(results) >= top_k:
+                break
 
         return results
 

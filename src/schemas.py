@@ -2,9 +2,45 @@
 云观星传 - 核心数据 Schema（Pydantic）
 所有 Agent 间通信必须使用这些结构化 Schema
 """
-from pydantic import BaseModel, Field
-from typing import Dict, List, Optional
+from pydantic import BaseModel, Field, field_validator, BeforeValidator
+from typing import Dict, List, Optional, Annotated
 from enum import Enum
+import json
+
+
+def _normalize_str_list(v):
+    """LLM 格式漂移容错：字符串数组中出现对象时，提取最可读的文本键归一为字符串。
+
+    实测高发场景（均为对象列表而非字符串列表）：
+    - 评审 suggestions: {"problem": "..."} → 提取 problem
+    - 方法推荐 representative_papers: {"title": "..."} → 提取 title
+    - 选题 reasons/keywords、Gap missing_perspectives 等同理
+    """
+    if not isinstance(v, list):
+        return []
+    out = []
+    for item in v:
+        if isinstance(item, str):
+            text = item.strip()
+        elif isinstance(item, dict):
+            text = (
+                item.get("title") or item.get("text") or item.get("name")
+                or item.get("suggestion") or item.get("problem") or item.get("content")
+                or item.get("reason") or item.get("keyword") or item.get("step")
+                or item.get("issue") or item.get("paper") or ""
+            )
+            if not text and item:
+                text = json.dumps(item, ensure_ascii=False)
+            text = str(text).strip()
+        else:
+            text = str(item).strip()
+        if text:
+            out.append(text)
+    return out
+
+
+# 通用字符串列表类型：由 LLM 直接产出的 List[str] 字段统一用它，防格式漂移
+StrList = Annotated[List[str], BeforeValidator(_normalize_str_list)]
 
 
 class FrameworkType(str, Enum):
@@ -314,6 +350,38 @@ class ScienceScript(BaseModel):
     evidence_sources: List[str] = Field(default_factory=list)  # 依据的科学事实来源
 
 
+class TermPair(BaseModel):
+    """中英对照术语对"""
+    chinese: str                              # 中文术语
+    english: str                              # 英文对应
+    context: str = ""                         # 适用语境/媒体说明
+
+
+class MetaphorPair(BaseModel):
+    """中英对照隐喻/表达对"""
+    chinese: str                              # 中文表达/隐喻
+    english: str                              # 英文对应表达
+    note: str = ""                            # 使用建议/注意事项
+
+
+class ExpressionSuggestion(BaseModel):
+    """表达适配建议（场景化）"""
+    scenario: str                             # 场景/媒体类型（如“欧美媒体”“国际期刊”）
+    recommended: str                          # 推荐表达
+    avoid: str = ""                           # 不建议使用的表达
+    reason: str = ""                          # 原因说明
+
+
+class ExpressionAdaptation(BaseModel):
+    """表达适配建议生成器输出（中英对照术语/隐喻/表达建议）"""
+    topic: str                                # 议题
+    terms: List[TermPair] = Field(default_factory=list)            # 术语对照
+    metaphors: List[MetaphorPair] = Field(default_factory=list)    # 隐喻/表达对照
+    suggestions: List[ExpressionSuggestion] = Field(default_factory=list)  # 场景化表达建议
+    evidence_sources: List[str] = Field(default_factory=list)      # 引用来源
+    note: str = ""                            # 说明（传播学视角）
+
+
 class MediaRecommendation(BaseModel):
     """推荐的媒体与标题建议"""
     media: str
@@ -392,3 +460,276 @@ class KGReport(BaseModel):
     relations: List[KGRelation] = Field(default_factory=list)       # 关系（围绕 topic）
     evidence_sources: List[str] = Field(default_factory=list)       # 证据来源（可追溯）
     note: str = ""                            # 说明
+
+
+# ============================================================================
+# 科研流程工作流（AI Scientist Workflow）—— 7 智能体体系
+# 对应《智能体.docx》：①选题孵化 → ②文献综述 → ③研究设计 → ④方法推荐
+#               → ⑤数据分析 → ⑥论文写作 → ⑦评审修改
+# ============================================================================
+
+
+class TopicDirection(BaseModel):
+    """选题方向建议（①选题孵化器输出项）"""
+    title: str                                # 方向标题
+    summary: str = ""                         # 方向简介
+    research_value: int = Field(ge=0, le=100, default=0)        # 研究价值评分
+    existing_coverage: int = Field(ge=0, le=100, default=0)     # 既有研究覆盖度
+    innovation_potential: int = Field(ge=0, le=100, default=0)  # 创新潜力评分
+    reasons: StrList = Field(default_factory=list)            # 推荐理由
+    keywords: StrList = Field(default_factory=list)           # 关键词
+
+
+class InspirationResult(BaseModel):
+    """①选题孵化器输出"""
+    topic: str = ""  # 允许 LLM 漏填，由 WorkflowEngine 兜底补全
+    directions: List[TopicDirection] = Field(default_factory=list)
+    selected_direction: str = ""              # 用户选定方向（默认推荐第 1 个）
+    discussion_summary: str = ""              # 多学者讨论纪要
+
+
+class LiteratureSection(BaseModel):
+    """文献综述章节（②文献综述助手输出项）"""
+    theme: str                                # 主题（按主题/时间/方法论维度归类）
+    content: str = ""
+
+
+class ResearchGap(BaseModel):
+    """研究空白（Gap）"""
+    description: str = ""
+    missing_perspectives: StrList = Field(default_factory=list)  # 未覆盖的视角/方法/对象
+    suggestion: str = ""                      # 深入研究建议
+
+
+class LiteratureReference(BaseModel):
+    """文献引用条目"""
+    title: str
+    source: str = ""                          # 期刊/机构
+    year: str = ""
+
+    @field_validator("title", "source", "year", mode="before")
+    @classmethod
+    def _coerce_str(cls, v):
+        """LLM 可能输出 int/float（如 year=2026），统一转字符串避免 schema 校验失败"""
+        if v is None:
+            return ""
+        if isinstance(v, (int, float)):
+            return str(v)
+        return v
+
+
+class TheoryRelation(BaseModel):
+    """理论关系（②文献综述输出项：理论关系图节点与连线，前端渲染）"""
+    source: str = ""   # 理论 A
+    relation: str = "" # 关系描述（如：承继自 / 互补 / 对比）
+    target: str = ""   # 理论 B
+
+
+class LiteratureReview(BaseModel):
+    """②文献综述助手输出"""
+    topic: str = ""  # 允许 LLM 漏填，由 WorkflowEngine 兜底补全
+    sections: List[LiteratureSection] = Field(default_factory=list)
+    research_gap: ResearchGap = Field(default_factory=ResearchGap)
+    references: List[LiteratureReference] = Field(default_factory=list)
+    theory_relations: List[TheoryRelation] = Field(default_factory=list)  # 理论关系图
+
+
+class ResearchQuestion(BaseModel):
+    """研究问题（RQ）"""
+    id: str                                   # RQ1
+    text: str
+
+
+class ResearchHypothesis(BaseModel):
+    """研究假设（H）"""
+    id: str                                   # H1
+    statement: str
+    hypothesis_type: str = "quantitative"     # quantitative/qualitative
+
+
+class QuestionQualityReport(BaseModel):
+    """问题质量检验（对比顶刊论文范式）"""
+    clarity: int = Field(ge=0, le=100, default=0)        # 清晰度
+    innovativeness: int = Field(ge=0, le=100, default=0) # 创新性
+    operability: int = Field(ge=0, le=100, default=0)    # 可操作性
+    comments: List[str] = Field(default_factory=list)
+
+
+class ResearchDesignResult(BaseModel):
+    """③研究问题设计师输出"""
+    topic: str = ""  # 允许 LLM 漏填，由 WorkflowEngine 兜底补全
+    research_questions: List[ResearchQuestion] = Field(default_factory=list)
+    hypotheses: List[ResearchHypothesis] = Field(default_factory=list)
+    quality_report: QuestionQualityReport = Field(default_factory=QuestionQualityReport)
+
+
+class MethodRecommendation(BaseModel):
+    """研究方法推荐（④方法顾问输出项）"""
+    name: str                                 # 方法名，如"内容分析"
+    method_type: str = "quantitative"         # quantitative/qualitative/mixed
+    fit_score: int = Field(ge=0, le=100, default=0)       # 方法适配度评分
+    representative_papers: StrList = Field(default_factory=list)  # 范文/代表论文
+    operation_steps: StrList = Field(default_factory=list)        # 操作步骤
+    rationale: str = ""                       # 推荐理由
+
+
+class MethodRecommendationResult(BaseModel):
+    """④方法顾问输出"""
+    topic: str = ""  # 允许 LLM 漏填，由 WorkflowEngine 兜底补全
+    methods: List[MethodRecommendation] = Field(default_factory=list)
+
+
+class AnalysisCodingCategory(BaseModel):
+    """分析编码类目统计（⑤数据分析助手输出项）"""
+    category: str
+    count: int = 0
+
+
+class AnalysisFinding(BaseModel):
+    """分析发现"""
+    finding: str
+    evidence: str = ""
+    confidence: float = Field(ge=0, le=1, default=0.5)
+
+
+class SentimentDistribution(BaseModel):
+    """情绪分布（⑤数据分析输出项：词云/情绪/框架/传播路径四图中的情绪分析）"""
+    positive: float = Field(ge=0, le=100, default=0.0)
+    neutral: float = Field(ge=0, le=100, default=0.0)
+    negative: float = Field(ge=0, le=100, default=0.0)
+    summary: str = ""  # 一句话情绪解读
+
+
+class AnalysisResult(BaseModel):
+    """⑤数据分析助手输出"""
+    topic: str = ""  # 允许 LLM 漏填，由 WorkflowEngine 兜底补全
+    analysis_type: str = "content_analysis"   # content_analysis/text_analysis/framework_analysis
+    coding_table: List[AnalysisCodingCategory] = Field(default_factory=list)
+    findings: List[AnalysisFinding] = Field(default_factory=list)
+    sentiment: SentimentDistribution = Field(default_factory=SentimentDistribution)  # 情绪分析（四图之一）
+    interpretation: str = ""                  # 初步解读
+
+
+class PaperSection(BaseModel):
+    """论文章节（⑥论文写手输出项）"""
+    section: str                              # 摘要/引言/文献综述/方法/发现/讨论/结论
+    content: str
+
+
+class PaperDraft(BaseModel):
+    """⑥论文写手输出"""
+    topic: str = ""  # 允许 LLM 漏填，由 WorkflowEngine 兜底补全
+    title: str = ""
+    sections: List[PaperSection] = Field(default_factory=list)
+    style_notes: List[str] = Field(default_factory=list)      # 风格蒸馏说明
+
+
+class ReviewerScores(BaseModel):
+    """审稿人评分（⑦评审模拟器输出项）"""
+    innovation: int = Field(ge=0, le=100, default=0)      # 创新性
+    methodology: int = Field(ge=0, le=100, default=0)     # 方法规范性
+    argumentation: int = Field(ge=0, le=100, default=0)   # 论证逻辑
+    literature: int = Field(ge=0, le=100, default=0)      # 文献覆盖度
+    language: int = Field(ge=0, le=100, default=0)        # 学术语言
+
+    @field_validator("innovation", "methodology", "argumentation", "literature", "language", mode="before")
+    @classmethod
+    def _coerce_numeric(cls, v):
+        """LLM 偶发输出浮点/字符串数值时归一为整数（防 Schema 校验失败）"""
+        if isinstance(v, bool):
+            return int(v)
+        if isinstance(v, (int, float)):
+            return int(round(v))
+        if isinstance(v, str):
+            try:
+                return int(round(float(v.strip())))
+            except (TypeError, ValueError):
+                return 0
+        return v
+
+
+class ReviewerOpinion(BaseModel):
+    """单个审稿人意见"""
+    reviewer_id: str                          # Reviewer 1
+    perspective: str = ""                     # 方法专家/理论专家/实践专家
+    scores: ReviewerScores = Field(default_factory=ReviewerScores)
+    suggestions: List[str] = Field(default_factory=list)
+
+    @field_validator("suggestions", mode="before")
+    @classmethod
+    def _normalize_suggestions(cls, v):
+        """LLM 输出格式漂移容错：suggestions 应为字符串列表，
+        若模型输出为对象列表（如 {"problem": "..."}）则提取文本键归一化，
+        避免整阶段 Schema 校验失败。"""
+        if not isinstance(v, list):
+            return []
+        out = []
+        for item in v:
+            if isinstance(item, str):
+                text = item.strip()
+            elif isinstance(item, dict):
+                text = (
+                    item.get("suggestion") or item.get("suggest") or item.get("text")
+                    or item.get("issue") or item.get("problem") or item.get("content")
+                    or ""
+                )
+                if not text and item:
+                    text = json.dumps(item, ensure_ascii=False)
+                text = str(text).strip()
+            else:
+                text = str(item).strip()
+            if text:
+                out.append(text)
+        return out
+
+
+class ReviewerFeedback(BaseModel):
+    """⑦评审模拟器输出"""
+    topic: str = ""  # 允许 LLM 漏填，由 WorkflowEngine 兜底补全
+    reviewers: List[ReviewerOpinion] = Field(default_factory=list)
+    revision_notes: str = ""                  # 一键修改说明
+
+    @field_validator("revision_notes", mode="before")
+    @classmethod
+    def _normalize_revision_notes(cls, v):
+        """revision_notes 偶发输出为对象时提取文本，防 Schema 校验失败"""
+        if isinstance(v, str):
+            return v
+        if isinstance(v, dict):
+            text = v.get("notes") or v.get("content") or v.get("text") or ""
+            return str(text).strip() if text else json.dumps(v, ensure_ascii=False)
+        if v is None:
+            return ""
+        return str(v)
+
+
+class StageStatus(str, Enum):
+    """工作流阶段状态"""
+    PENDING = "pending"
+    RUNNING = "running"
+    AWAITING_REVIEW = "awaiting_review"       # 产出物待研究者确认
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class StageRecord(BaseModel):
+    """单阶段记录"""
+    stage: int
+    status: StageStatus = StageStatus.PENDING
+    output: Optional[Dict] = None             # 阶段产出物（对应阶段 Agent 输出 schema）
+    error: Optional[str] = None
+    run_count: int = 0
+    updated_at: str = ""
+
+
+class ResearchProject(BaseModel):
+    """科研项目（工作流状态机持久化模型）"""
+    id: str
+    title: str = ""
+    interest: str = ""                        # 初始研究兴趣/议题
+    current_stage: int = 1
+    status: str = "active"                    # active/completed
+    created_at: str = ""
+    updated_at: str = ""
+    stages: Dict[str, StageRecord] = Field(default_factory=dict)
+    history: List[Dict] = Field(default_factory=list)  # [{stage, action, timestamp, summary}]

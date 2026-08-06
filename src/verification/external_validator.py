@@ -106,12 +106,16 @@ class ExternalValidator:
         entities = entities or []
         results = {}
 
-        # 路径 1: Wikidata 三元组比对
-        wd_result = self.validate_by_wikidata(claim, entities)
+        # 路径 1+2: Wikidata 三元组比对 与 Wikipedia 段落召回 并行执行
+        # （原串行实现两路 HTTP 各 5s 超时 ≈ 10s，是单条校验的主要耗时瓶颈，
+        #   并行后取最慢一路，NAS/慢网络下显著缩短）
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+            f_wd = ex.submit(self.validate_by_wikidata, claim, entities)
+            f_wp = ex.submit(self.validate_by_wikipedia, claim)
+            wd_result = f_wd.result()
+            wp_result = f_wp.result()
         results["wikidata"] = wd_result
-
-        # 路径 2: Wikipedia 段落召回
-        wp_result = self.validate_by_wikipedia(claim)
         results["wikipedia"] = wp_result
 
         # 综合判定

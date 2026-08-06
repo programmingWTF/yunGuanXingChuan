@@ -1,13 +1,17 @@
 /**
- * ÔÆ¹ÛĞÇ´« V2.0 ¡ª ¿çÎÄ»¯‚÷²¥Œ¦ÕÕ
- * ĞgÕZŒ¦ÕÕ ¡¤ ë[Ó÷Œ¦ÕÕ ¡¤ ±íß_½¨×h ¡¤ ßmÓÃÃ½ówÕZ¾³˜Ë×¢
+ * äº‘è§‚æ˜Ÿä¼  V2.0 â€” è·¨æ–‡åŒ–ä¼ æ’­å¯¹ç…§
+ * æœ¯è¯­å¯¹ç…§ Â· éšå–»å¯¹ç…§ Â· è¡¨è¾¾å»ºè®® Â· é€‚ç”¨åª’ä½“è¯­å¢ƒæ ‡æ³¨
  */
+
+import type { ReactNode } from 'react'
+
+type ContextType = 'western' | 'global' | 'domestic' | 'neutral'
 
 interface TermEntry {
     zh: string
     en: string
     context: string
-    contextType: 'western' | 'global' | 'domestic' | 'neutral'
+    contextType: ContextType
 }
 
 interface MetaphorEntry {
@@ -16,7 +20,7 @@ interface MetaphorEntry {
     zhNote: string
     enNote: string
     context: string
-    contextType: 'western' | 'global' | 'domestic' | 'neutral'
+    contextType: ContextType
 }
 
 interface ExpressionEntry {
@@ -24,96 +28,96 @@ interface ExpressionEntry {
     recommended: string
     reason: string
     context: string
-    contextType: 'western' | 'global' | 'domestic' | 'neutral'
+    contextType: ContextType
 }
 
 const termData: TermEntry[] = [
-    { zh: 'Ìì¹¬', en: 'Tiangong Space Station', context: 'Å·ÃÀÖ÷Á÷Ã½Ìå', contextType: 'western' },
-    { zh: 'ÉñÖÛ', en: 'Shenzhou Spacecraft', context: '¹ú¼Êº½Ìì±¨µÀ', contextType: 'global' },
-    { zh: 'æÏ¶ğ', en: 'Chang\'e Lunar Program', context: 'Å·ÃÀ¿Æ¼¼Ã½Ìå', contextType: 'western' },
-    { zh: '±±¶·', en: 'BeiDou Navigation System', context: 'È«ÇòĞĞÒµ±¨µÀ', contextType: 'global' },
-    { zh: '³¤Õ÷»ğ¼ı', en: 'Long March Rocket', context: '¹ú¼ÊÍ¨Ñ¶Éç', contextType: 'global' },
-    { zh: '¿Õ¼äÕ¾', en: 'Space Station / Orbital Laboratory', context: 'Å·ÃÀ¿ÆÆÕÃ½Ìå', contextType: 'western' },
-    { zh: 'ÔØÈËº½Ìì', en: 'Human Spaceflight', context: 'È«ÇòÍ¨ÓÃ', contextType: 'neutral' },
-    { zh: 'Éî¿ÕÌ½²â', en: 'Deep Space Exploration', context: 'È«ÇòÍ¨ÓÃ', contextType: 'neutral' },
-    { zh: 'º½ÌìÔ±', en: 'Taikonaut / Astronaut', context: 'Å·ÃÀÃ½ÌåÆ«ºÃ Astronaut', contextType: 'western' },
-    { zh: 'Ì«¿ÕÊµÑéÊÒ', en: 'Space Laboratory', context: '¹ú¼ÊºÏ×÷Óï¾³', contextType: 'global' },
+    { zh: 'å¤©å®«', en: 'Tiangong Space Station', context: 'æ¬§ç¾ä¸»æµåª’ä½“', contextType: 'western' },
+    { zh: 'ç¥èˆŸ', en: 'Shenzhou Spacecraft', context: 'å›½é™…èˆªå¤©æŠ¥é“', contextType: 'global' },
+    { zh: 'å«¦å¨¥', en: 'Chang\'e Lunar Program', context: 'æ¬§ç¾ç§‘æŠ€åª’ä½“', contextType: 'western' },
+    { zh: 'åŒ—æ–—', en: 'BeiDou Navigation System', context: 'å…¨çƒè¡Œä¸šæŠ¥é“', contextType: 'global' },
+    { zh: 'é•¿å¾ç«ç®­', en: 'Long March Rocket', context: 'å›½é™…é€šè®¯ç¤¾', contextType: 'global' },
+    { zh: 'ç©ºé—´ç«™', en: 'Space Station / Orbital Laboratory', context: 'æ¬§ç¾ç§‘æ™®åª’ä½“', contextType: 'western' },
+    { zh: 'è½½äººèˆªå¤©', en: 'Human Spaceflight', context: 'å…¨çƒé€šç”¨', contextType: 'neutral' },
+    { zh: 'æ·±ç©ºæ¢æµ‹', en: 'Deep Space Exploration', context: 'å…¨çƒé€šç”¨', contextType: 'neutral' },
+    { zh: 'èˆªå¤©å‘˜', en: 'Taikonaut / Astronaut', context: 'æ¬§ç¾åª’ä½“åå¥½ Astronaut', contextType: 'western' },
+    { zh: 'å¤ªç©ºå®éªŒå®¤', en: 'Space Laboratory', context: 'å›½é™…åˆä½œè¯­å¢ƒ', contextType: 'global' },
 ]
 
 const metaphorData: MetaphorEntry[] = [
     {
-        zh: 'ÖğÃÎĞÇ³½', en: 'Exploring the Cosmos',
-        zhNote: 'Ê«Òâ»¯±í´ï£¬Ç¿µ÷ÃÎÏëÓëÀËÂş', enNote: 'Neutral, fact-oriented phrasing',
-        context: 'Å·ÃÀÃ½Ìå', contextType: 'western',
+        zh: 'é€æ¢¦æ˜Ÿè¾°', en: 'Exploring the Cosmos',
+        zhNote: 'è¯—æ„åŒ–è¡¨è¾¾ï¼Œå¼ºè°ƒæ¢¦æƒ³ä¸æµªæ¼«', enNote: 'Neutral, fact-oriented phrasing',
+        context: 'æ¬§ç¾åª’ä½“', contextType: 'western',
     },
     {
-        zh: '·ÉÌì', en: 'Human Spaceflight Achievement',
-        zhNote: 'ÎÄ»¯µä¹Ê£¬¶Ø»ÍÒâÏó', enNote: 'Direct, technical framing',
-        context: 'Å·ÃÀ¿Æ¼¼Ã½Ìå', contextType: 'western',
+        zh: 'é£å¤©', en: 'Human Spaceflight Achievement',
+        zhNote: 'æ–‡åŒ–å…¸æ•…ï¼Œæ•¦ç…Œæ„è±¡', enNote: 'Direct, technical framing',
+        context: 'æ¬§ç¾ç§‘æŠ€åª’ä½“', contextType: 'western',
     },
     {
-        zh: 'ĞÇ³½´óº£', en: 'The Final Frontier / Space Exploration',
-        zhNote: 'ºê´óĞğÊÂ£¬¼¯ÌåÔ¸¾°', enNote: 'Individual adventure framing (Star Trek trope)',
-        context: 'Å·ÃÀÁ÷ĞĞÎÄ»¯', contextType: 'western',
+        zh: 'æ˜Ÿè¾°å¤§æµ·', en: 'The Final Frontier / Space Exploration',
+        zhNote: 'å®å¤§å™äº‹ï¼Œé›†ä½“æ„¿æ™¯', enNote: 'Individual adventure framing (Star Trek trope)',
+        context: 'æ¬§ç¾æµè¡Œæ–‡åŒ–', contextType: 'western',
     },
     {
-        zh: 'À¿ÔÂ', en: 'Lunar Exploration Milestone',
-        zhNote: 'Ê«Òâ»¯£¬Ô´×ÔÃ«Ôó¶«Ê«´Ê', enNote: 'Achievement-oriented, milestone framing',
-        context: '¹ú¼ÊÍ¨Ñ¶Éç', contextType: 'global',
+        zh: 'æ½æœˆ', en: 'Lunar Exploration Milestone',
+        zhNote: 'è¯—æ„åŒ–ï¼Œæºè‡ªæ¯›æ³½ä¸œè¯—è¯', enNote: 'Achievement-oriented, milestone framing',
+        context: 'å›½é™…é€šè®¯ç¤¾', contextType: 'global',
     },
     {
-        zh: '¾ÅÌìÀ¿ÔÂ', en: 'Reaching the Moon / Lunar Ambition',
-        zhNote: '¹ÅµäÎÄÑ§ÒâÏó', enNote: 'Ambition/goal-oriented, avoids poetic overload',
-        context: 'ÖÇ¿â/Õş²ß·ÖÎö', contextType: 'global',
+        zh: 'ä¹å¤©æ½æœˆ', en: 'Reaching the Moon / Lunar Ambition',
+        zhNote: 'å¤å…¸æ–‡å­¦æ„è±¡', enNote: 'Ambition/goal-oriented, avoids poetic overload',
+        context: 'æ™ºåº“/æ”¿ç­–åˆ†æ', contextType: 'global',
     },
     {
-        zh: 'Ì«¿Õ³¤Õ÷', en: 'Space Journey / Extended Mission',
-        zhNote: 'ÀúÊ·ÒşÓ÷£¬¸ïÃüĞğÊÂ', enNote: 'Neutral mission framing, avoids political echo',
-        context: 'Å·ÃÀÃ½Ìå', contextType: 'western',
+        zh: 'å¤ªç©ºé•¿å¾', en: 'Space Journey / Extended Mission',
+        zhNote: 'å†å²éšå–»ï¼Œé©å‘½å™äº‹', enNote: 'Neutral mission framing, avoids political echo',
+        context: 'æ¬§ç¾åª’ä½“', contextType: 'western',
     },
 ]
 
 const expressionData: ExpressionEntry[] = [
     {
-        notRecommended: 'Ãñ×å¸´ĞË', recommended: 'Global Scientific Cooperation',
-        reason: '"Ãñ×å¸´ĞË"ÔÚÅ·ÃÀÓï¾³Ò×±»½â¶ÁÎªÃñ×åÖ÷ÒåĞğÊÂ£¬´¥·¢ÒâÊ¶ĞÎÌ¬¾¯¾õ£»"Global Scientific Cooperation"Ç¿µ÷ºÏ×÷¹²Ïí£¬ÆõºÏ¹ú¼Ê´«²¥Ä¿±ê',
-        context: 'Å·ÃÀÖ÷Á÷Ã½Ìå', contextType: 'western',
+        notRecommended: 'æ°‘æ—å¤å…´', recommended: 'Global Scientific Cooperation',
+        reason: '"æ°‘æ—å¤å…´"åœ¨æ¬§ç¾è¯­å¢ƒæ˜“è¢«è§£è¯»ä¸ºæ°‘æ—ä¸»ä¹‰å™äº‹ï¼Œè§¦å‘æ„è¯†å½¢æ€è­¦è§‰ï¼›"Global Scientific Cooperation"å¼ºè°ƒåˆä½œå…±äº«ï¼Œå¥‘åˆå›½é™…ä¼ æ’­ç›®æ ‡',
+        context: 'æ¬§ç¾ä¸»æµåª’ä½“', contextType: 'western',
     },
     {
-        notRecommended: '´ó¹úÖØÆ÷', recommended: 'Landmark Engineering Achievement',
-        reason: '"´ó¹úÖØÆ÷"°µÊ¾µØÔµ¾ºÕùÓë¾üÊÂ»¯£»"Landmark Engineering Achievement"¾Û½¹¼¼Êõ³É¾Í±¾Éí',
-        context: 'Å·ÃÀ¿Æ¼¼Ã½Ìå', contextType: 'western',
+        notRecommended: 'å¤§å›½é‡å™¨', recommended: 'Landmark Engineering Achievement',
+        reason: '"å¤§å›½é‡å™¨"æš—ç¤ºåœ°ç¼˜ç«äº‰ä¸å†›äº‹åŒ–ï¼›"Landmark Engineering Achievement"èšç„¦æŠ€æœ¯æˆå°±æœ¬èº«',
+        context: 'æ¬§ç¾ç§‘æŠ€åª’ä½“', contextType: 'western',
     },
     {
-        notRecommended: '×ÔÖ÷´´ĞÂ', recommended: 'Independent R&D / Indigenous Innovation',
-        reason: '"×ÔÖ÷´´ĞÂ"ÔÚÎ÷·½¿É±»½â¶ÁÎª¼¼ÊõÍÑ¹³ĞÅºÅ£»"Indigenous Innovation"¸üÖĞĞÔ£¬Ç¿µ÷ÑĞ·¢ÄÜÁ¦',
-        context: '¹ú¼ÊĞĞÒµ±¨µÀ', contextType: 'global',
+        notRecommended: 'è‡ªä¸»åˆ›æ–°', recommended: 'Independent R&D / Indigenous Innovation',
+        reason: '"è‡ªä¸»åˆ›æ–°"åœ¨è¥¿æ–¹å¯è¢«è§£è¯»ä¸ºæŠ€æœ¯è„±é’©ä¿¡å·ï¼›"Indigenous Innovation"æ›´ä¸­æ€§ï¼Œå¼ºè°ƒç ”å‘èƒ½åŠ›',
+        context: 'å›½é™…è¡Œä¸šæŠ¥é“', contextType: 'global',
     },
     {
-        notRecommended: 'ÍäµÀ³¬³µ', recommended: 'Rapid Technological Advancement',
-        reason: '"ÍäµÀ³¬³µ"°µÊ¾²»¹«Æ½¾ºÕù»ò½İ¾¶£»"Rapid Technological Advancement"ÎªÖĞĞÔ½ø²½ĞğÊÂ',
-        context: 'Å·ÃÀÉÌÒµÃ½Ìå', contextType: 'western',
+        notRecommended: 'å¼¯é“è¶…è½¦', recommended: 'Rapid Technological Advancement',
+        reason: '"å¼¯é“è¶…è½¦"æš—ç¤ºä¸å…¬å¹³ç«äº‰æˆ–æ·å¾„ï¼›"Rapid Technological Advancement"ä¸ºä¸­æ€§è¿›æ­¥å™äº‹',
+        context: 'æ¬§ç¾å•†ä¸šåª’ä½“', contextType: 'western',
     },
     {
-        notRecommended: 'Ì«¿Õ¾ºÈü', recommended: 'Collaborative Space Endeavor',
-        reason: '"Ì«¿Õ¾ºÈü"¼¤»îÀäÕ½¿ò¼Ü£¬Ç¿»¯ÁãºÍ²©ŞÄĞğÊÂ£»"Collaborative Space Endeavor"×ªÏòºÏ×÷¿ò¼Ü',
-        context: 'Å·ÃÀÖ÷Á÷Ã½Ìå', contextType: 'western',
+        notRecommended: 'å¤ªç©ºç«èµ›', recommended: 'Collaborative Space Endeavor',
+        reason: '"å¤ªç©ºç«èµ›"æ¿€æ´»å†·æˆ˜æ¡†æ¶ï¼Œå¼ºåŒ–é›¶å’Œåšå¼ˆå™äº‹ï¼›"Collaborative Space Endeavor"è½¬å‘åˆä½œæ¡†æ¶',
+        context: 'æ¬§ç¾ä¸»æµåª’ä½“', contextType: 'western',
     },
     {
-        notRecommended: '×ÔÁ¦¸üÉú', recommended: 'Self-Reliant Development',
-        reason: '"×ÔÁ¦¸üÉú"ÔÚÎ÷·½Óï¾³¹ØÁª¹ÂÁ¢Ö÷Òå£»"Self-Reliant Development"¸üÖĞĞÔ£¬Ç¿µ÷·¢Õ¹Â·¾¶',
-        context: 'ÖÇ¿â/Õş²ß·ÖÎö', contextType: 'global',
+        notRecommended: 'è‡ªåŠ›æ›´ç”Ÿ', recommended: 'Self-Reliant Development',
+        reason: '"è‡ªåŠ›æ›´ç”Ÿ"åœ¨è¥¿æ–¹è¯­å¢ƒå…³è”å­¤ç«‹ä¸»ä¹‰ï¼›"Self-Reliant Development"æ›´ä¸­æ€§ï¼Œå¼ºè°ƒå‘å±•è·¯å¾„',
+        context: 'æ™ºåº“/æ”¿ç­–åˆ†æ', contextType: 'global',
     },
 ]
 
-const contextBadge: Record<string, { label: string; color: string }> = {
-    western: { label: 'Å·ÃÀÃ½Ìå', color: 'text-astro-300 bg-astro-500/10 border-astro-500/25' },
-    global: { label: '¹ú¼ÊÍ¨ÓÃ', color: 'text-nova-400 bg-nova-400/10 border-nova-400/25' },
-    domestic: { label: '¹úÄÚ´«²¥', color: 'text-aurora-400 bg-aurora-400/10 border-aurora-400/25' },
-    neutral: { label: 'Í¨ÓÃ', color: 'text-slate-300 bg-slate-500/10 border-slate-500/25' },
+const contextBadge: Record<ContextType, { label: string; color: string }> = {
+    western: { label: 'æ¬§ç¾åª’ä½“', color: 'text-astro-300 bg-astro-500/10 border-astro-500/25' },
+    global: { label: 'å›½é™…é€šç”¨', color: 'text-nova-400 bg-nova-400/10 border-nova-400/25' },
+    domestic: { label: 'å›½å†…ä¼ æ’­', color: 'text-aurora-400 bg-aurora-400/10 border-aurora-400/25' },
+    neutral: { label: 'é€šç”¨', color: 'text-slate-300 bg-slate-500/10 border-slate-500/25' },
 }
 
-function ContextTag({ type }: { type: string }) {
+function ContextTag({ type }: { type: ContextType }) {
     const cfg = contextBadge[type] || contextBadge.neutral
     return (
         <span className={`px-2 py-0.5 rounded text-[10px] font-mono tracking-wide border whitespace-nowrap ${cfg.color}`}>
@@ -122,7 +126,7 @@ function ContextTag({ type }: { type: string }) {
     )
 }
 
-function BilingualRow({ zh, en, children }: { zh: string; en: string; children?: React.ReactNode }) {
+function BilingualRow({ zh, en, children }: { zh: string; en: string; children?: ReactNode }) {
     return (
         <div className="grid grid-cols-2 gap-0 border-b border-white/[0.04] last:border-b-0">
             <div className="px-5 py-3.5 border-r border-white/[0.04]">
@@ -154,22 +158,22 @@ function CrossCultural() {
         <div className="space-y-8">
             <div>
                 <p className="sec-label mb-1">Cross-Cultural Communication</p>
-                <h2 className="font-display text-2xl font-bold text-white">¿çÎÄ»¯´«²¥¶ÔÕÕ</h2>
+                <h2 className="font-display text-2xl font-bold text-white">è·¨æ–‡åŒ–ä¼ æ’­å¯¹ç…§</h2>
                 <p className="text-sm text-slate-500 mt-2 max-w-2xl">
-                    »ùÓÚ´«²¥Ñ§²îÒì»¯ÄÜÁ¦£¬Îªº½ÌìĞğÊÂÌá¹©ÖĞÓ¢ÊõÓï¡¢ÒşÓ÷Óë±í´ï²ßÂÔµÄÏµÍ³ĞÔ¶ÔÕÕ£¬±ê×¢ÊÊÓÃÃ½ÌåÓï¾³£¬±ÜÃâ¿çÎÄ»¯Îó¶ÁÓë¿ò¼Ü³åÍ»¡£
+                    åŸºäºä¼ æ’­å­¦å·®å¼‚åŒ–èƒ½åŠ›ï¼Œä¸ºèˆªå¤©å™äº‹æä¾›ä¸­è‹±æœ¯è¯­ã€éšå–»ä¸è¡¨è¾¾ç­–ç•¥çš„ç³»ç»Ÿæ€§å¯¹ç…§ï¼Œæ ‡æ³¨é€‚ç”¨åª’ä½“è¯­å¢ƒï¼Œé¿å…è·¨æ–‡åŒ–è¯¯è¯»ä¸æ¡†æ¶å†²çªã€‚
                 </p>
             </div>
 
-            {/* ¨T¨T¨T ÊõÓï¶ÔÕÕ ¨T¨T¨T */}
+            {/* â•â•â• æœ¯è¯­å¯¹ç…§ â•â•â• */}
             <div className="panel overflow-hidden">
                 <div className="px-6 py-4 border-b border-white/[0.06] flex items-center gap-3">
                     <span className="w-8 h-8 rounded-lg bg-astro-500/10 border border-astro-500/20 flex items-center justify-center text-astro-400 text-sm">T</span>
                     <div>
-                        <h3 className="text-base font-bold text-white">ÊõÓï¶ÔÕÕ</h3>
+                        <h3 className="text-base font-bold text-white">æœ¯è¯­å¯¹ç…§</h3>
                         <p className="text-[11px] text-slate-500 font-mono tracking-wide">Terminology Mapping</p>
                     </div>
                 </div>
-                <SectionHeader zh="ÖĞÎÄÊõÓï" en="English Terminology" />
+                <SectionHeader zh="ä¸­æ–‡æœ¯è¯­" en="English Terminology" />
                 {termData.map((item, i) => (
                     <BilingualRow key={i} zh={item.zh} en={item.en}>
                         <ContextTag type={item.contextType} />
@@ -177,16 +181,16 @@ function CrossCultural() {
                 ))}
             </div>
 
-            {/* ¨T¨T¨T ÒşÓ÷¶ÔÕÕ ¨T¨T¨T */}
+            {/* â•â•â• éšå–»å¯¹ç…§ â•â•â• */}
             <div className="panel overflow-hidden">
                 <div className="px-6 py-4 border-b border-white/[0.06] flex items-center gap-3">
                     <span className="w-8 h-8 rounded-lg bg-nova-400/10 border border-nova-400/20 flex items-center justify-center text-nova-400 text-sm">M</span>
                     <div>
-                        <h3 className="text-base font-bold text-white">ÒşÓ÷¶ÔÕÕ</h3>
+                        <h3 className="text-base font-bold text-white">éšå–»å¯¹ç…§</h3>
                         <p className="text-[11px] text-slate-500 font-mono tracking-wide">Metaphor Mapping</p>
                     </div>
                 </div>
-                <SectionHeader zh="ÖĞÎÄÒşÓ÷ / ÓïÒåËµÃ÷" en="English Metaphor / Semantic Note" />
+                <SectionHeader zh="ä¸­æ–‡éšå–» / è¯­ä¹‰è¯´æ˜" en="English Metaphor / Semantic Note" />
                 {metaphorData.map((item, i) => (
                     <div key={i} className="grid grid-cols-2 gap-0 border-b border-white/[0.04] last:border-b-0">
                         <div className="px-5 py-3.5 border-r border-white/[0.04] space-y-1">
@@ -204,21 +208,21 @@ function CrossCultural() {
                 ))}
             </div>
 
-            {/* ¨T¨T¨T ±í´ï½¨Òé ¨T¨T¨T */}
+            {/* â•â•â• è¡¨è¾¾å»ºè®® â•â•â• */}
             <div className="panel overflow-hidden">
                 <div className="px-6 py-4 border-b border-white/[0.06] flex items-center gap-3">
                     <span className="w-8 h-8 rounded-lg bg-flare-400/10 border border-flare-400/20 flex items-center justify-center text-flare-400 text-sm">E</span>
                     <div>
-                        <h3 className="text-base font-bold text-white">±í´ï½¨Òé</h3>
+                        <h3 className="text-base font-bold text-white">è¡¨è¾¾å»ºè®®</h3>
                         <p className="text-[11px] text-slate-500 font-mono tracking-wide">Expression Recommendations</p>
                     </div>
                 </div>
                 <div className="grid grid-cols-2 gap-0 border-b border-astro-500/20">
                     <div className="px-5 py-2.5 bg-flare-400/5">
-                        <span className="text-[11px] font-medium text-flare-400 tracking-wide">²»½¨Òé±í´ï 7¾1</span>
+                        <span className="text-[11px] font-medium text-flare-400 tracking-wide">ä¸å»ºè®®è¡¨è¾¾ âœ—</span>
                     </div>
                     <div className="px-5 py-2.5 bg-aurora-400/5">
-                        <span className="text-[11px] font-medium text-aurora-400 tracking-wide">½¨Òé±í´ï 7½7</span>
+                        <span className="text-[11px] font-medium text-aurora-400 tracking-wide">å»ºè®®è¡¨è¾¾ âœ“</span>
                     </div>
                 </div>
                 {expressionData.map((item, i) => (
@@ -238,7 +242,7 @@ function CrossCultural() {
                 ))}
             </div>
 
-            {/* ¨T¨T¨T Ã½ÌåÓï¾³Í¼Àı ¨T¨T¨T */}
+            {/* â•â•â• åª’ä½“è¯­å¢ƒå›¾ä¾‹ â•â•â• */}
             <div className="panel px-6 py-5">
                 <p className="sec-label mb-3">Media Context Legend</p>
                 <div className="flex flex-wrap gap-4">
@@ -248,10 +252,10 @@ function CrossCultural() {
                                 {val.label}
                             </span>
                             <span className="text-[11px] text-slate-500">
-                                {key === 'western' && 'ÊÊºÏÅ·ÃÀÖ÷Á÷/¿Æ¼¼Ã½ÌåÓï¾³'}
-                                {key === 'global' && 'ÊÊºÏ¹ú¼ÊÍ¨Ñ¶Éç/ĞĞÒµ±¨µÀÓï¾³'}
-                                {key === 'domestic' && 'ÊÊºÏ¹úÄÚ´«²¥Óï¾³'}
-                                {key === 'neutral' && '¿çÎÄ»¯Í¨ÓÃ£¬ÎŞÌØÊâÓï¾³ÏŞÖÆ'}
+                                {key === 'western' && 'é€‚åˆæ¬§ç¾ä¸»æµ/ç§‘æŠ€åª’ä½“è¯­å¢ƒ'}
+                                {key === 'global' && 'é€‚åˆå›½é™…é€šè®¯ç¤¾/è¡Œä¸šæŠ¥é“è¯­å¢ƒ'}
+                                {key === 'domestic' && 'é€‚åˆå›½å†…ä¼ æ’­è¯­å¢ƒ'}
+                                {key === 'neutral' && 'è·¨æ–‡åŒ–é€šç”¨ï¼Œæ— ç‰¹æ®Šè¯­å¢ƒé™åˆ¶'}
                             </span>
                         </div>
                     ))}

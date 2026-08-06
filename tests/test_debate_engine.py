@@ -241,6 +241,21 @@ class TestDebateEngineVote:
         assert len(engine.minority_opinions) >= 1
         assert any(mo.agent == "skeptic" for mo in engine.minority_opinions)
 
+    def test_below_threshold_rejected(self, engine):
+        """加权赞成 < 0.65 门槛 → rejected（修复前简单多数逻辑会误判 passed）"""
+        engine.agents["scientist"].run.return_value = {"vote": "yes", "reason": "同意"}
+        for name in ["skeptic", "humanist", "strategist", "evaluator"]:
+            engine.agents[name].run.return_value = {"vote": "no", "reason": "反对"}
+
+        motion = self._make_motion()
+        weights = {"scientist": 0.4, "skeptic": 0.25, "humanist": 0.1,
+                   "strategist": 0.1, "evaluator": 0.15}
+        result = engine.vote_on_motion(motion, weights)
+
+        # yes=0.4 < 0.65，且 |diff|=0.2 > deadlock(0.15) → 不触发议长，判定 rejected
+        assert result.result == "rejected"
+        assert result.weighted_yes == pytest.approx(0.4)
+
 
 class TestDebateEngineShouldClose:
     """DebateEngine.should_close 闭幕判定"""

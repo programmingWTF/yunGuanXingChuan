@@ -35,12 +35,13 @@
 **定位**：系统的建设者与维护者。把新闻传播的洞察变成可运行的智能体系统。
 
 **职责**：
-- **多智能体系统**（`src/agents/`）：Science / Context / Hypothesis / Strategy / Evaluator / Humanist 六个 Agent
+- **多智能体系统**（`src/agents/`）：7 阶段科研 Agent + Science / Context / Hypothesis / Strategy / Evaluator / Humanist 等
+- **科研工作流引擎**（`src/workflow/`）：7 阶段工作台（项目 CRUD / 阶段执行 / run-all / 导出 / 润色 / 热点）
 - **议会辩论引擎**（`src/parliament/`）：多轮辩论、加权投票、Speaker 主持
 - **编排器**（`src/pipeline.py`）：完整流程控制（搜索 → 提取 → 分析 → 校验 → 策略 → 评测迭代）
 - **校验层**（`src/verification/`）：RAG + 知识图谱 + Wikidata + Wikipedia 四路交叉验证
 - **接口**（`api/routes/`）：FastAPI 后端，供前端调用
-- **前端**（`frontend/`）：React 界面（Dashboard / TaskCenter / Parliament / KnowledgeGraph 等）
+- **前端**（`frontend/`）：React 界面（科研工作台 Workspace + 7 个科研子页）
 - **部署与脚本**（`scripts/`、`docker-compose.yml`）：本地 / NAS 部署
 
 **质量红线**：合并进 `main` 的改动必须能跑——`python -m pytest tests/` 通过、前端 `npm run build` 通过。
@@ -51,12 +52,12 @@
 
 ## 🎨 美术设计方向
 
-**定位**：系统的门面。把分析结果变成好看、好懂、有科技感又贴近"星空叙事"的界面。
+**定位**：系统的门面。把分析结果变成好看、好懂、贴合「他山世界学术风」（宋体衬线 + 低饱和青蓝 + 大留白）的界面。
 
 **职责**：
-- **页面布局**（`frontend/src/pages/`）：驾驶舱、任务中心、议会页、知识图谱页
-- **组件与动效**（`frontend/src/components/`）：星空背景、图表配色、过渡动画
-- **可视化优化**：ECharts 图表的美观与可读性（知识图谱力导向布局等）
+- **页面布局**（`frontend/src/pages/`）：科研工作台 + 7 个科研子页
+- **组件与动效**（`frontend/src/components/`）：卡片光晕/扫光、图表配色、过渡动画
+- **可视化优化**：ECharts 图表、理论关系图、词云、数据驾驶舱的美观与可读性
 
 **注意**：与 💻 方向在 `frontend/src/` 下有重叠，改动前先看对应组件归谁负责，避免冲突。
 
@@ -85,4 +86,4 @@
 
 ---
 
-*最后更新：2026-07-31*
+*最后更新：2026-08-05*

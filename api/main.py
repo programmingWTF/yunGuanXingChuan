@@ -11,9 +11,9 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
-from api.routes import analyze, hypotheses, strategies, knowledge_graph, verify, parliament, outputs
+from api.routes import analyze, hypotheses, strategies, knowledge_graph, verify, parliament, outputs, knowledge, workflow
 
 # 创建 FastAPI 应用
 app = FastAPI(
@@ -39,6 +39,8 @@ app.include_router(knowledge_graph.router, prefix="/api/kg", tags=["知识图谱
 app.include_router(verify.router, prefix="/api/verify", tags=["校验"])
 app.include_router(parliament.router, prefix="/api/parliament", tags=["认知议会"])
 app.include_router(outputs.router, prefix="/api/outputs", tags=["成果"])
+app.include_router(knowledge.router, prefix="/api/knowledge", tags=["知识库"])
+app.include_router(workflow.router, prefix="/api/workflow", tags=["科研工作流"])
 
 
 @app.get("/api/health")
@@ -75,13 +77,24 @@ frontend_dist = PROJECT_ROOT / "frontend" / "dist"
 if frontend_dist.exists():
     app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
 
-    @app.get("/{full_path:path}")
-    async def serve_frontend(request: Request, full_path: str):
-        """SPA fallback：非 /api 路径返回 index.html"""
-        file_path = frontend_dist / full_path
-        if full_path and file_path.exists() and file_path.is_file():
-            return FileResponse(file_path)
-        return FileResponse(frontend_dist / "index.html")
+
+@app.get("/{full_path:path}")
+async def serve_frontend(request: Request, full_path: str):
+    """SPA fallback：非 /api 路径返回 index.html"""
+    # 防路径穿越：解析后必须仍在 frontend_dist 内，否则回退 index.html
+    # （否则 /../../.env 可读取 API Key 等敏感文件）
+    try:
+        file_path = (frontend_dist / full_path).resolve()
+        file_path.relative_to(frontend_dist.resolve())
+    except (ValueError, OSError):
+        file_path = None
+    if file_path is not None and file_path.exists() and file_path.is_file():
+        return FileResponse(file_path)
+    index_html = frontend_dist / "index.html"
+    if index_html.exists():
+        return FileResponse(index_html)
+    # 前端未构建（frontend/dist 不存在）时给出明确提示，避免 500
+    return Response("前端未构建：请先运行 cd frontend && npm run build", status_code=404)
 
 
 if __name__ == "__main__":

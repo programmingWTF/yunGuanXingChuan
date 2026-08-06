@@ -1,0 +1,38 @@
+# 自动化测试 — PR 与 main 变更时运行全部测试（241 项，不依赖外部 API）
+# 测试均为自包含用例（conftest.py 提供示例数据，不调用 LLM/网络）
+
+name: 自动化测试
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: 安装中文字体（PDF 导出测试需要）
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+
+      - name: 安装依赖
+        run: |
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: 运行测试
+        run: pytest tests/ -v
+
+      - name: 统计结果
+        if: always()
+        run: |
+          echo "测试运行完成，详见上方 pytest 输出"

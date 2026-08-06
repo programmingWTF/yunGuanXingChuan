@@ -14,6 +14,7 @@ build/
 # Environment (API Keys — DO NOT COMMIT!)
 .env
 .env.local
+.env.*
 .env.*.local
 *.key
 *.pem
@@ -63,3 +64,4 @@ logs/
 .coverage
 htmlcov/
 .coverage.*
+data/projects

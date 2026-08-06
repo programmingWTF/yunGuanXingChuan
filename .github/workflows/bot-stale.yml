@@ -1,0 +1,40 @@
+# 过时 Issue 管理 — 自动标记和关闭长期不活跃的 Issue
+# 全中文配置，30 天提醒 → 7 天后关闭
+
+name: 过时管理
+
+on:
+  schedule:
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/stale@v11
+        with:
+          days-before-stale: 30
+          days-before-close: 7
+          days-before-pr-stale: -1
+          days-before-pr-close: -1
+          stale-issue-label: "状态：已过时"
+          exempt-issue-labels: "优先级：P0,优先级：P1,状态：进行中"
+          stale-issue-message: |
+            ### 🕐 这条 Issue 已经 30 天没有活动了
+
+            如果问题还存在，请在评论里更新一下状态，Bot 会自动解除「已过时」标记。
+
+            如果不再需要，直接关闭即可～
+            **7 天后若无更新，这条 Issue 会被自动关闭。**
+          close-issue-message: |
+            ### ✅ 已自动关闭
+
+            这条 Issue 标记为「已过时」后 7 天内没有新的活动，已自动关闭。
+
+            如果问题仍然存在，可以重新打开或创建新的 Issue～
+          ascending: true
+          operations-per-run: 30

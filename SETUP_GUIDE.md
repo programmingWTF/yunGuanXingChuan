@@ -126,6 +126,22 @@ TAVILY_API_KEY=tvly-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 ---
 
+## 3️⃣ 获取他山世界 API Token（可选）
+
+他山世界（TopicLab）是本项目的**第三路搜索引擎**，用于补充中文科技议题与航空航天领域的内容检索（AMiner / source-feed / WorldWeave 三个数据源）。
+
+> 没有这个 Token 项目也能正常运行——系统会自动回退到百炼 WebSearch + Tavily 两路搜索。
+
+1. Token 由**组长统一管理**，需要时找组长申请
+2. 拿到后在 `.env` 文件中配置：
+```
+TASHAN_TOKEN=your_tashan_token_here
+```
+
+> ⚠️ 他山 Token 同样是私密凭证，**不要提交到 GitHub / 截图外传**。
+
+---
+
 ## 📝 配置完后的检查清单
 
 在运行项目之前，确认以下事项：
@@ -138,7 +154,7 @@ TAVILY_API_KEY=tvly-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 - [ ] Node.js 已安装（在终端运行 `node --version` 验证）
 - [ ] 已运行 `pip install -r requirements.txt`
 
-全部打勾后，就可以使用了。打开前端网页，在**任务中心**输入议题（如"嫦娥六号"）点击启动即可，全程不需要写代码（具体打开方式见 README 的「第四步：运行项目」）。
+全部打勾后，就可以使用了。打开前端网页，在**科研工作台**新建项目、输入研究兴趣（如"嫦娥六号"），点击「一键生成全部」即可，全程不需要写代码（具体打开方式见 README 的「第四步：运行项目」）。
 
 ---
 

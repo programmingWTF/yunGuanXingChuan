@@ -8,9 +8,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Optional, Dict, List
 from datetime import datetime
+from uuid import uuid4
 
 router = APIRouter()
 
@@ -22,6 +24,13 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 outputs_results: Dict[str, dict] = {}
 outputs_status: Dict[str, str] = {}
 outputs_progress: Dict[str, dict] = {}
+
+
+def _safe_name(name: str, max_len: int = 20) -> str:
+    """清洗文件名：替换 Windows 非法字符（<>:\"/\\|?* 及控制字符），避免写盘失败"""
+    import re
+    cleaned = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name)
+    return cleaned.strip(" ._").replace(" ", "_")[:max_len]
 
 # ==========================================================================
 # 生成器注册表：7 类成果
@@ -68,9 +77,9 @@ OUTPUT_TYPES = {
     },
     "expression_adaptation": {
         "name": "表达适配建议",
-        "module": "前端",
+        "module": "智能体",
         "description": "生成中英对照术语/隐喻/表达建议表",
-        "real": False,
+        "real": True,
     },
 }
 
@@ -113,6 +122,9 @@ def _run_real_generator(generator_type: str, input_data: Dict) -> dict:
         # 数据驱动纯函数分支（不走 Agent/LLM，从知识图谱统计组装）
         from src.agents.kg_report_generator import generate_kg_report
         result = generate_kg_report(input_data)
+    elif generator_type == "expression_adaptation":
+        from src.agents.expression_adaptation_agent import ExpressionAdaptationAgent
+        result = ExpressionAdaptationAgent().run(input_data)
     else:
         raise ValueError(f"未知生成器: {generator_type}")
     return result
@@ -138,12 +150,13 @@ def _load_source_material(source_task_id: Optional[str]) -> Dict:
         return material
 
     prefix = source_task_id[:8] if len(source_task_id) >= 8 else source_task_id
-    # 议会结果：data/results/parliament_*.json
+    # 议会结果：data/results/parliament_*.json（必须精确匹配 task_id，
+    # 不能用 f.stem.endswith(prefix)——parl_ 前缀任务的前8位恒相同会误匹配）
     for f in RESULTS_DIR.glob(f"parliament_*{prefix}*.json"):
         try:
             with open(f, "r", encoding="utf-8") as fp:
                 data = json.load(fp)
-            if data.get("task_id") == source_task_id or f.stem.endswith(prefix):
+            if data.get("task_id") == source_task_id:
                 material["topic"] = data.get("topic", "")
                 material["final_report"] = data.get("final_report", {})
                 material["motions"] = data.get("motions", [])
@@ -175,6 +188,23 @@ def _load_source_material(source_task_id: Optional[str]) -> Dict:
             pass
 
     return material
+
+
+def _load_output_result(task_id: str) -> Optional[dict]:
+    """按 task_id 从内存或磁盘加载成果结果（磁盘用 glob 精确匹配 task_id）"""
+    if task_id in outputs_results:
+        return outputs_results[task_id]
+    prefix = task_id[:8] if len(task_id) >= 8 else task_id
+    for f in RESULTS_DIR.glob(f"output_*{prefix}*.json"):
+        try:
+            with open(f, "r", encoding="utf-8") as fp:
+                data = json.load(fp)
+            if data.get("task_id") == task_id:
+                outputs_results[task_id] = data
+                return data
+        except Exception:
+            continue
+    return None
 
 
 def run_output_task(task_id: str, generator_type: str, topic: str, source_task_id: Optional[str], platform: Optional[str] = None):
@@ -212,14 +242,14 @@ def run_output_task(task_id: str, generator_type: str, topic: str, source_task_i
             "data": result,
         }
 
-        outputs_results[task_id] = payload
-        outputs_status[task_id] = "completed"
-
-        # 持久化到磁盘
-        safe_name = topic.replace(" ", "_").replace("/", "_")[:20]
+        # 持久化到磁盘（成功后再置状态，避免写盘失败时状态错乱）
+        safe_name = _safe_name(topic)
         out_path = RESULTS_DIR / f"output_{safe_name}_{task_id[:8]}.json"
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, indent=2)
+
+        outputs_results[task_id] = payload
+        outputs_status[task_id] = "completed"
 
     except Exception as e:
         outputs_status[task_id] = f"error: {e}"
@@ -246,7 +276,7 @@ async def generate_output(req: OutputGenerateRequest, background_tasks: Backgrou
     """异步生成成果"""
     if req.generator_type not in OUTPUT_TYPES:
         raise HTTPException(status_code=400, detail=f"未知成果类型: {req.generator_type}")
-    task_id = f"out_{req.generator_type}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    task_id = f"out_{req.generator_type}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid4().hex[:6]}"
     background_tasks.add_task(run_output_task, task_id, req.generator_type, req.topic, req.source_task_id, req.platform)
     return OutputGenerateResponse(
         task_id=task_id,
@@ -271,21 +301,9 @@ async def get_output_status(task_id: str):
 @router.get("/result/{task_id}")
 async def get_output_result(task_id: str):
     """获取成果生成结果（内存优先，回退磁盘）"""
-    if task_id in outputs_results:
-        return outputs_results[task_id]
-
-    # 回退：从磁盘文件中查找（文件名含 task_id 前8位）
-    prefix = task_id[:8] if len(task_id) >= 8 else task_id
-    for f in RESULTS_DIR.glob(f"output_*{prefix}*.json"):
-        try:
-            with open(f, "r", encoding="utf-8") as fp:
-                data = json.load(fp)
-            if data.get("task_id") == task_id or f.stem.endswith(prefix):
-                outputs_results[task_id] = data
-                return data
-        except Exception:
-            continue
-
+    result = _load_output_result(task_id)
+    if result is not None:
+        return result
     raise HTTPException(status_code=404, detail="结果不存在或任务未完成")
 
 
@@ -309,3 +327,58 @@ async def get_output_history():
             continue
 
     return {"count": len(history), "history": history[:50]}
+
+
+@router.get("/export/{task_id}")
+async def export_output(task_id: str, format: str = "markdown"):
+    """多格式导出成果（JSON/Markdown/HTML/PDF/Word/KG-PNG）"""
+    from src.export_service import do_export, get_export_formats, EXPORT_FORMATS
+
+    # 查找结果（内存优先，回退磁盘——用 glob 精确匹配 task_id）
+    result = _load_output_result(task_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"未找到任务 {task_id} 的结果")
+
+    generator_type = result.get("generator_type", "")
+    available = get_export_formats(generator_type)
+    if format not in available:
+        raise HTTPException(status_code=400, detail=f"格式 '{format}' 不可用，可选: {', '.join(available)}")
+
+    meta = {
+        "generator_type": generator_type,
+        "name": result.get("name", OUTPUT_TYPES.get(generator_type, {}).get("name", "")),
+        "topic": result.get("topic", ""),
+    }
+    data = result.get("data", {})
+
+    try:
+        content = do_export(data, meta, format)
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    fmt_info = EXPORT_FORMATS[format]
+    safe_topic = _safe_name(meta["topic"])
+    filename = f"{meta['name']}_{safe_topic}{fmt_info['ext']}"
+
+    # 中文文件名用 RFC 5987 编码（filename* ），否则 latin-1 header 会 500
+    from urllib.parse import quote
+    ascii_name = quote(filename, safe="")
+    return Response(
+        content=content,
+        media_type=fmt_info["mime"],
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{ascii_name}"},
+    )
+
+
+@router.get("/export-formats/{task_id}")
+async def get_export_format_list(task_id: str):
+    """查询某成果可用的导出格式"""
+    from src.export_service import get_export_formats
+
+    result = _load_output_result(task_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"未找到任务 {task_id}")
+
+    generator_type = result.get("generator_type", "")
+    formats = get_export_formats(generator_type)
+    return {"task_id": task_id, "generator_type": generator_type, "formats": formats}

@@ -166,8 +166,9 @@ class CrossValidator:
             avg_conf = sum(c for _, c in support_signals) / 2
             return VerificationStatus.PARTIALLY_VERIFIED, min(0.8, avg_conf)
         elif num_support == 1:
+            # 仅 1 路支持 → 证据不足，按判定表判定为 UNVERIFIED
             _, conf = support_signals[0]
-            return VerificationStatus.PARTIALLY_VERIFIED, conf * 0.7
+            return VerificationStatus.UNVERIFIED, conf * 0.5
         else:
             # 无支持
             max_conf = max(rag_confidence, kg_confidence, ext_confidence)

@@ -76,11 +76,11 @@ class RAGChecker:
         for i, r in enumerate(search_results):
             src = r["metadata"].get("source", "?")
             parts.append(f"[{i+1}] {src}: {r['text'][:200]}")
-        evidence_text = "\\n".join(parts)
+        evidence_text = "\n".join(parts)
 
         prompt_text = (
-            "请校验以下断言是否与参考文本一致：\\n\\n"
-            f"断言：{claim}\\n\\n参考文本：\\n{evidence_text}\\n\\n"
+            "请校验以下断言是否与参考文本一致：\n\n"
+            f"断言：{claim}\n\n参考文本：\n{evidence_text}\n\n"
             '请输出 JSON：{{"consistent": true/false, "confidence": 0.0-1.0, '
             '"evidence_summary": "证据摘要", "key_sources": ["来源"], "notes": "说明"}}'
         )

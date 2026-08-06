@@ -1,0 +1,64 @@
+# 自动标签规则 — actions/labeler@v5 配置
+# PR 修改了哪些文件就自动打对应的模块标签
+
+模块：智能体:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/agents/**"
+
+模块：议会辩论:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/parliament/**"
+
+模块：流程编排:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/pipeline.py"
+          - "src/workflow/**"
+
+模块：校验层:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/verification/**"
+
+模块：知识图谱:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/knowledge/**"
+          - "src/search/**"
+          - "data/science/**"
+          - "data/kg/**"
+
+模块：后端API:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "api/**"
+
+模块：前端:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "frontend/src/**"
+          - "frontend/index.html"
+          - "frontend/package.json"
+          - "frontend/vite.config.*"
+          - "frontend/tailwind.config.*"
+
+模块：部署:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/**"
+          - "scripts/**"
+          - "Dockerfile"
+          - "docker-compose*.yml"
+          - "requirements.txt"
+          - "pyproject.toml"
+
+类型：文档:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - "docs/**"
+          - "README.md"
+          - "CONTRIBUTING.md"
+          - "SETUP_GUIDE.md"

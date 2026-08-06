@@ -44,6 +44,7 @@ class BaseAgent(ABC):
         model: Optional[str] = None,
         max_retries: int = 3,
         temperature: float = 0.3,
+        max_tokens: Optional[int] = None,
     ):
         """
         Args:
@@ -51,11 +52,13 @@ class BaseAgent(ABC):
             model: 使用的模型
             max_retries: 最大重试次数
             temperature: 温度参数
+            max_tokens: 输出 token 上限（None 用 LLM 客户端默认）
         """
         self.llm_client = llm_client or get_llm_client()
         self.model = model or QWEN_MODEL
         self.max_retries = max_retries
         self.temperature = temperature
+        self.max_tokens = max_tokens
         self._system_prompt: Optional[str] = None
 
     @property
@@ -110,6 +113,7 @@ class BaseAgent(ABC):
                     model=self.model,
                     temperature=self.temperature,
                     enable_search=use_search,
+                    max_tokens=self.max_tokens,
                 )
 
                 # 解析输出
