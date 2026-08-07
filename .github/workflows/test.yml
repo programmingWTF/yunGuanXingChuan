@@ -1,5 +1,5 @@
-# 自动化测试 — PR 与 main 变更时运行全部测试（241 项，不依赖外部 API）
-# 测试均为自包含用例（conftest.py 提供示例数据，不调用 LLM/网络）
+# 自动化测试 — PR 与 main 变更时运行全部测试（379 项，不依赖外部 API）
+# 测试均为自包含用例（conftest.py 提供示例数据，不调用 LLM/网络）；含 v8 覆盖率门槛
 
 name: 自动化测试
 
@@ -27,10 +27,10 @@ jobs:
       - name: 安装依赖
         run: |
           pip install -r requirements.txt
-          pip install pytest
+          pip install pytest pytest-cov
 
-      - name: 运行测试
-        run: pytest tests/ -v
+      - name: 运行测试并检查覆盖率
+        run: pytest tests/ -v --cov=src --cov=api --cov-report=term-missing --cov-fail-under=55
 
       - name: 统计结果
         if: always()
