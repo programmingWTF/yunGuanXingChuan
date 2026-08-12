@@ -110,6 +110,28 @@ class ProjectStore:
             return True
         return False
 
+    def claim_ownerless(self, owner_id: str) -> int:
+        """把无主（legacy）项目认领给指定用户。返回认领数量。"""
+        claimed = 0
+        with self._lock:
+            for p in self.list():
+                if not p.owner_id:
+                    p.owner_id = owner_id
+                    self._write(p)
+                    claimed += 1
+        if claimed:
+            logger.info(f"[ProjectStore] 认领 {claimed} 个无主项目 → {owner_id}")
+        return claimed
+
+    def delete_by_owner(self, owner_id: str) -> int:
+        """删除某用户全部项目（级联删除，删除用户时用）。返回删除数量。"""
+        deleted = 0
+        with self._lock:
+            for p in self.list():
+                if p.owner_id == owner_id and self.delete(p.id):
+                    deleted += 1
+        return deleted
+
     # ------------------------------------------------------------------
     # 阶段状态更新
     # ------------------------------------------------------------------

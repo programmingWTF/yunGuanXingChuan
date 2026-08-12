@@ -639,4 +639,22 @@ export async function getAdminProject(id: string) {
   return res.data as { project: AdminProject }
 }
 
+/** 设置/取消管理员角色 */
+export async function setAdminRole(userId: string, role: 'admin' | 'user') {
+  const res = await api.post(`/admin/users/${userId}/role`, { role })
+  return res.data as { success: boolean; user_id: string; role: string }
+}
+
+/** 删除用户（级联删除其全部项目） */
+export async function deleteAdminUser(userId: string) {
+  const res = await api.delete(`/admin/users/${userId}`)
+  return res.data as { success: boolean; deleted_user: string; deleted_projects: number }
+}
+
+/** 删除项目（物理移除） */
+export async function deleteAdminProject(projectId: string) {
+  const res = await api.delete(`/admin/projects/${projectId}`)
+  return res.data as { status: string; project_id: string }
+}
+
 export default api

@@ -32,6 +32,7 @@ from api.auth import (
     verify_password,
 )
 from api.email import send_verification_code
+from src.workflow import get_workflow_engine
 
 router = APIRouter()
 
@@ -109,6 +110,15 @@ def register(req: RegisterRequest):
         raise HTTPException(status_code=400, detail=err)
 
     user = create_user(email, name, req.password)
+
+    # 管理员注册时自动认领无主（legacy）项目（旧项目归管理员名下）
+    if user["role"] == "admin":
+        try:
+            get_workflow_engine().claim_ownerless(user["id"])
+        except Exception:  # noqa: BLE001
+            import logging
+            logging.getLogger(__name__).exception("管理员认领无主项目失败")
+
     return {"success": True, "message": "注册成功！请登录。", "user": {"id": user["id"], "email": user["email"], "name": user["name"], "role": user["role"]}}
 
 

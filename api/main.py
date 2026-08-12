@@ -1,6 +1,7 @@
 """
 云观星传 - FastAPI 后端主入口
 """
+import os
 import sys
 from pathlib import Path
 
@@ -13,7 +14,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
 
-from api.routes import analyze, hypotheses, strategies, knowledge_graph, verify, parliament, outputs, knowledge, workflow, auth, admin
+# ADMIN_MODE=true：独立管理后台容器（tzb-admin.liguiyu.com），
+# 只挂 /api/admin/* 且不校验身份（认证交给 Cloudflare Access，模仿 admin.liguiyu.com 架构）
+ADMIN_MODE = os.environ.get("ADMIN_MODE", "").strip().lower() == "true"
+
+from api.routes import admin
 from api.auth import init_db as init_auth_db
 
 # 创建 FastAPI 应用
@@ -35,18 +40,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 注册路由
-app.include_router(analyze.router, prefix="/api/analyze", tags=["分析"])
-app.include_router(hypotheses.router, prefix="/api/hypotheses", tags=["假设"])
-app.include_router(strategies.router, prefix="/api/strategies", tags=["策略"])
-app.include_router(knowledge_graph.router, prefix="/api/kg", tags=["知识图谱"])
-app.include_router(verify.router, prefix="/api/verify", tags=["校验"])
-app.include_router(parliament.router, prefix="/api/parliament", tags=["认知议会"])
-app.include_router(outputs.router, prefix="/api/outputs", tags=["成果"])
-app.include_router(knowledge.router, prefix="/api/knowledge", tags=["知识库"])
-app.include_router(workflow.router, prefix="/api/workflow", tags=["科研工作流"])
-app.include_router(auth.router, prefix="/api/auth", tags=["用户认证"])
-app.include_router(admin.router, prefix="/api/admin", tags=["管理后台"])
+if ADMIN_MODE:
+    # ── 管理后台专用容器：只提供 admin API ──
+    app.include_router(admin.router, prefix="/api/admin", tags=["管理后台"])
+else:
+    # ── 主站：全部业务路由 ──
+    from api.routes import analyze, hypotheses, strategies, knowledge_graph, verify, parliament, outputs, knowledge, workflow, auth
+
+    # 注册路由
+    app.include_router(analyze.router, prefix="/api/analyze", tags=["分析"])
+    app.include_router(hypotheses.router, prefix="/api/hypotheses", tags=["假设"])
+    app.include_router(strategies.router, prefix="/api/strategies", tags=["策略"])
+    app.include_router(knowledge_graph.router, prefix="/api/kg", tags=["知识图谱"])
+    app.include_router(verify.router, prefix="/api/verify", tags=["校验"])
+    app.include_router(parliament.router, prefix="/api/parliament", tags=["认知议会"])
+    app.include_router(outputs.router, prefix="/api/outputs", tags=["成果"])
+    app.include_router(knowledge.router, prefix="/api/knowledge", tags=["知识库"])
+    app.include_router(workflow.router, prefix="/api/workflow", tags=["科研工作流"])
+    app.include_router(auth.router, prefix="/api/auth", tags=["用户认证"])
+    app.include_router(admin.router, prefix="/api/admin", tags=["管理后台"])
 
 
 @app.get("/api/health")
@@ -86,7 +98,10 @@ if frontend_dist.exists():
 
 @app.get("/{full_path:path}")
 async def serve_frontend(request: Request, full_path: str):
-    """SPA fallback：非 /api 路径返回 index.html"""
+    """SPA fallback：非 /api 路径返回 index.html；未知 /api/* 返回 404 JSON（防误吞 API 错误）"""
+    # 未知 API 路径：返回 404 JSON，不要落回 index.html
+    if full_path.startswith("api/") or full_path == "api":
+        return Response('{"detail":"Not Found"}', media_type="application/json", status_code=404)
     # 防路径穿越：解析后必须仍在 frontend_dist 内，否则回退 index.html
     # （否则 /../../.env 可读取 API Key 等敏感文件）
     try:
