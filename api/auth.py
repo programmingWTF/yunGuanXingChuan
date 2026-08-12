@@ -77,8 +77,11 @@ def get_secret() -> str:
 # ──────────────────────────────────────────────────────────────────
 
 def _connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(USERS_DB)
+    conn = sqlite3.connect(USERS_DB, timeout=15)
     conn.row_factory = sqlite3.Row
+    # WAL + busy_timeout：多用户并发读写（注册/配置保存）避免 database is locked
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=10000")
     return conn
 
 
