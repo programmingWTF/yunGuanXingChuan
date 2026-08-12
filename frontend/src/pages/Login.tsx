@@ -10,7 +10,8 @@ export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [email, setEmail] = useState(() => (location.state as { email?: string } | null)?.email ?? '')
+  const state = (location.state as { email?: string; registered?: boolean } | null) ?? null
+  const [email, setEmail] = useState(state?.email ?? '')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -48,6 +49,15 @@ export default function Login() {
         </div>
 
         <div className="card p-6">
+          {/* 注册成功提示：登录后去模型设置填 API Key */}
+          {state?.registered && (
+            <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+              <p className="text-[11px] text-emerald-700 leading-relaxed">
+                ✅ 注册成功！登录后请到<b>「模型设置」</b>填写你的 Qwen API Key
+                （新用户可在 <a href="https://bailian.console.aliyun.com/" target="_blank" rel="noreferrer" className="underline">阿里云百炼</a> 领取免费额度）
+              </p>
+            </div>
+          )}
           <h2 className="sec-label !mb-4">登录</h2>
           <form onSubmit={handleSubmit} className="space-y-3.5">
             <div>

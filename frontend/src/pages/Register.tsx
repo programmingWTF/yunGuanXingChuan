@@ -1,8 +1,8 @@
 /**
  * 云观星传 - 注册页（流程对齐 liguiyu-home）
  *
- * 昵称 + 邮箱 + 密码 → 点「发送验证码」（6 位数字，10 分钟有效，60s 重发冷却）
- * → 填验证码 → 完成注册。注册成功跳转登录页（邮箱预填）。
+ * 昵称 + 邮箱 + 密码（确认密码 + 明文切换 + 一致性对号）→ 点「发送验证码」（6 位数字，10 分钟有效，60s 重发冷却）
+ * → 填验证码 → 完成注册。注册成功跳转登录页（提示登录后填写 API Key）。
  */
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -12,11 +12,46 @@ import StarfieldBackground from '../components/StarfieldBackground'
 
 const RESEND_COOLDOWN = 60
 
+const inputCls =
+  'w-full rounded-lg bg-slate-50 border border-slate-200 px-3.5 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100 transition-all'
+
+/** 密码输入框：右侧明文切换按钮 */
+function PasswordField({
+  value, onChange, placeholder, show, onToggleShow, autoComplete,
+}: {
+  value: string
+  onChange: (v: string) => void
+  placeholder: string
+  show: boolean
+  onToggleShow: () => void
+  autoComplete: string
+}) {
+  return (
+    <div className="relative">
+      <input
+        type={show ? 'text' : 'password'} value={value} onChange={e => onChange(e.target.value)}
+        placeholder={placeholder} className={`${inputCls} pr-10`} autoComplete={autoComplete} required
+      />
+      <button
+        type="button" onClick={onToggleShow} tabIndex={-1}
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-sky-600 transition-colors select-none"
+        aria-label={show ? '隐藏密码' : '显示密码'}
+        title={show ? '隐藏密码' : '显示密码'}
+      >
+        {show ? '🙈' : '👁'}
+      </button>
+    </div>
+  )
+}
+
 export default function Register() {
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPwd, setConfirmPwd] = useState('')
+  const [showPwd, setShowPwd] = useState(false)
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false)
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
@@ -54,24 +89,25 @@ export default function Register() {
     }
   }
 
+  // 两次密码一致性校验
+  const pwdMatch = confirmPwd.length > 0 ? password === confirmPwd : null
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!name.trim() || !email.trim() || !password || !code.trim()) return
+    if (pwdMatch === false) { setError('两次输入的密码不一致'); return }
     setSubmitting(true)
     setError('')
     setInfo('')
     try {
       await registerUser(name.trim(), email.trim(), password, code.trim())
-      // 注册成功 → 登录页（邮箱预填）
+      // 注册成功 → 登录页（邮箱预填 + 提示填写 API Key）
       navigate('/login', { replace: true, state: { email: email.trim(), registered: true } })
     } catch (err) {
       setError(apiErrorText(err, '注册失败，请稍后重试'))
       setSubmitting(false)
     }
   }
-
-  const inputCls =
-    'w-full rounded-lg bg-slate-50 border border-slate-200 px-3.5 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100 transition-all'
 
   return (
     <div className="min-h-screen relative font-body flex items-center justify-center px-4 py-10">
@@ -107,10 +143,30 @@ export default function Register() {
             </div>
             <div>
               <label className="block text-[11px] font-medium text-slate-500 mb-1.5">密码（至少 6 位）</label>
-              <input
-                type="password" value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="设置登录密码" className={inputCls} autoComplete="new-password" minLength={6} required
+              <PasswordField
+                value={password} onChange={setPassword}
+                placeholder="设置登录密码" show={showPwd}
+                onToggleShow={() => setShowPwd(v => !v)} autoComplete="new-password"
               />
+            </div>
+            <div>
+              <label className="block text-[11px] font-medium text-slate-500 mb-1.5">确认密码</label>
+              <div className="relative">
+                <PasswordField
+                  value={confirmPwd} onChange={setConfirmPwd}
+                  placeholder="再次输入密码" show={showConfirmPwd}
+                  onToggleShow={() => setShowConfirmPwd(v => !v)} autoComplete="new-password"
+                />
+                {/* 一致性对号/叉号：两次密码一致 → 绿色 ✓；不一致 → 红色 ✗ */}
+                {confirmPwd.length > 0 && (
+                  <span className={`absolute right-10 top-1/2 -translate-y-1/2 text-sm select-none ${pwdMatch ? 'text-emerald-500' : 'text-red-500'}`}>
+                    {pwdMatch ? '✓' : '✗'}
+                  </span>
+                )}
+              </div>
+              {confirmPwd.length > 0 && !pwdMatch && (
+                <p className="text-[10px] text-red-500 mt-1">两次输入的密码不一致</p>
+              )}
             </div>
             <div>
               <label className="block text-[11px] font-medium text-slate-500 mb-1.5">邮箱验证码</label>
@@ -129,7 +185,8 @@ export default function Register() {
               {info && <p className="text-[10px] text-emerald-600 mt-1.5">{info}</p>}
             </div>
             {error && <p className="text-[11px] text-red-600">{error}</p>}
-            <button type="submit" disabled={submitting || !name.trim() || !email.trim() || !password || !code.trim()}
+            <button type="submit"
+              disabled={submitting || !name.trim() || !email.trim() || !password || !code.trim() || pwdMatch === false}
               className="btn-primary w-full text-xs disabled:opacity-40 disabled:cursor-not-allowed">
               {submitting ? '注册中…' : '完成注册'}
             </button>

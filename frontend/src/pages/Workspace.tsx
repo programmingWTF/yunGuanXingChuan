@@ -8,7 +8,7 @@
  */
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import axios from 'axios'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { useAuth } from '../auth'
 import { runAllWorkflow, getWorkflowProject, exportWorkflowProject, getHotTopics, deleteWorkflowProject } from '../api'
@@ -46,6 +46,7 @@ function downloadText(filename: string, content: string, mime: string) {
 export default function Workspace() {
   const { projects, currentProject, refreshProjects, loadProject, createProject, setCurrentProject, setProjects } = useStore()
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [interest, setInterest] = useState('')
   const [creating, setCreating] = useState(false)
   const [generatingAll, setGeneratingAll] = useState(false)
@@ -279,10 +280,18 @@ export default function Workspace() {
               className="w-full rounded-lg bg-slate-50 border border-slate-200 px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-sky-300 resize-none"
             />
             {error && <p className="text-[11px] text-red-600 mt-2">{error}</p>}
-            <button type="submit" disabled={creating || generatingAll || !interest.trim()}
-              className="btn-primary w-full mt-3 text-xs disabled:opacity-40 disabled:cursor-not-allowed">
-              {creating ? '创建中…' : generatingAll ? '⏳ 全流程生成中…' : '🚀 新建并一键生成'}
-            </button>
+            {!user ? (
+              /* 未登录：主界面可浏览，运行需登录 */
+              <button onClick={() => navigate('/login')}
+                className="btn-primary w-full mt-3 text-xs">
+                🔑 登录后使用
+              </button>
+            ) : (
+              <button type="submit" disabled={creating || generatingAll || !interest.trim()}
+                className="btn-primary w-full mt-3 text-xs disabled:opacity-40 disabled:cursor-not-allowed">
+                {creating ? '创建中…' : generatingAll ? '⏳ 全流程生成中…' : '🚀 新建并一键生成'}
+              </button>
+            )}
             {generatingAll && (
               <p className="text-[10px] text-sky-600 mt-2 animate-pulse">AI 正在串行生成 7 个阶段（约 8-12 分钟），进度实时更新，可离开页面</p>
             )}
@@ -290,9 +299,18 @@ export default function Workspace() {
 
           {/* 历史记录 */}
           <div className="card p-4">
-            <h3 className="sec-label !mb-2">历史记录（{projects.length}）</h3>
+            <h3 className="sec-label !mb-2">历史记录（{user ? projects.length : '—'}）</h3>
             <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-              {projects.length === 0 && (
+              {!user && (
+                <div className="text-center py-8">
+                  <p className="text-[11px] text-slate-400">登录后查看你的项目历史</p>
+                  <button onClick={() => navigate('/login')}
+                    className="mt-3 text-[11px] font-medium px-4 py-1.5 rounded-lg bg-sky-600 text-white hover:bg-sky-700 transition-all">
+                    去登录
+                  </button>
+                </div>
+              )}
+              {user && projects.length === 0 && (
                 <p className="text-[11px] text-slate-400 py-4 text-center">暂无项目，从上方创建第一个吧</p>
               )}
               {projects.map(p => (
