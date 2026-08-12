@@ -7,6 +7,7 @@ import axios from 'axios'
 const api = axios.create({
   baseURL: '/api',
   timeout: 300000, // Pipeline 可能运行较久，5分钟超时
+  withCredentials: true, // 会话 Cookie（httpOnly，same-origin）
 })
 
 // ============ 类型定义 ============
@@ -565,6 +566,95 @@ export async function polishWorkflowSection(
 export async function getHotTopics(limit: number = 6) {
   const res = await api.get('/workflow/hot-topics', { params: { limit } })
   return res.data as { topics: { title: string; url: string; source: string; content: string }[] }
+}
+
+// ============ 用户认证（用户系统对齐 liguiyu-home）============
+
+export interface AuthUser {
+  id: string
+  email: string
+  name: string
+  role: 'user' | 'admin'
+}
+
+/** 注册前发送邮箱验证码（6 位，10 分钟有效） */
+export async function sendAuthCode(email: string) {
+  const res = await api.post('/auth/send-code', { email })
+  return res.data as { success: boolean; message: string }
+}
+
+/** 注册：昵称 + 邮箱 + 密码 + 验证码 */
+export async function registerUser(name: string, email: string, password: string, code: string) {
+  const res = await api.post('/auth/register', { name, email, password, code })
+  return res.data as { success: boolean; message: string; user?: AuthUser }
+}
+
+/** 登录：邮箱 + 密码（会话 httpOnly Cookie） */
+export async function loginUser(email: string, password: string) {
+  const res = await api.post('/auth/login', { email, password })
+  return res.data as { success: boolean; user: AuthUser }
+}
+
+export async function logoutUser() {
+  const res = await api.post('/auth/logout')
+  return res.data as { success: boolean }
+}
+
+/** 当前登录用户（未登录 401） */
+export async function getMe() {
+  const res = await api.get('/auth/me')
+  return res.data as { user: AuthUser & { created_at: number } }
+}
+
+// ============ 管理后台（admin）============
+
+export interface AdminUser {
+  id: string
+  email: string
+  name: string
+  role: string
+  created_at: number
+  project_count: number
+}
+
+export interface AdminProject extends ResearchProject {
+  owner: { id: string; email: string; name: string } | null
+}
+
+/** 用户列表（含各自项目数） */
+export async function listAdminUsers() {
+  const res = await api.get('/admin/users')
+  return res.data as { users: AdminUser[]; total_projects: number }
+}
+
+/** 全部项目 + 归属人（含无主 legacy 项目） */
+export async function listAdminProjects() {
+  const res = await api.get('/admin/projects')
+  return res.data as { projects: AdminProject[]; count: number }
+}
+
+/** 项目详情（admin 视角，与前台同构） */
+export async function getAdminProject(id: string) {
+  const res = await api.get(`/admin/projects/${id}`)
+  return res.data as { project: AdminProject }
+}
+
+/** 设置/取消管理员角色 */
+export async function setAdminRole(userId: string, role: 'admin' | 'user') {
+  const res = await api.post(`/admin/users/${userId}/role`, { role })
+  return res.data as { success: boolean; user_id: string; role: string }
+}
+
+/** 删除用户（级联删除其全部项目） */
+export async function deleteAdminUser(userId: string) {
+  const res = await api.delete(`/admin/users/${userId}`)
+  return res.data as { success: boolean; deleted_user: string; deleted_projects: number }
+}
+
+/** 删除项目（物理移除） */
+export async function deleteAdminProject(projectId: string) {
+  const res = await api.delete(`/admin/projects/${projectId}`)
+  return res.data as { status: string; project_id: string }
 }
 
 export default api

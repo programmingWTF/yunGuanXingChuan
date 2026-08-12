@@ -73,11 +73,11 @@ class WorkflowEngine:
     # ------------------------------------------------------------------
     # 项目 CRUD
     # ------------------------------------------------------------------
-    def create_project(self, title: str = "", interest: str = "") -> ResearchProject:
-        return self.store.create(title=title, interest=interest)
+    def create_project(self, title: str = "", interest: str = "", owner_id: str = "") -> ResearchProject:
+        return self.store.create(title=title, interest=interest, owner_id=owner_id)
 
-    def list_projects(self) -> List[ResearchProject]:
-        return self.store.list()
+    def list_projects(self, owner_id: Optional[str] = None) -> List[ResearchProject]:
+        return self.store.list(owner_id=owner_id)
 
     def get_project(self, project_id: str) -> Optional[ResearchProject]:
         return self.store.get(project_id)
@@ -85,6 +85,14 @@ class WorkflowEngine:
     def delete_project(self, project_id: str) -> bool:
         """物理删除项目（含产出物文件）。返回是否确有删除（False=文件不存在）。"""
         return self.store.delete(project_id)
+
+    def claim_ownerless(self, owner_id: str) -> int:
+        """无主（legacy）项目认领给指定用户，返回认领数量"""
+        return self.store.claim_ownerless(owner_id)
+
+    def delete_projects_by_owner(self, owner_id: str) -> int:
+        """级联删除某用户的全部项目，返回删除数量"""
+        return self.store.delete_by_owner(owner_id)
 
     def get_stage_meta(self) -> list:
         """阶段元数据列表（前端 Research Pipeline 渲染）"""

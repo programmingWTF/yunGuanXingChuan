@@ -553,17 +553,73 @@ def api_engine(store, tmp_path):
         yield eng
 
 
+def _make_auth_client(app, *, email=None, admin=False):
+    """创建已登录 TestClient：直连建用户 + 签发 JWT，绕开真实邮件验证码。
+    用户系统（Issue #90）上线后 /api/workflow 项目接口全部要求登录。"""
+    import os
+    import secrets as _secrets
+    from fastapi.testclient import TestClient
+    from api.auth import create_user, issue_token, SESSION_COOKIE
+
+    if email is None:
+        email = f"t{_secrets.token_hex(6)}@test.local"
+    if admin:
+        prev = os.environ.get("ADMIN_EMAILS")
+        os.environ["ADMIN_EMAILS"] = email
+        try:
+            user = create_user(email, "管理员", "Test@123456")
+        finally:
+            if prev is None:
+                os.environ.pop("ADMIN_EMAILS", None)
+            else:
+                os.environ["ADMIN_EMAILS"] = prev
+    else:
+        user = create_user(email, "测试用户", "Test@123456")
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, issue_token(user["id"]))
+    return user, client
+
+
 class TestWorkflowAPI:
     def test_create_and_get_project(self, api_engine):
-        from fastapi.testclient import TestClient
         from api.main import app
-        with TestClient(app) as client:
+        _, client = _make_auth_client(app)
+        with client:
             r = client.post("/api/workflow/projects", json={"title": "我的研究", "interest": "朱雀2号"})
             assert r.status_code == 200
             pid = r.json()["project"]["id"]
             r2 = client.get(f"/api/workflow/projects/{pid}")
             assert r2.status_code == 200
             assert r2.json()["project"]["interest"] == "朱雀2号"
+
+    def test_unauthenticated_401(self, api_engine):
+        """用户系统上线后：未登录访问项目接口一律 401"""
+        from fastapi.testclient import TestClient
+        from api.main import app
+        with TestClient(app) as client:
+            assert client.post("/api/workflow/projects", json={"interest": "x"}).status_code == 401
+            assert client.get("/api/workflow/projects").status_code == 401
+            assert client.get("/api/workflow/projects/proj_nope").status_code == 401
+            assert client.delete("/api/workflow/projects/proj_nope").status_code == 401
+
+    def test_project_isolation_between_users(self, api_engine):
+        """历史隔离（Issue #90 核心）：他人项目 404，admin 可见全部"""
+        from api.main import app
+        _, client_a = _make_auth_client(app)
+        r = client_a.post("/api/workflow/projects", json={"title": "A的研究", "interest": "朱雀2号"})
+        assert r.status_code == 200
+        pid = r.json()["project"]["id"]
+        # 用户 B：他人项目一律 404
+        _, client_b = _make_auth_client(app)
+        assert client_b.get(f"/api/workflow/projects/{pid}").status_code == 404
+        assert client_b.delete(f"/api/workflow/projects/{pid}").status_code == 404
+        # 用户 A：自己的项目列表可见
+        ids = [p["id"] for p in client_a.get("/api/workflow/projects").json()["projects"]]
+        assert pid in ids
+        # admin：全部可见
+        _, admin_client = _make_auth_client(app, admin=True)
+        ids = [p["id"] for p in admin_client.get("/api/workflow/projects").json()["projects"]]
+        assert pid in ids
 
     def test_stages_meta_endpoint(self, api_engine):
         from fastapi.testclient import TestClient
@@ -574,9 +630,9 @@ class TestWorkflowAPI:
             assert len(r.json()["stages"]) == 7
 
     def test_run_approve_export_flow(self, api_engine):
-        from fastapi.testclient import TestClient
         from api.main import app
-        with TestClient(app) as client:
+        _, client = _make_auth_client(app)
+        with client:
             pid = client.post("/api/workflow/projects", json={"interest": "朱雀2号"}).json()["project"]["id"]
             # 未解锁阶段 400
             assert client.post(f"/api/workflow/projects/{pid}/stages/3/run", json={"inputs": {}}).status_code == 400
@@ -598,16 +654,16 @@ class TestWorkflowAPI:
             assert "选题孵化" in r.json()["content"]
 
     def test_404_unknown_project(self, api_engine):
-        from fastapi.testclient import TestClient
         from api.main import app
-        with TestClient(app) as client:
+        _, client = _make_auth_client(app)
+        with client:
             assert client.get("/api/workflow/projects/proj_nope").status_code == 404
 
     def test_delete_project(self, api_engine):
         """DELETE /api/workflow/projects/{id}：物理删除项目与产出物文件"""
-        from fastapi.testclient import TestClient
         from api.main import app
-        with TestClient(app) as client:
+        _, client = _make_auth_client(app)
+        with client:
             pid = client.post("/api/workflow/projects", json={"interest": "朱雀2号"}).json()["project"]["id"]
             # 删除前项目文件存在
             assert api_engine.store.get(pid) is not None
@@ -623,10 +679,113 @@ class TestWorkflowAPI:
 
     def test_delete_project_404(self, api_engine):
         """删除不存在的项目返回 404"""
+        from api.main import app
+        _, client = _make_auth_client(app)
+        with client:
+            assert client.delete("/api/workflow/projects/proj_nope").status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# /api/auth 用户认证（Issue #90）
+# ---------------------------------------------------------------------------
+
+
+class TestAuthAPI:
+    def test_send_code_validation(self):
+        """非法邮箱 400；已注册邮箱 409"""
+        import secrets as _secrets
         from fastapi.testclient import TestClient
         from api.main import app
+        from api.auth import create_user
+
+        taken_email = f"taken{_secrets.token_hex(4)}@test.local"
+        create_user(taken_email, "已注册", "Test@123456")
         with TestClient(app) as client:
-            assert client.delete("/api/workflow/projects/proj_nope").status_code == 404
+            assert client.post("/api/auth/send-code", json={"email": "not-an-email"}).status_code == 400
+            assert client.post("/api/auth/send-code", json={"email": taken_email}).status_code == 409
+
+    def test_register_login_me_logout_flow(self):
+        """完整注册流程：发码 → 错码 400 → 正确码注册 → 冷却 429 → 重复注册 409 → 登录 → me → 登出"""
+        import secrets as _secrets
+        from fastapi.testclient import TestClient
+        from api.main import app
+        from api.routes import auth as auth_routes
+
+        email = f"u{_secrets.token_hex(4)}@test.local"
+        with TestClient(app) as client:
+            with patch.object(auth_routes, "send_verification_code", return_value=True) as send_mock:
+                r = client.post("/api/auth/send-code", json={"email": email})
+                assert r.status_code == 200
+                code = send_mock.call_args[0][1]
+                assert len(code) == 6 and code.isdigit()
+            # 60s 冷却期内重发 → 429
+            assert client.post("/api/auth/send-code", json={"email": email}).status_code == 429
+            # 错误验证码 → 400
+            r = client.post("/api/auth/register", json={"name": "测试", "email": email, "password": "Passw0rd!", "code": "000000"})
+            assert r.status_code == 400
+            # 正确验证码 → 注册成功（普通 user 角色）
+            r = client.post("/api/auth/register", json={"name": "测试", "email": email, "password": "Passw0rd!", "code": code})
+            assert r.status_code == 200
+            assert r.json()["user"]["role"] == "user"
+            # 重复注册 → 409
+            r = client.post("/api/auth/register", json={"name": "测试", "email": email, "password": "Passw0rd!", "code": code})
+            assert r.status_code == 409
+            # 未登录 me → 401
+            assert client.get("/api/auth/me").status_code == 401
+            # 错误密码 → 401
+            assert client.post("/api/auth/login", json={"email": email, "password": "wrong"}).status_code == 401
+            # 登录成功 → 会话 Cookie + me
+            r = client.post("/api/auth/login", json={"email": email, "password": "Passw0rd!"})
+            assert r.status_code == 200
+            assert r.json()["user"]["email"] == email
+            r = client.get("/api/auth/me")
+            assert r.status_code == 200
+            assert r.json()["user"]["email"] == email
+            # 登出后 me → 401
+            assert client.post("/api/auth/logout").status_code == 200
+            assert client.get("/api/auth/me").status_code == 401
+
+    def test_admin_email_gets_admin_role(self):
+        """ADMIN_EMAILS 中的邮箱注册即 admin（照搬 liguiyu-home）"""
+        import os
+        import secrets as _secrets
+        from fastapi.testclient import TestClient
+        from api.main import app
+        from api.routes import auth as auth_routes
+
+        email = f"boss{_secrets.token_hex(4)}@test.local"
+        prev = os.environ.get("ADMIN_EMAILS")
+        os.environ["ADMIN_EMAILS"] = email
+        try:
+            with TestClient(app) as client:
+                with patch.object(auth_routes, "send_verification_code", return_value=True) as send_mock:
+                    client.post("/api/auth/send-code", json={"email": email})
+                    code = send_mock.call_args[0][1]
+                r = client.post("/api/auth/register", json={"name": "老板", "email": email, "password": "Passw0rd!", "code": code})
+                assert r.status_code == 200
+                assert r.json()["user"]["role"] == "admin"
+        finally:
+            if prev is None:
+                os.environ.pop("ADMIN_EMAILS", None)
+            else:
+                os.environ["ADMIN_EMAILS"] = prev
+
+    def test_admin_endpoints(self):
+        """管理后台：admin 可见用户/项目列表；普通用户 403；不存在项目 404"""
+        from unittest.mock import MagicMock, patch as _patch
+        from api.main import app
+
+        fake_engine = MagicMock()
+        fake_engine.list_projects.return_value = []
+        fake_engine.get_project.return_value = None
+        with _patch("api.routes.admin.get_workflow_engine", return_value=fake_engine):
+            _, admin_client = _make_auth_client(app, admin=True)
+            assert admin_client.get("/api/admin/users").status_code == 200
+            assert admin_client.get("/api/admin/projects").status_code == 200
+            assert admin_client.get("/api/admin/projects/nope").status_code == 404
+            _, user_client = _make_auth_client(app)
+            assert user_client.get("/api/admin/users").status_code == 403
+            assert user_client.get("/api/admin/projects").status_code == 403
 
 
 # ---------------------------------------------------------------------------
@@ -808,9 +967,9 @@ class TestWorkflowEnhancements:
 
     def test_export_word_pdf_binary_download_http(self, api_engine):
         """Word/PDF 经 HTTP 下载返回 200 且 Content-Disposition 中文名 RFC5987 编码（防 latin-1 报错）"""
-        from fastapi.testclient import TestClient
         from api.main import app
-        with TestClient(app) as client:
+        _, client = _make_auth_client(app)
+        with client:
             pid = client.post("/api/workflow/projects", json={"interest": "嫦娥六号"}).json()["project"]["id"]
             client.post(f"/api/workflow/projects/{pid}/stages/1/run", json={"inputs": {"topic": "嫦娥六号"}})
             for fmt, magic in [("word", b"PK"), ("pdf", b"%PDF")]:
