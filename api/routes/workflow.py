@@ -19,12 +19,28 @@ from typing import Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
 from pydantic import BaseModel, Field
 
+from api.auth import require_user
 from src.workflow import get_workflow_engine
 
 router = APIRouter()
+
+
+def _require_owned_project(project_id: str, user: dict):
+    """
+    校验项目存在且当前用户可访问。
+    - admin：可访问全部项目（含无主 legacy 项目）
+    - 普通用户：仅自己的项目（owner_id 匹配）
+    他人/无主项目一律 404，不泄露存在性。
+    """
+    project = get_workflow_engine().get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="项目不存在")
+    if user.get("role") != "admin" and project.owner_id != user.get("id"):
+        raise HTTPException(status_code=404, detail="项目不存在")
+    return project
 
 
 class CreateProjectRequest(BaseModel):
@@ -50,31 +66,35 @@ def get_stages():
 
 
 @router.post("/projects")
-def create_project(req: CreateProjectRequest):
-    """创建研究项目"""
-    project = get_workflow_engine().create_project(title=req.title, interest=req.interest)
+def create_project(req: CreateProjectRequest, request: Request):
+    """创建研究项目（归属当前登录用户）"""
+    user = require_user(request)
+    project = get_workflow_engine().create_project(title=req.title, interest=req.interest, owner_id=user["id"])
     return {"project": project.model_dump()}
 
 
 @router.get("/projects")
-def list_projects():
-    """项目列表（按创建时间倒序）"""
-    projects = get_workflow_engine().list_projects()
+def list_projects(request: Request):
+    """项目列表（按创建时间倒序；普通用户仅自己的，admin 全部）"""
+    user = require_user(request)
+    owner_id = None if user.get("role") == "admin" else user["id"]
+    projects = get_workflow_engine().list_projects(owner_id=owner_id)
     return {"projects": [p.model_dump() for p in projects]}
 
 
 @router.get("/projects/{project_id}")
-def get_project(project_id: str):
+def get_project(project_id: str, request: Request):
     """项目详情（含各阶段状态与产出物）"""
-    project = get_workflow_engine().get_project(project_id)
-    if project is None:
-        raise HTTPException(status_code=404, detail="项目不存在")
+    user = require_user(request)
+    project = _require_owned_project(project_id, user)
     return {"project": project.model_dump()}
 
 
 @router.delete("/projects/{project_id}")
-def delete_project(project_id: str):
+def delete_project(project_id: str, request: Request):
     """删除项目（物理移除项目文件与其阶段产出物）"""
+    user = require_user(request)
+    _require_owned_project(project_id, user)
     deleted = get_workflow_engine().delete_project(project_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="项目不存在")
@@ -82,8 +102,10 @@ def delete_project(project_id: str):
 
 
 @router.post("/projects/{project_id}/stages/{stage}/run")
-def run_stage(project_id: str, stage: int, req: RunStageRequest):
+def run_stage(project_id: str, stage: int, req: RunStageRequest, request: Request):
     """执行阶段智能体（同步）；产出物落盘为 awaiting_review"""
+    user = require_user(request)
+    _require_owned_project(project_id, user)
     try:
         record = get_workflow_engine().run_stage(project_id, stage, req.inputs)
     except ValueError as e:
@@ -102,8 +124,10 @@ def run_stage(project_id: str, stage: int, req: RunStageRequest):
 
 
 @router.get("/projects/{project_id}/stages/{stage}/result")
-def get_stage_result(project_id: str, stage: int):
+def get_stage_result(project_id: str, stage: int, request: Request):
     """获取阶段产出物"""
+    user = require_user(request)
+    _require_owned_project(project_id, user)
     output = get_workflow_engine().get_stage_result(project_id, stage)
     if output is None:
         raise HTTPException(status_code=404, detail="该阶段暂无产出物")
@@ -111,8 +135,10 @@ def get_stage_result(project_id: str, stage: int):
 
 
 @router.post("/projects/{project_id}/stages/{stage}/approve")
-def approve_stage(project_id: str, stage: int):
+def approve_stage(project_id: str, stage: int, request: Request):
     """研究者确认阶段产出物，推进到下一阶段"""
+    user = require_user(request)
+    _require_owned_project(project_id, user)
     try:
         project = get_workflow_engine().approve_stage(project_id, stage)
     except ValueError as e:
@@ -121,30 +147,30 @@ def approve_stage(project_id: str, stage: int):
 
 
 @router.post("/projects/{project_id}/run-all")
-def run_all(project_id: str, req: RunAllRequest, background_tasks: BackgroundTasks):
+def run_all(project_id: str, req: RunAllRequest, request: Request, background_tasks: BackgroundTasks):
     """
     一键全流程：后台串行执行全部 7 个阶段（选题→文献→设计→方法→数据→写作→评审），
     每阶段自动完成。进度通过 GET /projects/{id} 轮询各阶段状态（running/completed/failed）。
     """
-    engine = get_workflow_engine()
-    project = engine.get_project(project_id)
-    if project is None:
-        raise HTTPException(status_code=404, detail="项目不存在")
+    user = require_user(request)
+    project = _require_owned_project(project_id, user)
     if project.status == "completed" and all(
         (project.stages.get(str(s)) or {}).status.value == "completed" for s in range(1, 8)
     ):
         raise HTTPException(status_code=400, detail="该项目已全部生成完成，可到各阶段页重新运行")
 
     background_tasks.add_task(
-        engine.run_all, project_id,
+        get_workflow_engine().run_all, project_id,
         materials=req.materials, style_sample=req.style_sample, topic=req.topic,
     )
     return {"status": "running", "message": "全流程生成已启动，请通过 GET /projects/{id} 查看各阶段进度"}
 
 
 @router.get("/projects/{project_id}/export")
-def export_project(project_id: str, fmt: str = "md"):
+def export_project(project_id: str, request: Request, fmt: str = "md"):
     """汇总导出（fmt: md/json/word/pdf）"""
+    user = require_user(request)
+    _require_owned_project(project_id, user)
     if fmt not in ("md", "json", "word", "pdf"):
         raise HTTPException(status_code=400, detail="fmt 仅支持 md/json/word/pdf")
     try:
@@ -186,8 +212,10 @@ class PolishSectionRequest(BaseModel):
 
 
 @router.post("/projects/{project_id}/stages/{stage}/polish")
-def polish_stage_section(project_id: str, stage: int, req: PolishSectionRequest):
+def polish_stage_section(project_id: str, stage: int, req: PolishSectionRequest, request: Request):
     """AI 润色论文章节：返回润色后正文，不修改已确认产出物"""
+    user = require_user(request)
+    _require_owned_project(project_id, user)
     if stage != 6:
         raise HTTPException(status_code=400, detail="仅论文写作（⑥）阶段支持章节润色")
     try:

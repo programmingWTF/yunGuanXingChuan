@@ -13,14 +13,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
 
-from api.routes import analyze, hypotheses, strategies, knowledge_graph, verify, parliament, outputs, knowledge, workflow
+from api.routes import analyze, hypotheses, strategies, knowledge_graph, verify, parliament, outputs, knowledge, workflow, auth, admin
+from api.auth import init_db as init_auth_db
 
 # 创建 FastAPI 应用
 app = FastAPI(
     title="云观星传 API",
     description="基于通义大模型的科技议题传播分析与表达系统",
-    version="1.0.0",
+    version="1.1.0",
 )
+
+# 初始化用户表（幂等）
+init_auth_db()
 
 # CORS 配置（允许前端跨域访问）
 app.add_middleware(
@@ -41,6 +45,8 @@ app.include_router(parliament.router, prefix="/api/parliament", tags=["认知议
 app.include_router(outputs.router, prefix="/api/outputs", tags=["成果"])
 app.include_router(knowledge.router, prefix="/api/knowledge", tags=["知识库"])
 app.include_router(workflow.router, prefix="/api/workflow", tags=["科研工作流"])
+app.include_router(auth.router, prefix="/api/auth", tags=["用户认证"])
+app.include_router(admin.router, prefix="/api/admin", tags=["管理后台"])
 
 
 @app.get("/api/health")

@@ -173,8 +173,12 @@ cd yunGuanXingChuan
    | `DASHSCOPE_API_KEY` | 联网搜索能力 | 同上（可与 QWEN_API_KEY 共用一个） |
    | `TAVILY_API_KEY` | 搜索国际新闻 | [Tavily 官网](https://app.tavily.com/) |
    | `TASHAN_TOKEN` | 他山世界 TopicLab 搜索（可选） | 组长处获取 |
+   | `RESEND_API_KEY` | 注册邮箱验证码（用户系统，可选） | [Resend](https://resend.com/api-keys) |
+   | `ADMIN_EMAILS` | 管理员邮箱（逗号分隔，注册即自动授予 admin） | 填你自己的邮箱 |
 
    > 💡 **最小启动配置**：只填 `QWEN_API_KEY` 和 `DASHSCOPE_API_KEY`（可以是同一个 Key），项目就能跑起来。Tavily、他山都是可选的。
+
+   > 🔐 **用户系统说明**：注册流程为「昵称 + 邮箱 + 密码 → 邮箱验证码 → 完成注册」。配置 `RESEND_API_KEY` 后即可发验证码（发件人 `liguiyu.com <noreply@liguiyu.com>`，与 liguiyu-home 一致）；不配置则验证码发送失败。`ADMIN_EMAILS` 中的邮箱注册后自动获得 admin 角色，可访问 `/admin` 管理后台查看全部用户的使用历史记录与归属。
 
 ---
 

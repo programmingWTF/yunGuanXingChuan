@@ -65,3 +65,5 @@ logs/
 htmlcov/
 .coverage.*
 data/projects
+data/users.db
+data/.jwt_secret

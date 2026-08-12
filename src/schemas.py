@@ -725,6 +725,7 @@ class StageRecord(BaseModel):
 class ResearchProject(BaseModel):
     """科研项目（工作流状态机持久化模型）"""
     id: str
+    owner_id: Optional[str] = None             # 归属用户（None = 旧版无主项目，仅 admin 可见）
     title: str = ""
     interest: str = ""                        # 初始研究兴趣/议题
     current_stage: int = 1

@@ -73,11 +73,11 @@ class WorkflowEngine:
     # ------------------------------------------------------------------
     # 项目 CRUD
     # ------------------------------------------------------------------
-    def create_project(self, title: str = "", interest: str = "") -> ResearchProject:
-        return self.store.create(title=title, interest=interest)
+    def create_project(self, title: str = "", interest: str = "", owner_id: str = "") -> ResearchProject:
+        return self.store.create(title=title, interest=interest, owner_id=owner_id)
 
-    def list_projects(self) -> List[ResearchProject]:
-        return self.store.list()
+    def list_projects(self, owner_id: Optional[str] = None) -> List[ResearchProject]:
+        return self.store.list(owner_id=owner_id)
 
     def get_project(self, project_id: str) -> Optional[ResearchProject]:
         return self.store.get(project_id)
