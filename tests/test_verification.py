@@ -85,6 +85,19 @@ class TestCrossValidator:
                 "evidence": "外部校验结果",
             }
             yield cv_module.CrossValidator()
+            # 恢复被 _mock_heavy_deps 替换的 sys.modules 条目（防止污染后续测试：
+            # openai 内部 isinstance(httpx.URL) 检查在 httpx 为 MagicMock 时会 TypeError）
+            for mod_name in ('faiss', 'httpx', 'openai', 'openai.OpenAI'):
+                if mod_name in sys.modules:
+                    del sys.modules[mod_name]
+            # 让依赖模块在真实依赖下重新导入
+            for mod_name in list(sys.modules):
+                if any(mod_name.startswith(p) for p in [
+                    'src.knowledge.vector_store', 'src.verification.rag_checker',
+                    'src.verification.external_validator', 'src.verification.cross_validator',
+                    'src.llm_client', 'src.search',
+                ]):
+                    del sys.modules[mod_name]
 
     def test_dual_support_verified(self, mock_cross_validator):
         """RAG + KG 双方支持 → VERIFIED 或 PARTIAL"""

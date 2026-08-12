@@ -89,7 +89,7 @@ def send_code(req: SendCodeRequest):
     return {"success": True, "message": "验证码已发送，请查收邮件"}
 
 
-@router.post("/register")
+@router.post("/register", status_code=201)
 def register(req: RegisterRequest):
     """注册：昵称 + 邮箱 + 密码 + 验证码 → 创建用户（验证码校验通过即视为邮箱已验证）"""
     email = req.email.lower().strip()
