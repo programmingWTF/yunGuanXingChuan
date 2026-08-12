@@ -104,15 +104,26 @@ class LLMClient:
             {"role": "user", "content": user_prompt},
         ]
 
-        kwargs: Dict[str, Any] = {
-            "model": model or self.model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        }
-
         if json_mode:
-            kwargs["response_format"] = {"type": "json_object"}
+            # DeepSeek 官方要求：json_object 模式下 prompt 必须包含 "json" 字样，
+            # 否则 400 invalid_request_error（OpenAI 兼容实现的差异）
+            if "json" not in (system_prompt + user_prompt).lower():
+                user_prompt = user_prompt + "\n\n[重要] 请严格以 JSON 格式输出，不要包含其他内容。"
+                messages[1]["content"] = user_prompt
+            kwargs: Dict[str, Any] = {
+                "model": model or self.model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "response_format": {"type": "json_object"},
+            }
+        else:
+            kwargs: Dict[str, Any] = {
+                "model": model or self.model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
 
         # 启用联网搜索
         # qwen3.8-max-preview 仅支持 Responses API 联网搜索
