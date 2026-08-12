@@ -31,6 +31,7 @@ from api.auth import (
     init_db,
     list_users,
     require_admin,
+    user_llm_configured,
 )
 from src.workflow import get_workflow_engine
 
@@ -80,6 +81,7 @@ def admin_users(request: Request):
             "role": u["role"],
             "created_at": u["created_at"],
             "project_count": counts.get(u["id"], 0),
+            "llm_configured": user_llm_configured(u["id"]),
         })
     return {"users": users, "total_projects": len(projects)}
 

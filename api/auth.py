@@ -11,8 +11,12 @@
 - 密码只存 bcrypt 哈希；验证码用后即删；
 - 会话 cookie httpOnly + sameSite=lax（与 liguiyu-home 相同，未开 secure——
   部署为局域网 HTTP；若后续走 HTTPS 公网域名需改为 secure=true）；
-- JWT 密钥优先环境变量 JWT_SECRET，否则持久化到 data/.jwt_secret（重启不失效）。
+- JWT 密钥优先环境变量 JWT_SECRET，否则持久化到 data/.jwt_secret（重启不失效）；
+- 用户自带的 LLM/Embedding API Key 用 Fernet 加密存储（密钥从 JWT_SECRET 派生），
+  管理后台只显示「已配置/未配置」，绝不回显明文。
 """
+import base64
+import hashlib
 import logging
 import os
 import secrets
@@ -25,6 +29,7 @@ from uuid import uuid4
 
 import bcrypt
 import jwt
+from cryptography.fernet import Fernet
 from fastapi import HTTPException, Request, Response
 
 logger = logging.getLogger(__name__)
@@ -72,8 +77,11 @@ def get_secret() -> str:
 # ──────────────────────────────────────────────────────────────────
 
 def _connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(USERS_DB)
+    conn = sqlite3.connect(USERS_DB, timeout=15)
     conn.row_factory = sqlite3.Row
+    # WAL + busy_timeout：多用户并发读写（注册/配置保存）避免 database is locked
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=10000")
     return conn
 
 
@@ -102,6 +110,103 @@ def init_db() -> None:
             );
             """
         )
+        # 用户自带模型配置列（多租户自带钥匙模式；旧库自动迁移）
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
+        for col, ddl in LLM_CONFIG_COLUMNS.items():
+            if col not in cols:
+                conn.execute(f"ALTER TABLE users ADD COLUMN {ddl}")
+
+
+# ── 用户自带模型配置（多租户：每次推理用用户自己的 API）──
+# 列名 → 建表 DDL。所有列可空；LLM 必填才能生成，Embedding 可选（缺省降级）。
+LLM_CONFIG_COLUMNS = {
+    "llm_api_key": "llm_api_key TEXT DEFAULT NULL",
+    "llm_base_url": "llm_base_url TEXT DEFAULT NULL",
+    "llm_model": "llm_model TEXT DEFAULT NULL",
+    "embedding_api_key": "embedding_api_key TEXT DEFAULT NULL",
+    "embedding_base_url": "embedding_base_url TEXT DEFAULT NULL",
+    "embedding_model": "embedding_model TEXT DEFAULT NULL",
+}
+
+_fernet: Optional[Fernet] = None
+
+
+def _get_fernet() -> Fernet:
+    """Fernet 实例：密钥由 JWT_SECRET 的 SHA-256 派生（JWT_SECRET 丢失则无法解密）"""
+    global _fernet
+    if _fernet is None:
+        key = base64.urlsafe_b64encode(hashlib.sha256(get_secret().encode()).digest())
+        _fernet = Fernet(key)
+    return _fernet
+
+
+def _encrypt(plain: str) -> str:
+    return _get_fernet().encrypt(plain.encode()).decode()
+
+
+def _decrypt(token: str) -> str:
+    try:
+        return _get_fernet().decrypt(token.encode()).decode()
+    except Exception:  # noqa: BLE001
+        logger.error("[auth] 解密用户 API Key 失败（密钥可能已更换）")
+        return ""
+
+
+def get_user_llm_config(user_id: str) -> dict:
+    """读取用户模型配置（解密）。返回 {llm: {...}, embedding: {...}}，未配置字段为 None。"""
+    user = get_user_by_id(user_id)
+    if user is None:
+        return {"llm": {"api_key": None, "base_url": None, "model": None},
+                "embedding": {"api_key": None, "base_url": None, "model": None}}
+
+    def field(key: str):
+        v = user.get(key)
+        return _decrypt(v) if v and ("key" in key) else (v or None)
+
+    return {
+        "llm": {
+            "api_key": field("llm_api_key"),
+            "base_url": field("llm_base_url"),
+            "model": field("llm_model"),
+        },
+        "embedding": {
+            "api_key": field("embedding_api_key"),
+            "base_url": field("embedding_base_url"),
+            "model": field("embedding_model"),
+        },
+    }
+
+
+def set_user_llm_config(user_id: str, cfg: dict) -> None:
+    """保存用户模型配置（key 加密）。cfg = {llm: {api_key, base_url, model}, embedding: {...}}。"""
+    llm, emb = cfg.get("llm", {}), cfg.get("embedding", {}) or {}
+
+    def val(d, k):
+        v = (d.get(k) or "").strip()
+        return v or None
+
+    def key_val(d, k):
+        v = (d.get(k) or "").strip()
+        return _encrypt(v) if v else None
+
+    now = _now()
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE users SET llm_api_key=?, llm_base_url=?, llm_model=?, "
+            "embedding_api_key=?, embedding_base_url=?, embedding_model=?, updated_at=? WHERE id=?",
+            (
+                key_val(llm, "api_key"), val(llm, "base_url"), val(llm, "model"),
+                key_val(emb, "api_key"), val(emb, "base_url"), val(emb, "model"),
+                now, user_id,
+            ),
+        )
+
+
+def user_llm_configured(user_id: str) -> bool:
+    """用户是否已配置 LLM（至少 api_key + base_url + model）"""
+    cfg = get_user_llm_config(user_id)
+    llm = cfg.get("llm") or {}
+    return bool(llm.get("api_key") and llm.get("base_url") and llm.get("model"))
 
 
 # ──────────────────────────────────────────────────────────────────

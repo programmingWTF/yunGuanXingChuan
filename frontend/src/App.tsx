@@ -28,6 +28,7 @@ import CrossCultural from './pages/CrossCultural'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Admin from './pages/Admin'
+import Settings from './pages/Settings'
 
 /* ── 导航定义：科研工作台 + 科研流程 ── */
 const PIPELINE_NAV = [
@@ -105,6 +106,10 @@ function TopNav() {
                   🛡 管理后台
                 </NavLink>
               )}
+              <NavLink to="/settings"
+                className={({ isActive }) => `text-[11px] font-medium px-2 py-1 rounded-md border transition-all ${isActive ? 'border-sky-300 bg-sky-50 text-sky-700' : 'border-slate-200 text-slate-500 hover:border-sky-300 hover:text-sky-700'}`}>
+                  ⚙ 模型设置
+                </NavLink>
               <span className="text-xs font-medium text-slate-600 max-w-[80px] truncate" title={user.email}>{user.name}</span>
               <button onClick={() => void logout()}
                 className="text-[11px] text-slate-400 hover:text-red-600 transition-colors shrink-0">
@@ -211,6 +216,9 @@ function AppLayout() {
 
               {/* 管理后台（admin 角色；后端二次校验） */}
               <Route path="/admin" element={<Admin />} />
+
+              {/* 模型设置（多租户自带钥匙：用户自己的 LLM API） */}
+              <Route path="/settings" element={<Settings />} />
 
               {/* 兜底：未知路径回科研工作台 */}
               <Route path="*" element={<Workspace />} />

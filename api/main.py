@@ -58,6 +58,8 @@ else:
     app.include_router(knowledge.router, prefix="/api/knowledge", tags=["知识库"])
     app.include_router(workflow.router, prefix="/api/workflow", tags=["科研工作流"])
     app.include_router(auth.router, prefix="/api/auth", tags=["用户认证"])
+    from api.routes import user as user_routes
+    app.include_router(user_routes.router, prefix="/api/user", tags=["用户模型配置"])
     app.include_router(admin.router, prefix="/api/admin", tags=["管理后台"])
 
 

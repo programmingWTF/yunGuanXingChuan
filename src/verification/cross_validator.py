@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 class CrossValidator:
     """交叉验证器：结合 RAG + KG + Wikidata + Wikipedia 四路校验结果"""
 
-    def __init__(self):
-        self.rag_checker = RAGChecker()
+    def __init__(self, llm_client=None):
+        self.rag_checker = RAGChecker(llm_client=llm_client)
         self.kg_checker = KGChecker()
         self.external_validator = get_external_validator()
 

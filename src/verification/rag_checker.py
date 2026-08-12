@@ -19,13 +19,15 @@ logger = logging.getLogger(__name__)
 class RAGChecker:
     """RAG 校验器：通过向量检索验证事实断言"""
 
-    def __init__(self, similarity_threshold: float = 0.6):
+    def __init__(self, similarity_threshold: float = 0.6, llm_client=None):
         """
         Args:
             similarity_threshold: 相似度阈值，高于此值认为找到支持证据
+            llm_client: 多租户模式下当前用户的 LLM 客户端（None 用全局默认）
         """
         self.similarity_threshold = similarity_threshold
         self.vector_store = get_vector_store()
+        self.llm_client = llm_client
 
     def verify_claim(self, claim: str) -> Dict:
         """
@@ -85,7 +87,7 @@ class RAGChecker:
             '"evidence_summary": "证据摘要", "key_sources": ["来源"], "notes": "说明"}}'
         )
 
-        llm = get_llm_client()
+        llm = self.llm_client or get_llm_client()
         result = llm.chat_json(
             system_prompt="你是事实校验专家。请判断给定断言是否与参考文本一致。输出 JSON。",
             user_prompt=prompt_text,

@@ -13,3 +13,4 @@ pypdf>=5.0.0
 matplotlib>=3.8.0
 bcrypt>=4.0.0
 pyjwt>=2.8.0
+cryptography>=42.0.0
