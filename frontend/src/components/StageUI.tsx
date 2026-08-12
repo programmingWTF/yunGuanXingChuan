@@ -8,8 +8,9 @@
  * 点击前弹二次确认（ConfirmDialog），避免误触覆盖已确认产出物（issue #66）。
  */
 import { useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
+import { useAuth } from '../auth'
 import ConfirmDialog from './ConfirmDialog'
 
 export interface StageInfo {
@@ -77,10 +78,21 @@ export function StageActions({
 }) {
   // 重新运行属覆盖型危险操作：仅当该阶段已有已确认/产出物待覆盖时才需二次确认
   const [confirming, setConfirming] = useState(false)
+  const { user } = useAuth()
+  const navigate = useNavigate()
   const isRerun = status === 'completed'
   const handleRunClick = () => {
     if (isRerun) setConfirming(true) // 先确认再执行，避免误触清空旧产出物
     else onRun()
+  }
+  // 未登录：主界面可浏览，运行需登录
+  if (!user) {
+    return (
+      <button onClick={() => navigate('/login')}
+        className="btn-primary text-xs">
+        🔑 登录后使用
+      </button>
+    )
   }
   return (
     <div className="flex items-center gap-3 flex-wrap">

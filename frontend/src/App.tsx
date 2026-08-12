@@ -98,7 +98,7 @@ function TopNav() {
           </span>
           <BackendDot />
           <LiveClock />
-          {user && (
+          {user ? (
             <div className="flex items-center gap-2.5 pl-3 border-l border-slate-200">
               {user.role === 'admin' && (
                 <NavLink to="/admin"
@@ -115,6 +115,18 @@ function TopNav() {
                 className="text-[11px] text-slate-400 hover:text-red-600 transition-colors shrink-0">
                 退出
               </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
+              {/* 未登录：主界面可用（浏览），但运行操作需登录 */}
+              <NavLink to="/register"
+                className="text-[11px] font-medium px-2 py-1 rounded-md border border-slate-200 text-slate-500 hover:border-sky-300 hover:text-sky-700 transition-all">
+                注册
+              </NavLink>
+              <NavLink to="/login"
+                className="text-[11px] font-medium px-3 py-1 rounded-md bg-sky-600 text-white hover:bg-sky-700 transition-all">
+                登录
+              </NavLink>
             </div>
           )}
         </div>
@@ -178,8 +190,8 @@ function AppLayout() {
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-xs text-slate-400">加载中…</div>
   }
-  // 路由守卫：未登录只能访问登录/注册页；已登录访问登录/注册页则回工作台
-  if (!user && !isAuthPage) return <Navigate to="/login" replace />
+  // 未登录：不再强制跳登录页——主界面可浏览（运行/生成操作替换为登录按钮）
+  // 已登录访问登录/注册页则回工作台
   if (user && isAuthPage) return <Navigate to="/" replace />
 
   // 登录/注册页：独立布局（无顶栏/页脚）
