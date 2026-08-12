@@ -34,6 +34,8 @@ class WorkflowEngine:
         self.store = store or get_project_store()
         # agents: {stage: BaseAgent}；不传则延迟构建（避免导入环 + 测试可注入 mock）
         self._agents = agents or {}
+        # 缓存对应的 llm_client（多租户防串号：缓存 agent 绑定的客户端）
+        self._agents_client = None
 
     # ------------------------------------------------------------------
     # Agent 构建（延迟导入，避免循环依赖）
@@ -60,18 +62,25 @@ class WorkflowEngine:
         }
 
     def _get_agent(self, stage: int, llm_client=None) -> Any:
-        # 多租户：传入用户 client 时每次新建（避免缓存跨用户串号——
-        # 用户 A 的 agent 绝不能复用用户 B 的 LLM key）；开销仅为实例化，可忽略
-        if llm_client is not None:
-            return self._build_agents(llm_client=llm_client).get(stage)
-        # 兼容旧调用（无 client）：用缓存（平台默认配置）
+        """
+        获取阶段 agent。缓存策略（多租户防串号）：
+        - 缓存为空 → 构建并记录归属 client
+        - 缓存归属的 client 与本次不同 → 整体重建（用户 A 的 agent 绝不复用给用户 B）
+        - 同 client / fixture 注入的 mock agents（无归属）→ 复用缓存
+        """
+        if not self._agents:
+            self._agents = self._build_agents(llm_client=llm_client)
+            self._agents_client = llm_client
+        elif llm_client is not None and self._agents_client is not None and self._agents_client is not llm_client:
+            # 缓存 agent 绑定的是其他用户的 client → 整体重建（防串号）
+            self._agents = self._build_agents(llm_client=llm_client)
+            self._agents_client = llm_client
         if stage not in self._agents:
-            if not self._agents:
-                self._agents = self._build_agents(llm_client=None)
-            else:
-                built = self._build_agents(llm_client=None)
-                for k, v in built.items():
-                    self._agents.setdefault(k, v)
+            # 部分缺失时补齐
+            built = self._build_agents(llm_client=llm_client)
+            for k, v in built.items():
+                self._agents.setdefault(k, v)
+            self._agents_client = llm_client
         return self._agents.get(stage)
 
     # ------------------------------------------------------------------
@@ -115,7 +124,9 @@ class WorkflowEngine:
         - 产出物落盘为 awaiting_review（等待研究者确认）
         """
         from src.llm_client import get_llm_client
-        llm_client = get_llm_client(llm_config)
+        # 多租户：仅当调用方提供用户配置时才构造 per-user client（
+        # 无配置/测试环境不触发 openai SDK 构造，避免污染与副作用）
+        llm_client = get_llm_client(llm_config) if llm_config else None
 
         project = self.store.get(project_id)
         if project is None:
@@ -159,8 +170,7 @@ class WorkflowEngine:
                 loader = get_data_loader()
                 if not loader.load_science_facts(topic):
                     logger.info(f"[WorkflowEngine] 本地无「{topic}」科学数据，自动生成中...")
-                    from src.llm_client import LLMClient
-                    client = llm_client
+                    client = llm_client or get_llm_client()
                     result = client.chat_json(
                         system_prompt="你是航天科技领域数据标注专家。为给定议题生成结构化科学事实。必须输出标准 JSON。",
                         user_prompt=(
@@ -277,7 +287,9 @@ class WorkflowEngine:
         - 多租户：llm_config 为当前用户模型配置（None 用全局默认）
         """
         from src.llm_client import get_llm_client
-        llm_client = get_llm_client(llm_config)
+        # 多租户：仅当调用方提供用户配置时才构造 per-user client（
+        # 无配置/测试环境不触发 openai SDK 构造，避免污染与副作用）
+        llm_client = get_llm_client(llm_config) if llm_config else None
         project = self.store.get(project_id)
         if project is None:
             raise ValueError(f"项目不存在: {project_id}")

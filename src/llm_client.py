@@ -36,7 +36,9 @@ class LLMClient:
         embedding_base_url: Optional[str] = None,
         embedding_model: Optional[str] = None,
     ):
-        self.api_key = api_key or QWEN_API_KEY
+        # 空 key 用占位符：openai SDK 在构造时校验空 key 会抛 Missing credentials；
+        # 占位后构造成功、真实调用时才失败（便于测试/无 key 环境加载模块）
+        self.api_key = api_key or QWEN_API_KEY or "missing"
         self.base_url = base_url or QWEN_BASE_URL
         self.model = model or QWEN_MODEL
         self.max_retries = max_retries

@@ -575,6 +575,12 @@ def _make_auth_client(app, *, email=None, admin=False):
                 os.environ["ADMIN_EMAILS"] = prev
     else:
         user = create_user(email, "测试用户", "Test@123456")
+    # 多租户模式：API 测试默认给用户配 mock LLM（绕过「未配置 400」拦截；agent 层已 mock）
+    from api.auth import set_user_llm_config
+    set_user_llm_config(user["id"], {
+        "llm": {"api_key": "test-key", "base_url": "http://llm.test/v1", "model": "test-model"},
+        "embedding": None,
+    })
     client = TestClient(app)
     client.cookies.set(SESSION_COOKIE, issue_token(user["id"]))
     return user, client
@@ -723,9 +729,9 @@ class TestAuthAPI:
             # 错误验证码 → 400
             r = client.post("/api/auth/register", json={"name": "测试", "email": email, "password": "Passw0rd!", "code": "000000"})
             assert r.status_code == 400
-            # 正确验证码 → 注册成功（普通 user 角色）
+            # 正确验证码 → 注册成功（普通 user 角色；201 对齐 liguiyu-home）
             r = client.post("/api/auth/register", json={"name": "测试", "email": email, "password": "Passw0rd!", "code": code})
-            assert r.status_code == 200
+            assert r.status_code == 201
             assert r.json()["user"]["role"] == "user"
             # 重复注册 → 409
             r = client.post("/api/auth/register", json={"name": "测试", "email": email, "password": "Passw0rd!", "code": code})
@@ -762,7 +768,7 @@ class TestAuthAPI:
                     client.post("/api/auth/send-code", json={"email": email})
                     code = send_mock.call_args[0][1]
                 r = client.post("/api/auth/register", json={"name": "老板", "email": email, "password": "Passw0rd!", "code": code})
-                assert r.status_code == 200
+                assert r.status_code == 201
                 assert r.json()["user"]["role"] == "admin"
         finally:
             if prev is None:
