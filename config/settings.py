@@ -14,14 +14,14 @@ PROMPTS_DIR = CONFIG_DIR / "prompts"
 # 加载环境变量
 load_dotenv(PROJECT_ROOT / ".env")
 
-# Qwen API 配置
+# LLM API 配置（默认 DeepSeek 官方；模型 deepseek-v4-flash）
 QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
-QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
+QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "https://api.deepseek.com/v1")
 QWEN_MODEL = os.getenv("QWEN_MODEL", "deepseek-v4-flash")
-QWEN_MODEL_FAST = os.getenv("QWEN_MODEL_FAST", "qwen-plus")
-QWEN_MODEL_LONG = os.getenv("QWEN_MODEL_LONG", "qwen-long")
+QWEN_MODEL_FAST = os.getenv("QWEN_MODEL_FAST", "deepseek-v4-flash")
+QWEN_MODEL_LONG = os.getenv("QWEN_MODEL_LONG", "deepseek-v4-flash")
+# Embedding 单独用独立端点和 Key（DeepSeek 无 embedding 服务，保留通义/百炼）
 QWEN_EMBEDDING_MODEL = os.getenv("QWEN_EMBEDDING_MODEL", "qwen3.7-text-embedding")
-# Embedding 单独用独立端点和 Key
 QWEN_EMBEDDING_BASE_URL = os.getenv("QWEN_EMBEDDING_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
 QWEN_EMBEDDING_API_KEY = os.getenv("QWEN_EMBEDDING_API_KEY", QWEN_API_KEY)
 
