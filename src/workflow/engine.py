@@ -38,7 +38,7 @@ class WorkflowEngine:
     # ------------------------------------------------------------------
     # Agent 构建（延迟导入，避免循环依赖）
     # ------------------------------------------------------------------
-    def _build_agents(self) -> Dict[int, Any]:
+    def _build_agents(self, llm_client=None) -> Dict[int, Any]:
         from src.agents.research_inspiration_agent import ResearchInspirationAgent
         from src.agents.literature_review_agent import LiteratureReviewAgent
         from src.agents.research_question_agent import ResearchQuestionAgent
@@ -50,22 +50,26 @@ class WorkflowEngine:
         # max_retries=1：LLM 输出不合格时快速失败，让前端立即显示错误；
         # max_tokens 按阶段调大以保障生成质量（写作/评审最大），配合 run_stage 240s 超时
         return {
-            WorkflowStage.INSPIRATION: ResearchInspirationAgent(max_retries=1, max_tokens=6000),
-            WorkflowStage.LITERATURE: LiteratureReviewAgent(max_retries=1, max_tokens=6000),
-            WorkflowStage.DESIGN: ResearchQuestionAgent(max_retries=1, max_tokens=5000),
-            WorkflowStage.METHOD: MethodAdvisorAgent(max_retries=1, max_tokens=5000),
-            WorkflowStage.DATA_ANALYSIS: DataAnalysisAgent(max_retries=1, max_tokens=6000),
-            WorkflowStage.WRITING: PaperWriterAgent(max_retries=1, max_tokens=8000),
-            WorkflowStage.REVIEW: ReviewerSimulatorAgent(max_retries=1, max_tokens=6000),
+            WorkflowStage.INSPIRATION: ResearchInspirationAgent(llm_client=llm_client, max_retries=1, max_tokens=6000),
+            WorkflowStage.LITERATURE: LiteratureReviewAgent(llm_client=llm_client, max_retries=1, max_tokens=6000),
+            WorkflowStage.DESIGN: ResearchQuestionAgent(llm_client=llm_client, max_retries=1, max_tokens=5000),
+            WorkflowStage.METHOD: MethodAdvisorAgent(llm_client=llm_client, max_retries=1, max_tokens=5000),
+            WorkflowStage.DATA_ANALYSIS: DataAnalysisAgent(llm_client=llm_client, max_retries=1, max_tokens=6000),
+            WorkflowStage.WRITING: PaperWriterAgent(llm_client=llm_client, max_retries=1, max_tokens=8000),
+            WorkflowStage.REVIEW: ReviewerSimulatorAgent(llm_client=llm_client, max_retries=1, max_tokens=6000),
         }
 
-    def _get_agent(self, stage: int) -> Any:
+    def _get_agent(self, stage: int, llm_client=None) -> Any:
+        # 多租户：传入用户 client 时每次新建（避免缓存跨用户串号——
+        # 用户 A 的 agent 绝不能复用用户 B 的 LLM key）；开销仅为实例化，可忽略
+        if llm_client is not None:
+            return self._build_agents(llm_client=llm_client).get(stage)
+        # 兼容旧调用（无 client）：用缓存（平台默认配置）
         if stage not in self._agents:
             if not self._agents:
-                self._agents = self._build_agents()
+                self._agents = self._build_agents(llm_client=None)
             else:
-                # 部分注入时补齐缺失
-                built = self._build_agents()
+                built = self._build_agents(llm_client=None)
                 for k, v in built.items():
                     self._agents.setdefault(k, v)
         return self._agents.get(stage)
@@ -101,14 +105,18 @@ class WorkflowEngine:
     # ------------------------------------------------------------------
     # 阶段执行
     # ------------------------------------------------------------------
-    def run_stage(self, project_id: str, stage: int, inputs: Dict[str, Any]) -> StageRecord:
+    def run_stage(self, project_id: str, stage: int, inputs: Dict[str, Any],
+                  llm_config: Optional[dict] = None) -> StageRecord:
         """
-        执行指定阶段智能体。
+        执行指定阶段智能体（多租户：llm_config 为当前用户模型配置，None 则用全局默认）。
 
         - 前置校验：项目存在；阶段在 [1,7]；未解锁（> current_stage）拒绝
         - 注入知识库/搜索上下文（try/except 降级）
         - 产出物落盘为 awaiting_review（等待研究者确认）
         """
+        from src.llm_client import get_llm_client
+        llm_client = get_llm_client(llm_config)
+
         project = self.store.get(project_id)
         if project is None:
             raise ValueError(f"项目不存在: {project_id}")
@@ -121,15 +129,16 @@ class WorkflowEngine:
                 f"阶段 {stage} 未解锁：当前进度在第 {project.current_stage} 阶段"
             )
 
-        agent = self._get_agent(stage)
+        agent = self._get_agent(stage, llm_client)
         if agent is None:
             raise RuntimeError(f"阶段 {stage} 无对应智能体")
 
-        # 标记运行中（清空旧产出物避免失败残留；递增运行次数）
+        # 标记运行中（清空旧产出物与错误避免失败残留；递增运行次数）
         self.store.update_stage(
             project_id, stage,
             status=StageStatus.RUNNING,
             clear_output=True,
+            error=None,
             increment_run_count=True,
             append_history={"stage": stage, "action": "run_start", "summary": f"开始执行{STAGE_META[WorkflowStage(stage)]['name']}"},
         )
@@ -151,7 +160,7 @@ class WorkflowEngine:
                 if not loader.load_science_facts(topic):
                     logger.info(f"[WorkflowEngine] 本地无「{topic}」科学数据，自动生成中...")
                     from src.llm_client import LLMClient
-                    client = LLMClient()
+                    client = llm_client
                     result = client.chat_json(
                         system_prompt="你是航天科技领域数据标注专家。为给定议题生成结构化科学事实。必须输出标准 JSON。",
                         user_prompt=(
@@ -208,7 +217,7 @@ class WorkflowEngine:
                     output["topic"] = full_inputs.get("topic", "")
                 output.setdefault("project_title", full_inputs.get("project_title", ""))
                 # RAG + KG 双校验：对产出物中的关键断言做事实校验，结果附加到产出物（不阻塞、可降级）
-                self._attach_verification(stage, output, full_inputs.get("topic", ""))
+                self._attach_verification(stage, output, full_inputs.get("topic", ""), llm_client)
             updated = self.store.update_stage(
                 project_id, stage,
                 status=StageStatus.AWAITING_REVIEW,
@@ -256,7 +265,8 @@ class WorkflowEngine:
     # ------------------------------------------------------------------
     def run_all(self, project_id: str, materials: Optional[List[Dict]] = None,
                 style_sample: Optional[str] = None,
-                topic: Optional[str] = None) -> Dict[str, Any]:
+                topic: Optional[str] = None,
+                llm_config: Optional[dict] = None) -> Dict[str, Any]:
         """
         一键跑通全部 7 个科研阶段（选题→文献→设计→方法→数据→写作→评审）。
 
@@ -264,7 +274,10 @@ class WorkflowEngine:
         - 数据分析（⑤）无素材时由 Agent 做框架性分析；写作（⑥）无风格样本用规范风格
         - 单阶段失败即停止（后续阶段依赖前序产出）
         - 所有阶段直接置 COMPLETED，项目 status=completed
+        - 多租户：llm_config 为当前用户模型配置（None 用全局默认）
         """
+        from src.llm_client import get_llm_client
+        llm_client = get_llm_client(llm_config)
         project = self.store.get(project_id)
         if project is None:
             raise ValueError(f"项目不存在: {project_id}")
@@ -299,7 +312,7 @@ class WorkflowEngine:
             inputs.update(context)
             self._inject_previous_outputs(project, stage, inputs)
 
-            agent = self._get_agent(stage)
+            agent = self._get_agent(stage, llm_client)
             try:
                 output = self._run_with_timeout(
                     lambda a=agent, i=dict(inputs): a.run(i),
@@ -312,7 +325,7 @@ class WorkflowEngine:
                         output["topic"] = topic
                     output.setdefault("project_title", project.title)
                     # RAG + KG 双校验：对产出物中的关键断言做事实校验，结果附加到产出物（不阻塞、可降级）
-                    self._attach_verification(stage, output, topic)
+                    self._attach_verification(stage, output, topic, llm_client)
                 project = self.store.update_stage(
                     project_id, stage,
                     status=StageStatus.COMPLETED,
@@ -528,7 +541,7 @@ class WorkflowEngine:
                 entities.append(str(rq.get("id") or rq.get("text"))[:30])
         return [e for e in entities if e][:4]
 
-    def _attach_verification(self, stage: int, output: Dict[str, Any], topic: str) -> None:
+    def _attach_verification(self, stage: int, output: Dict[str, Any], topic: str, llm_client=None) -> None:
         """
         RAG + KG 双校验：对产出物关键断言做交叉校验，结果挂到 output["verification"]。
 
@@ -549,7 +562,7 @@ class WorkflowEngine:
         entities = self._extract_entities(output, topic)
 
         try:
-            validator = CrossValidator()
+            validator = CrossValidator(llm_client=llm_client)
         except Exception as e:
             logger.warning(f"[WorkflowEngine] 校验器初始化失败，跳过校验: {e}")
             return
@@ -604,14 +617,16 @@ class WorkflowEngine:
     # ------------------------------------------------------------------
     # 章节润色 / 今日热点（轻量服务，不涉及阶段状态机）
     # ------------------------------------------------------------------
-    def polish_section(self, section: str, content: str, instruction: str = "") -> str:
+    def polish_section(self, section: str, content: str, instruction: str = "",
+                      llm_config: Optional[dict] = None) -> str:
         """
         AI 润色论文章节（独立于阶段状态机，不落盘）。
 
         - 返回润色后的章节正文；超时/异常抛错由路由转 500
+        - 多租户：llm_config 为当前用户模型配置
         """
         from src.llm_client import get_llm_client
-        llm = get_llm_client()
+        llm = get_llm_client(llm_config)
         instruction = (instruction or "").strip() or (
             "在保持原意与学术规范的前提下润色：表达更凝练、逻辑更清晰、减少AI味；"
             "不改动事实数据与参考文献信息。"

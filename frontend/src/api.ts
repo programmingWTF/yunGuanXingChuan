@@ -575,6 +575,8 @@ export interface AuthUser {
   email: string
   name: string
   role: 'user' | 'admin'
+  /** 是否已配置自己的 LLM API（多租户自带钥匙模式） */
+  llm_configured?: boolean
 }
 
 /** 注册前发送邮箱验证码（6 位，10 分钟有效） */
@@ -603,7 +605,36 @@ export async function logoutUser() {
 /** 当前登录用户（未登录 401） */
 export async function getMe() {
   const res = await api.get('/auth/me')
-  return res.data as { user: AuthUser & { created_at: number } }
+  return res.data as { user: AuthUser & { created_at: number; llm_configured: boolean } }
+}
+
+// ============ 用户模型配置（多租户自带钥匙）============
+
+export interface LlmConfigView {
+  api_key_masked: string
+  configured: boolean
+  base_url: string
+  model: string
+}
+
+export interface LlmConfigResponse {
+  llm: LlmConfigView
+  embedding: LlmConfigView
+}
+
+/** 查看当前用户模型配置（key 掩码） */
+export async function getLlmConfig() {
+  const res = await api.get('/user/llm-config')
+  return res.data as LlmConfigResponse
+}
+
+/** 保存模型配置（自动验证连通；embedding 留空 = 清除/降级） */
+export async function saveLlmConfig(cfg: {
+  llm: { api_key: string; base_url: string; model: string }
+  embedding?: { api_key: string; base_url: string; model: string } | null
+}) {
+  const res = await api.put('/user/llm-config', cfg)
+  return res.data as { success: boolean; message: string }
 }
 
 // ============ 管理后台（admin）============
@@ -615,6 +646,7 @@ export interface AdminUser {
   role: string
   created_at: number
   project_count: number
+  llm_configured?: boolean
 }
 
 export interface AdminProject extends ResearchProject {

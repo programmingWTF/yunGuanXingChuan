@@ -22,10 +22,21 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
 from pydantic import BaseModel, Field
 
-from api.auth import require_user
+from api.auth import get_user_llm_config, require_user, user_llm_configured
 from src.workflow import get_workflow_engine
 
 router = APIRouter()
+
+
+def _require_llm_config(request: Request) -> dict:
+    """取当前用户的模型配置；未配置 LLM 时 400 引导去设置页（多租户自带钥匙模式）"""
+    user = require_user(request)
+    if not user_llm_configured(user["id"]):
+        raise HTTPException(
+            status_code=400,
+            detail="请先在「模型设置」中配置你的 LLM API（Key/BaseURL/模型ID）再生成",
+        )
+    return get_user_llm_config(user["id"])
 
 
 def _require_owned_project(project_id: str, user: dict):
@@ -106,8 +117,9 @@ def run_stage(project_id: str, stage: int, req: RunStageRequest, request: Reques
     """执行阶段智能体（同步）；产出物落盘为 awaiting_review"""
     user = require_user(request)
     _require_owned_project(project_id, user)
+    llm_config = _require_llm_config(request)
     try:
-        record = get_workflow_engine().run_stage(project_id, stage, req.inputs)
+        record = get_workflow_engine().run_stage(project_id, stage, req.inputs, llm_config=llm_config)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception:
@@ -154,6 +166,7 @@ def run_all(project_id: str, req: RunAllRequest, request: Request, background_ta
     """
     user = require_user(request)
     project = _require_owned_project(project_id, user)
+    llm_config = _require_llm_config(request)
     if project.status == "completed" and all(
         (project.stages.get(str(s)) or {}).status.value == "completed" for s in range(1, 8)
     ):
@@ -162,6 +175,7 @@ def run_all(project_id: str, req: RunAllRequest, request: Request, background_ta
     background_tasks.add_task(
         get_workflow_engine().run_all, project_id,
         materials=req.materials, style_sample=req.style_sample, topic=req.topic,
+        llm_config=llm_config,
     )
     return {"status": "running", "message": "全流程生成已启动，请通过 GET /projects/{id} 查看各阶段进度"}
 
@@ -216,10 +230,11 @@ def polish_stage_section(project_id: str, stage: int, req: PolishSectionRequest,
     """AI 润色论文章节：返回润色后正文，不修改已确认产出物"""
     user = require_user(request)
     _require_owned_project(project_id, user)
+    llm_config = _require_llm_config(request)
     if stage != 6:
         raise HTTPException(status_code=400, detail="仅论文写作（⑥）阶段支持章节润色")
     try:
-        polished = get_workflow_engine().polish_section(req.section, req.content, req.instruction)
+        polished = get_workflow_engine().polish_section(req.section, req.content, req.instruction, llm_config=llm_config)
     except Exception:
         import logging
         logging.getLogger(__name__).exception(f"章节润色失败（项目 {project_id}）")

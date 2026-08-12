@@ -28,6 +28,7 @@ from api.auth import (
     issue_token,
     save_verification_code,
     set_session_cookie,
+    user_llm_configured,
     verify_code,
     verify_password,
 )
@@ -160,5 +161,6 @@ def me(request: Request):
             "name": user["name"],
             "role": user["role"],
             "created_at": user["created_at"],
+            "llm_configured": user_llm_configured(user["id"]),
         }
     }

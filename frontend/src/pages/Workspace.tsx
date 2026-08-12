@@ -8,7 +8,9 @@
  */
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import axios from 'axios'
+import { Link } from 'react-router-dom'
 import { useStore } from '../store'
+import { useAuth } from '../auth'
 import { runAllWorkflow, getWorkflowProject, exportWorkflowProject, getHotTopics, deleteWorkflowProject } from '../api'
 import type { ResearchProject } from '../api'
 import ResearchPipeline from '../components/ResearchPipeline'
@@ -43,6 +45,7 @@ function downloadText(filename: string, content: string, mime: string) {
 
 export default function Workspace() {
   const { projects, currentProject, refreshProjects, loadProject, createProject, setCurrentProject, setProjects } = useStore()
+  const { user } = useAuth()
   const [interest, setInterest] = useState('')
   const [creating, setCreating] = useState(false)
   const [generatingAll, setGeneratingAll] = useState(false)
@@ -190,6 +193,18 @@ export default function Workspace() {
 
   return (
     <div className="space-y-6">
+      {/* 未配置 LLM API 引导（多租户自带钥匙模式） */}
+      {user && !user.llm_configured && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+          <p className="text-xs text-amber-700">
+            ⚙️ 平台不提供推理 API：生成前请先在<b>模型设置</b>里填你自己的 Qwen API（Key / BaseURL / 模型ID，阿里云百炼或 Token Plan 获取，新用户有免费额度）。向量模型可选，不填自动降级。
+          </p>
+          <Link to="/settings" className="text-[11px] font-medium px-3 py-1.5 rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-all shrink-0">
+            去配置 →
+          </Link>
+        </div>
+      )}
+
       {/* 顶部标语（他山 Hero：短句 Slogan 体） */}
       <div className="py-4">
         <h2 className="font-display text-3xl font-semibold text-slate-900 tracking-tight leading-tight">

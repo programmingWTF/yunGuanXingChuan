@@ -15,11 +15,12 @@ PROMPTS_DIR = CONFIG_DIR / "prompts"
 load_dotenv(PROJECT_ROOT / ".env")
 
 # Qwen API 配置
+# Qwen API 配置（平台默认：阿里云百炼 / Token Plan）
 QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
 QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
-QWEN_MODEL = os.getenv("QWEN_MODEL", "deepseek-v4-flash")
-QWEN_MODEL_FAST = os.getenv("QWEN_MODEL_FAST", "qwen-plus")
-QWEN_MODEL_LONG = os.getenv("QWEN_MODEL_LONG", "qwen-long")
+QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen3.8-max")
+QWEN_MODEL_FAST = os.getenv("QWEN_MODEL_FAST", "qwen3.8-max")
+QWEN_MODEL_LONG = os.getenv("QWEN_MODEL_LONG", "qwen3.8-max")
 QWEN_EMBEDDING_MODEL = os.getenv("QWEN_EMBEDDING_MODEL", "qwen3.7-text-embedding")
 # Embedding 单独用独立端点和 Key
 QWEN_EMBEDDING_BASE_URL = os.getenv("QWEN_EMBEDDING_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")

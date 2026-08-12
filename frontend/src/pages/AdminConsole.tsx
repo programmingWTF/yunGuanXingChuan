@@ -103,6 +103,7 @@ export default function AdminConsole() {
                       <th className="py-2 pr-4 font-medium">角色</th>
                       <th className="py-2 pr-4 font-medium">注册时间</th>
                       <th className="py-2 pr-4 font-medium">项目数</th>
+                      <th className="py-2 pr-4 font-medium">模型配置</th>
                       <th className="py-2 font-medium text-right">操作</th>
                     </tr>
                   </thead>
@@ -118,6 +119,11 @@ export default function AdminConsole() {
                         </td>
                         <td className="py-2.5 pr-4 text-slate-400">{new Date(u.created_at * 1000).toLocaleString('zh-CN')}</td>
                         <td className="py-2.5 pr-4 text-slate-600">{u.project_count}</td>
+                        <td className="py-2.5 pr-4">
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded border ${u.llm_configured ? 'text-emerald-600 border-emerald-200 bg-emerald-50' : 'text-slate-400 border-slate-200'}`}>
+                            {u.llm_configured ? '已配置' : '未配置'}
+                          </span>
+                        </td>
                         <td className="py-2.5 text-right whitespace-nowrap">
                           <button onClick={() => void handleRole(u)} disabled={busyId === u.id}
                             className="text-[10px] px-2 py-1 rounded-md border border-slate-200 text-slate-500 hover:border-sky-300 hover:text-sky-700 disabled:opacity-40 mr-1.5 transition-all">
