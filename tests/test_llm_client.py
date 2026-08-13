@@ -204,17 +204,30 @@ class TestEmbeddingKeyOwnership:
         assert "user-main-key-abc" in str(c._embedding_client.api_key), "embedding 必须用用户主 key"
         assert "user-main.example" in str(c._embedding_client.base_url), "embedding 必须用用户主 base_url"
 
-    def test_global_default_uses_platform_main_key(self, monkeypatch):
-        """全局默认模式：embedding fallback 平台主 key（QWEN_API_KEY），不是独立 embedding key"""
+    def test_global_default_uses_platform_embedding_key(self, monkeypatch):
+        """全局默认模式：embedding 用平台独立 embedding key（平台自己的基础设施）"""
         from src.llm_client import LLMClient
         monkeypatch.setattr("src.llm_client.QWEN_API_KEY", "platform-main-key")
         monkeypatch.setattr("src.llm_client.QWEN_BASE_URL", "https://platform-main.example/v1")
-        monkeypatch.setattr("src.llm_client.QWEN_EMBEDDING_API_KEY", "platform-emb-key-should-not-be-used")
+        monkeypatch.setattr("src.llm_client.QWEN_EMBEDDING_API_KEY", "platform-emb-key")
         monkeypatch.setattr("src.llm_client.QWEN_EMBEDDING_BASE_URL", "https://platform-emb.example/v1")
-        c = LLMClient(api_key="platform-main-key", base_url="https://platform-main.example/v1")
+        c = LLMClient()  # 无参构造 = 全局默认
         assert c._embedding_client is not None
-        assert "platform-main-key" in str(c._embedding_client.api_key)
-        assert "platform-emb-key-should-not-be-used" not in str(c._embedding_client.api_key)
+        assert "platform-emb-key" in str(c._embedding_client.api_key)
+        assert "platform-emb.example" in str(c._embedding_client.base_url)
+
+    def test_tenant_mode_never_uses_platform_embedding_key(self, monkeypatch):
+        """多租户模式：用户没配 embedding → 用用户主 key，绝不 fallback 平台 embedding key"""
+        from src.llm_client import LLMClient
+        monkeypatch.setattr("src.llm_client.QWEN_EMBEDDING_API_KEY", "platform-emb-key-should-not-leak")
+        c = LLMClient.from_config({
+            "llm": {"api_key": "user-main-key", "base_url": "https://user-main.example/v1", "model": "m"},
+            "embedding": None,
+        })
+        assert c._embedding_client is not None
+        assert "user-main-key" in str(c._embedding_client.api_key)
+        assert "platform-emb-key-should-not-leak" not in str(c._embedding_client.api_key)
+        assert "user-main.example" in str(c._embedding_client.base_url)
 
     def test_no_key_anywhere_disables_embedding(self, monkeypatch):
         """无任何 key → embedding client 为 None（调用方降级）"""
