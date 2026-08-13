@@ -74,7 +74,8 @@ export interface SearchSource {
   url: string
   title: string
   content: string
-  score: number
+  /** 可选：工作流阶段产出物（search_sources）不携带 score，仅旧版 pipeline 的 SearchSource.to_dict() 有 */
+  score?: number
   source: string  // "TavilySearch" | "QwenWebSearch"
 }
 

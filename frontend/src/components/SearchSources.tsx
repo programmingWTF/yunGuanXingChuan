@@ -81,10 +81,12 @@ export default function SearchSources({
   title = '📎 联网搜索来源',
   className = '',
 }: SearchSourcesProps) {
+  // 注意：useState 必须置于任何提前 return 之前（React Hooks 规则），
+  // 否则 sources 从空变非空时会在同一组件上出现 Hook 数量变化导致崩溃
+  const [expanded, setExpanded] = useState(false)
   const list = Array.isArray(sources) ? sources.filter(Boolean) : []
   if (list.length === 0) return null
 
-  const [expanded, setExpanded] = useState(false)
   const shown = expanded ? list : list.slice(0, collapseAfter)
   const hasMore = list.length > collapseAfter
 
