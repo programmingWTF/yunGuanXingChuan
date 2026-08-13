@@ -42,6 +42,9 @@ API_PORT = int(os.getenv("API_PORT", "8000"))
 # Tavily AI 搜索引擎
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
 
+# 他山世界 TopicLab 学术搜索（第三路引擎；token 由组长统一管理，不与用户绑定）
+TASHAN_TOKEN = os.getenv("TASHAN_TOKEN", "")
+
 # 阿里云百炼 WebSearch MCP（联网搜索）
 DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY", "")
 DASHSCOPE_MCP_URL = "https://dashscope.aliyuncs.com/api/v1/mcps/WebSearch/mcp"
