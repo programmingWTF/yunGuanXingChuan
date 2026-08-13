@@ -73,6 +73,7 @@ class DebateEngine:
         self._motion_amend_count: Dict[str, int] = {}  # 动议修正次数
         self._consecutive_no_improvement: int = 0  # 连续无提升轮次（提前闭幕启发式）
         self._last_score: float = 0.0  # 最近一轮的通过率评分
+        self._search_sources: List[Dict] = []  # 累积联网搜索来源（结构化，Issue #97）
 
     def open_parliament(self, topic: str, science_facts: Dict = None,
                         context_analysis: Dict = None) -> List[Motion]:
@@ -241,7 +242,15 @@ class DebateEngine:
             search_sources = search_service.search_for_topic(search_query[:80])
             if search_sources:
                 search_context = search_service.format_search_context(search_sources)
-                logger.info(f"  联网搜索获取 {len(search_sources)} 条来源")
+                # 结构化沉淀来源（去重累积，供 DeliberationTranscript.final_strategies 回传前端，Issue #97）
+                for s in search_sources:
+                    d = s.to_dict() if hasattr(s, "to_dict") else {}
+                    if not d:
+                        continue
+                    key = (d.get("url") or "", d.get("title") or "")
+                    if key not in {(x.get("url", "") or "", x.get("title", "") or "") for x in self._search_sources}:
+                        self._search_sources.append(d)
+                logger.info(f"  联网搜索获取 {len(search_sources)} 条来源，累积 {len(self._search_sources)} 条")
         except Exception as e:
             logger.warning(f"  联网搜索失败（不影响辩论）: {e}")
 
@@ -486,6 +495,12 @@ class DebateEngine:
             total_rounds=len(self.rounds),
         )
 
+        # 结构化联网搜索来源：外部（pipeline）已带 search_sources 则尊重外部，否则补上辩论过程累积的来源
+        # （Issue #97：让 DeliberationTranscript.final_strategies 随时可被前端消费来源）
+        fs = dict(final_strategies or closing or {})
+        if not fs.get("search_sources") and self._search_sources:
+            fs["search_sources"] = self._search_sources
+
         transcript = DeliberationTranscript(
             topic=self.topic,
             total_rounds=len(self.rounds),
@@ -493,7 +508,7 @@ class DebateEngine:
             motions=self.motions,
             votes=self.votes,
             minority_opinions=self.minority_opinions,
-            final_strategies=final_strategies or closing,
+            final_strategies=fs,
             started_at=self.started_at,
             completed_at=datetime.now().isoformat(),
         )
