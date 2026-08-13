@@ -247,12 +247,21 @@ class UserVectorStore:
         docs.extend(chunks)
         self._save_meta(docs)
         self._store.build_index(documents=docs)
+        # 持久化 FAISS 索引文件（否则重启后索引丢失，且 search 会错误地重建全局索引）
+        self._store._save_index()
         return len(chunks)
 
     def search(self, query: str, top_k: int = 5) -> List[Dict]:
         """在用户自己的论文库中检索"""
-        if not self._load_meta():
+        docs = self._load_meta()
+        if not docs:
             return []
+        # 索引未加载或为空时，用用户自己的文档重建（避免 fallback 到全局库）
+        if self._store.index is None or self._store.index.ntotal == 0:
+            if not self._store._load_index():
+                self._store.build_index(documents=docs)
+            if self._store.index is None or self._store.index.ntotal == 0:
+                return []
         return self._store.search(query, top_k=top_k)
 
     def remove_paper(self, paper_id: int) -> None:
@@ -261,6 +270,7 @@ class UserVectorStore:
         self._save_meta(docs)
         if docs:
             self._store.build_index(documents=docs)
+            self._store._save_index()
         else:
             # 空库：清空索引
             import faiss
