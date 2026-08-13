@@ -52,6 +52,7 @@ class LLMClient:
         # 多租户模式：用户可填可选 embedding 配置；不填则 _embedding_client=None，
         # get_embedding 返回 None → 调用方降级（如字符串匹配）
         self._embedding_model = embedding_model or QWEN_EMBEDDING_MODEL
+        embedding_api_key = embedding_api_key or QWEN_EMBEDDING_API_KEY
         if embedding_api_key:
             self._embedding_client = OpenAI(
                 api_key=embedding_api_key,
