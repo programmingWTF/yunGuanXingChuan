@@ -52,11 +52,15 @@ class LLMClient:
         # 多租户模式：用户可填可选 embedding 配置；不填则 _embedding_client=None，
         # get_embedding 返回 None → 调用方降级（如字符串匹配）
         self._embedding_model = embedding_model or QWEN_EMBEDDING_MODEL
-        embedding_api_key = embedding_api_key or QWEN_EMBEDDING_API_KEY
+        # 多租户"自带钥匙"：向量模型（embedding）只能用当前生效的用户密钥。
+        # 用户未单独配置 embedding 时，fallback 到主 LLM key（api_key/base_url），
+        # 绝不用平台独立 embedding key（QWEN_EMBEDDING_API_KEY）——避免偷偷消耗平台额度/串租户。
+        embedding_api_key = embedding_api_key or api_key
+        embedding_base_url = embedding_base_url or base_url
         if embedding_api_key:
             self._embedding_client = OpenAI(
                 api_key=embedding_api_key,
-                base_url=embedding_base_url or QWEN_EMBEDDING_BASE_URL,
+                base_url=embedding_base_url,
             )
         else:
             self._embedding_client = None

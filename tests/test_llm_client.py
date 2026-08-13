@@ -172,3 +172,54 @@ class TestRepairAndFixCombined:
         parsed = json.loads(fixed)
         assert parsed["topic"] == "嫦娥六号"
         assert len(parsed["strategies"]) >= 1
+
+
+class TestEmbeddingKeyOwnership:
+    """向量模型密钥归属（用户自带钥匙，绝不用平台独立 embedding key）"""
+
+    def test_user_embedding_key_used_when_provided(self, monkeypatch):
+        """用户显式配置了 embedding → 用用户的 embedding key+base_url"""
+        from src.llm_client import LLMClient
+        c = LLMClient(
+            api_key="user-main-key",
+            base_url="https://user-main.example/v1",
+            embedding_api_key="user-emb-key",
+            embedding_base_url="https://user-emb.example/v1",
+        )
+        assert c._embedding_client is not None
+        # openai client 的 api_key / base_url 属性（构造时校验会发空请求？不会，惰性）
+        # 通过内部状态检查：client 实例的 api_key 属性
+        assert "user-emb-key" in str(c._embedding_client.api_key)
+        assert "user-emb.example" in str(c._embedding_client.base_url)
+
+    def test_user_main_key_fallback_when_embedding_missing(self, monkeypatch):
+        """用户没配 embedding → fallback 用户自己的主 LLM key（绝不 fallback 平台 key）"""
+        from src.llm_client import LLMClient
+        # 模拟 from_config（多租户）：用户只有主 LLM 配置
+        c = LLMClient.from_config({
+            "llm": {"api_key": "user-main-key-abc", "base_url": "https://user-main.example/v1", "model": "qwen-test"},
+            "embedding": None,
+        })
+        assert c._embedding_client is not None, "应 fallback 用户主 key 初始化 embedding client"
+        assert "user-main-key-abc" in str(c._embedding_client.api_key), "embedding 必须用用户主 key"
+        assert "user-main.example" in str(c._embedding_client.base_url), "embedding 必须用用户主 base_url"
+
+    def test_global_default_uses_platform_main_key(self, monkeypatch):
+        """全局默认模式：embedding fallback 平台主 key（QWEN_API_KEY），不是独立 embedding key"""
+        from src.llm_client import LLMClient
+        monkeypatch.setattr("src.llm_client.QWEN_API_KEY", "platform-main-key")
+        monkeypatch.setattr("src.llm_client.QWEN_BASE_URL", "https://platform-main.example/v1")
+        monkeypatch.setattr("src.llm_client.QWEN_EMBEDDING_API_KEY", "platform-emb-key-should-not-be-used")
+        monkeypatch.setattr("src.llm_client.QWEN_EMBEDDING_BASE_URL", "https://platform-emb.example/v1")
+        c = LLMClient(api_key="platform-main-key", base_url="https://platform-main.example/v1")
+        assert c._embedding_client is not None
+        assert "platform-main-key" in str(c._embedding_client.api_key)
+        assert "platform-emb-key-should-not-be-used" not in str(c._embedding_client.api_key)
+
+    def test_no_key_anywhere_disables_embedding(self, monkeypatch):
+        """无任何 key → embedding client 为 None（调用方降级）"""
+        from src.llm_client import LLMClient
+        monkeypatch.setattr("src.llm_client.QWEN_API_KEY", "")
+        monkeypatch.setattr("src.llm_client.QWEN_BASE_URL", "https://x/v1")
+        c = LLMClient(api_key="", base_url="https://x/v1")
+        assert c._embedding_client is None
