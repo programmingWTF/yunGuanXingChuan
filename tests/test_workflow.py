@@ -377,6 +377,49 @@ class TestWorkflowEngine:
         record = engine.run_stage(p.id, 1, {"topic": "朱雀2号火箭"})
         assert record.status == StageStatus.AWAITING_REVIEW
 
+    def test_attach_search_sources_with_sources(self, engine):
+        """存在有效搜索来源时，structured search_sources 附加到产出物（Issue #98）"""
+        output: dict = {}
+        context = [
+            {"url": "https://example.com/a", "title": "来源A", "content": "摘要A", "source": "TavilySearch"},
+            {"url": "https://example.com/b", "title": "来源B", "content": "", "source": "QwenWebSearch"},
+            {"url": "", "title": "无URL来源", "content": "x", "source": ""},  # 无 url 也应透传（前端负责兜底）
+            "非字典项",  # 应被过滤
+        ]
+        WorkflowEngine._attach_search_sources(output, context)
+        assert len(output["search_sources"]) == 3
+        assert output["search_sources"][0] == {
+            "url": "https://example.com/a", "title": "来源A", "content": "摘要A", "source": "TavilySearch",
+        }
+        assert output["search_sources"][2]["url"] == ""
+        assert not any(k == "非字典项" for s in output["search_sources"] for k in s)
+
+    def test_attach_search_sources_empty_omits_field(self, engine):
+        """无搜索来源时产出物不附加空 search_sources 字段，避免污染"""
+        output: dict = {"topic": "t", "directions": []}
+        WorkflowEngine._attach_search_sources(output, [])
+        assert "search_sources" not in output
+
+    def test_run_stage_attaches_search_sources_to_output(self, engine):
+        """run_stage 全链路：搜索上下文非空时产出物携带 search_sources"""
+        p = engine.create_project(interest="朱雀2号火箭")
+        with patch(
+            "src.search.unified_search.get_unified_search_service"
+        ) as mock_svc:
+            svc = MagicMock()
+            hit = MagicMock()
+            hit.url = "https://example.com/rocket"
+            hit.title = "朱雀2号点火"
+            hit.content = "发射成功"
+            hit.source = "TavilySearch"
+            svc.search_for_topic.return_value = [hit]
+            mock_svc.return_value = svc
+            with patch("src.workflow.engine.WorkflowEngine._attach_verification"):
+                record = engine.run_stage(p.id, 1, {"topic": "朱雀2号火箭"})
+        assert record.status == StageStatus.AWAITING_REVIEW
+        assert record.output["search_sources"][0]["title"] == "朱雀2号点火"
+        assert record.output["search_sources"][0]["url"] == "https://example.com/rocket"
+
 
 # ---------------------------------------------------------------------------
 # 7 个科研流程 Agent（mock LLM）

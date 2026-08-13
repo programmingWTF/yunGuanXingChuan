@@ -15,6 +15,7 @@ import { runAllWorkflow, getWorkflowProject, exportWorkflowProject, getHotTopics
 import type { ResearchProject } from '../api'
 import ResearchPipeline from '../components/ResearchPipeline'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { StageSources } from '../components/StageUI'
 
 const STAGE_NAMES: Record<string, string> = {
   '1': '选题孵化', '2': '文献综述', '3': '研究设计',
@@ -423,9 +424,12 @@ export default function Workspace() {
                         <span className={`text-[10px] shrink-0 px-2 py-0.5 rounded border ${meta.cls}`}>{meta.label}</span>
                       </div>
                       {rec?.output && (
-                        <pre className="text-[9px] text-slate-500 whitespace-pre-wrap bg-slate-50 rounded-lg p-2.5 mt-2 max-h-24 overflow-y-auto">
-                          {JSON.stringify(rec.output, null, 1).slice(0, 500)}
-                        </pre>
+                        <>
+                          <StageSources output={rec.output} />
+                          <pre className="text-[9px] text-slate-500 whitespace-pre-wrap bg-slate-50 rounded-lg p-2.5 mt-2 max-h-24 overflow-y-auto">
+                            {JSON.stringify(rec.output, null, 1).slice(0, 500)}
+                          </pre>
+                        </>
                       )}
                     </div>
                   )

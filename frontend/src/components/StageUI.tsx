@@ -12,6 +12,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { useAuth } from '../auth'
 import ConfirmDialog from './ConfirmDialog'
+import SearchSources from './SearchSources'
+import type { SearchSource } from '../api'
 
 export interface StageInfo {
   stage: number
@@ -219,9 +221,12 @@ export function useStageExec(stage: number) {
 export function OutputView({ output }: { output: Record<string, unknown> | null }) {
   if (!output) return <p className="text-[11px] text-slate-400">暂无产出物</p>
   return (
-    <pre className="text-[10px] text-slate-500 whitespace-pre-wrap bg-slate-50 border border-slate-100 rounded-lg p-3 max-h-64 overflow-y-auto">
-      {JSON.stringify(output, null, 2)}
-    </pre>
+    <div>
+      <StageSources output={output} />
+      <pre className="text-[10px] text-slate-500 whitespace-pre-wrap bg-slate-50 border border-slate-100 rounded-lg p-3 max-h-64 overflow-y-auto">
+        {JSON.stringify(output, null, 2)}
+      </pre>
+    </div>
   )
 }
 
@@ -289,6 +294,23 @@ export function VerificationPanel({ verification }: { verification: Verification
           )
         })}
       </div>
+    </div>
+  )
+}
+
+/**
+ * 阶段页联网搜索来源面板（Issue #98）。
+ *
+ * 从阶段产出物 rec.output.search_sources 读取结构化来源并渲染为可点击链接。
+ * 产出物无来源时渲染 null，不占版面。
+ */
+export function StageSources({ output }: { output: Record<string, unknown> | null | undefined }) {
+  if (!output) return null
+  const sources = (output as { search_sources?: SearchSource[] | null }).search_sources
+  if (!Array.isArray(sources) || sources.length === 0) return null
+  return (
+    <div className="mt-4">
+      <SearchSources sources={sources} />
     </div>
   )
 }

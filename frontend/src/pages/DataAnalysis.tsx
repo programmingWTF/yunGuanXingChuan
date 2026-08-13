@@ -5,7 +5,7 @@
  * 展示：词云（类目权重）/ 类目分布 / 研究发现 / 传播路径证据 / 初步解读
  */
 import { useState } from 'react'
-import { StageLayout, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
+import { StageLayout, StageSources, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
 
 const INFO: StageInfo = {
   stage: 5, icon: '📊', title: '数据分析', en: 'DATA ANALYSIS',
@@ -176,6 +176,7 @@ export default function DataAnalysis() {
 
           {/* RAG + KG 双校验报告（产出物后置校验） */}
           <VerificationPanel verification={(rec?.output as { verification?: VerificationReport } | null)?.verification ?? null} />
+          <StageSources output={rec?.output ?? null} />
 
           {/* ── 素材上传区 ── */}
           <div className="card p-4 border-sky-200">

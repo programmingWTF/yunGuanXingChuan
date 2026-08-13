@@ -3,7 +3,7 @@
  * Notion 式分栏：左目录 / 右正文；每章支持 AI 润色（独立接口，不修改已确认产出物）
  */
 import { useState } from 'react'
-import { StageLayout, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
+import { StageLayout, StageSources, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
 import { polishWorkflowSection } from '../api'
 
 const INFO: StageInfo = {
@@ -59,6 +59,7 @@ export default function Writing() {
 
           {/* RAG + KG 双校验报告（产出物后置校验） */}
           <VerificationPanel verification={(rec?.output as { verification?: VerificationReport } | null)?.verification ?? null} />
+          <StageSources output={rec?.output ?? null} />
 
           {sections.length > 0 && (
             <div className="card p-5">
