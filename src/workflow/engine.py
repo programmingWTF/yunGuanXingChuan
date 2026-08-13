@@ -115,7 +115,7 @@ class WorkflowEngine:
     # 阶段执行
     # ------------------------------------------------------------------
     def run_stage(self, project_id: str, stage: int, inputs: Dict[str, Any],
-                  llm_config: Optional[dict] = None) -> StageRecord:
+                  llm_config: Optional[dict] = None, owner_id: Optional[str] = None) -> StageRecord:
         """
         执行指定阶段智能体（多租户：llm_config 为当前用户模型配置，None 则用全局默认）。
 
@@ -216,6 +216,8 @@ class WorkflowEngine:
         context = self._build_stage_context(stage, full_inputs)
         full_inputs.update(context)
         self._inject_previous_outputs(project, stage, full_inputs)
+        # 用户论文库风格注入（写作阶段）：用户上传过论文时，自动学习其写作风格（降级保护）
+        self._inject_user_style(stage, full_inputs, owner_id)
 
         try:
             output = self._run_with_timeout(lambda: agent.run(full_inputs), 240.0, None, "智能体生成", swallow_exc=False)
@@ -276,7 +278,8 @@ class WorkflowEngine:
     def run_all(self, project_id: str, materials: Optional[List[Dict]] = None,
                 style_sample: Optional[str] = None,
                 topic: Optional[str] = None,
-                llm_config: Optional[dict] = None) -> Dict[str, Any]:
+                llm_config: Optional[dict] = None,
+                owner_id: Optional[str] = None) -> Dict[str, Any]:
         """
         一键跑通全部 7 个科研阶段（选题→文献→设计→方法→数据→写作→评审）。
 
@@ -318,6 +321,8 @@ class WorkflowEngine:
                 inputs["materials"] = materials
             if stage == WorkflowStage.WRITING and style_sample:
                 inputs["style_sample"] = style_sample
+            # 用户论文库风格注入（降级保护，不影响主流程）
+            self._inject_user_style(stage, inputs, owner_id)
 
             # 注入上下文 + 前序产出
             context = self._build_stage_context(stage, inputs)
@@ -552,6 +557,38 @@ class WorkflowEngine:
             if isinstance(rq, dict):
                 entities.append(str(rq.get("id") or rq.get("text"))[:30])
         return [e for e in entities if e][:4]
+
+    def _inject_user_style(self, stage: int, inputs: Dict[str, Any], owner_id: Optional[str] = None) -> None:
+        """
+        用户论文库风格注入（个人论文库模块）。
+
+        - 仅写作阶段（WRITING）注入；用户已提供 style_sample 时不覆盖
+        - owner_id 为 None（未登录/测试）跳过
+        - 任何异常均降级（不影响主流程）：用户没传论文 / 库空 / 解析失败都静默跳过
+        - 注入内容：few-shot 风格示例 + 术语表（写入 style_sample 供 PaperWriter 消费）
+        """
+        if stage != WorkflowStage.WRITING or not owner_id:
+            return
+        if inputs.get("style_sample"):
+            return  # 用户显式提供的风格样本优先
+        try:
+            from src.knowledge.user_library import get_user_library
+            lib = get_user_library(owner_id)
+            style = lib.global_style()
+            if not style:
+                return
+            parts = []
+            few = style.get("few_shot") or []
+            terms = style.get("terms") or []
+            if few:
+                parts.append("【个人论文风格示例（来自用户论文库）】\n" + "\n---\n".join(few))
+            if terms:
+                parts.append("【个人常用术语】" + "、".join(terms))
+            if parts:
+                inputs["style_sample"] = "\n\n".join(parts)
+                logger.info(f"[WorkflowEngine] ✓ 已注入用户论文库风格（owner={owner_id}, few_shot={len(few)}, terms={len(terms)}）")
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"[WorkflowEngine] 用户风格注入失败（忽略）: {e}")
 
     def _attach_verification(self, stage: int, output: Dict[str, Any], topic: str, llm_client=None) -> None:
         """
