@@ -226,6 +226,8 @@ class WorkflowEngine:
                 if not output.get("topic"):
                     output["topic"] = full_inputs.get("topic", "")
                 output.setdefault("project_title", full_inputs.get("project_title", ""))
+                # 联网搜索来源：把注入 LLM 的 search_context 作为结构化 search_sources 随产出物返回，供前端渲染可点击链接（Issue #98）
+                self._attach_search_sources(output, full_inputs.get("search_context") or [])
                 # RAG + KG 双校验：对产出物中的关键断言做事实校验，结果附加到产出物（不阻塞、可降级）
                 self._attach_verification(stage, output, full_inputs.get("topic", ""), llm_client)
             updated = self.store.update_stage(
@@ -336,6 +338,8 @@ class WorkflowEngine:
                     if not output.get("topic"):
                         output["topic"] = topic
                     output.setdefault("project_title", project.title)
+                    # 联网搜索来源：把注入 LLM 的 search_context 作为结构化 search_sources 随产出物返回，供前端渲染可点击链接（Issue #98）
+                    self._attach_search_sources(output, inputs.get("search_context") or [])
                     # RAG + KG 双校验：对产出物中的关键断言做事实校验，结果附加到产出物（不阻塞、可降级）
                     self._attach_verification(stage, output, topic, llm_client)
                 project = self.store.update_stage(
@@ -552,6 +556,27 @@ class WorkflowEngine:
             if isinstance(rq, dict):
                 entities.append(str(rq.get("id") or rq.get("text"))[:30])
         return [e for e in entities if e][:4]
+
+    @staticmethod
+    def _attach_search_sources(output: Dict[str, Any], search_context: List[Any]) -> None:
+        """把检索到的联网搜索来源作为结构化 search_sources 附加到产出物（Issue #98）。
+
+        - search_context 来自 _build_stage_context（含 url/title/content/source）
+        - 附加为 output["search_sources"]，供前端渲染可点击来源链接
+        - 仅当存在有效来源时才写字段：无来源时不污染产出物，前端组件对缺失/空字段有兜底
+        """
+        sources = [
+            {
+                "url": str(s.get("url", "")),
+                "title": str(s.get("title", "")),
+                "content": str(s.get("content", "") or ""),
+                "source": str(s.get("source", "")),
+            }
+            for s in (search_context or [])
+            if isinstance(s, dict)
+        ]
+        if sources:
+            output["search_sources"] = sources
 
     def _attach_verification(self, stage: int, output: Dict[str, Any], topic: str, llm_client=None) -> None:
         """

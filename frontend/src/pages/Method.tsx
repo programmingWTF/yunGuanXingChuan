@@ -3,7 +3,7 @@
  * 展示方法卡片（适配度/类型/范文/操作步骤）
  */
 import { useState } from 'react'
-import { StageLayout, ScoreBar, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
+import { StageLayout, StageSources, ScoreBar, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
 
 const INFO: StageInfo = {
   stage: 4, icon: '🧪', title: '方法推荐', en: 'RESEARCH METHOD',
@@ -36,6 +36,7 @@ export default function Method() {
 
           {/* RAG + KG 双校验报告（产出物后置校验） */}
           <VerificationPanel verification={(rec?.output as { verification?: VerificationReport } | null)?.verification ?? null} />
+          <StageSources output={rec?.output ?? null} />
 
           {methods.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

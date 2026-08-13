@@ -2,7 +2,7 @@
  * 云观星传 - ① 选题孵化（产出物查看页）
  * 一键全流程模式下自动生成，本页仅展示 AI 推荐的选题方向与评分
  */
-import { StageLayout, ScoreBar, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
+import { StageLayout, StageSources, ScoreBar, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
 
 const INFO: StageInfo = {
   stage: 1, icon: '💡', title: '选题孵化', en: 'RESEARCH INSPIRATION',
@@ -35,6 +35,7 @@ export default function Inspiration() {
 
           {/* RAG + KG 双校验报告（产出物后置校验） */}
           <VerificationPanel verification={(rec?.output as { verification?: VerificationReport } | null)?.verification ?? null} />
+          <StageSources output={rec?.output ?? null} />
 
           {directions.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
