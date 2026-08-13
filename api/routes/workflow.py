@@ -119,7 +119,7 @@ def run_stage(project_id: str, stage: int, req: RunStageRequest, request: Reques
     _require_owned_project(project_id, user)
     llm_config = _require_llm_config(request)
     try:
-        record = get_workflow_engine().run_stage(project_id, stage, req.inputs, llm_config=llm_config)
+        record = get_workflow_engine().run_stage(project_id, stage, req.inputs, llm_config=llm_config, owner_id=user["id"])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception:
@@ -175,7 +175,7 @@ def run_all(project_id: str, req: RunAllRequest, request: Request, background_ta
     background_tasks.add_task(
         get_workflow_engine().run_all, project_id,
         materials=req.materials, style_sample=req.style_sample, topic=req.topic,
-        llm_config=llm_config,
+        llm_config=llm_config, owner_id=user["id"],
     )
     return {"status": "running", "message": "全流程生成已启动，请通过 GET /projects/{id} 查看各阶段进度"}
 

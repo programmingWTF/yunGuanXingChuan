@@ -8,6 +8,13 @@ from pathlib import Path
 # 确保项目根目录在 path 中
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# 关键：先真实导入 httpx / openai，防止部分测试文件的
+# `sys.modules['httpx'] = MagicMock()` 兼容 hack 在 openai>=1.66
+# （httpx2 兼容层）下全量运行崩溃（isinstance 拿到 MagicMock 非 type）。
+# conftest 最先加载，真实模块先入 sys.modules 后，后续 hack 不再覆盖。
+import httpx  # noqa: F401
+import openai  # noqa: F401
+
 import pytest
 
 

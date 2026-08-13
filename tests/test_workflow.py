@@ -1105,3 +1105,100 @@ class TestTopicCorpusAutoFill:
         # 一个极不可能存在的议题 → 应返回空（触发补齐）
         fake = "完全不存在的议题XYZ_2026"
         assert loader.load_science_facts(fake) == []
+
+
+# ---------------------------------------------------------------------------
+# 用户论文库风格注入（个人论文库模块接入点）
+# ---------------------------------------------------------------------------
+
+
+class TestUserStyleInjection:
+    """WorkflowEngine._inject_user_style：写作阶段自动注入用户论文库风格
+
+    直接白盒调用该方法（不走完整 run_stage——前置校验/语料补齐/校验层太重）。
+    """
+
+    def _make_engine(self, store, tmp_path):
+        agents = {
+            WorkflowStage.INSPIRATION: make_mock_agent({"topic": "t", "directions": []}),
+            WorkflowStage.WRITING: make_mock_agent({"topic": "t", "sections": []}),
+        }
+        return WorkflowEngine(store=store, agents=agents)
+
+    def test_writing_stage_injects_style(self, store, tmp_path, monkeypatch):
+        """WRITING 阶段且用户有论文库 → 注入 style_sample"""
+        # _inject_user_style 内部是 `from src.knowledge.user_library import get_user_library`，
+        # 运行时从该模块取绑定 → patch 模块属性即可生效
+        import src.knowledge.user_library as ul_mod
+        fake_style = {
+            "terms": ["深度学习", "Transformer"],
+            "few_shot": ["本文基于深度学习框架展开研究，系统比较了多种模型结构的性能差异。"],
+            "structure": {},
+        }
+        monkeypatch.setattr(ul_mod, "get_user_library", lambda uid: MagicMock(global_style=lambda: fake_style))
+
+        eng = self._make_engine(store, tmp_path)
+        inputs = {"topic": "t"}
+        eng._inject_user_style(WorkflowStage.WRITING, inputs, owner_id="u1")
+        assert "style_sample" in inputs
+        assert "深度学习" in inputs["style_sample"]
+        assert "个人论文风格示例" in inputs["style_sample"]
+
+    def test_style_sample_not_overwritten(self, store, tmp_path, monkeypatch):
+        """用户显式提供 style_sample 时不覆盖"""
+        import src.knowledge.user_library as ul_mod
+        monkeypatch.setattr(ul_mod, "get_user_library", lambda uid: MagicMock(global_style=lambda: {
+            "terms": ["A"], "few_shot": ["B"], "structure": {},
+        }))
+        eng = self._make_engine(store, tmp_path)
+        inputs = {"topic": "t", "style_sample": "用户显式风格"}
+        eng._inject_user_style(WorkflowStage.WRITING, inputs, owner_id="u1")
+        assert inputs["style_sample"] == "用户显式风格"
+
+    def test_no_owner_skips(self, store, tmp_path, monkeypatch):
+        """未提供 owner_id（未登录/内部调用）→ 跳过注入"""
+        called = {"n": 0}
+
+        def fake_lib(uid):
+            called["n"] += 1
+            return MagicMock(global_style=lambda: {"terms": ["X"], "few_shot": [], "structure": {}})
+
+        import src.knowledge.user_library as ul_mod
+        monkeypatch.setattr(ul_mod, "get_user_library", fake_lib)
+        eng = self._make_engine(store, tmp_path)
+        inputs = {"topic": "t"}
+        eng._inject_user_style(WorkflowStage.WRITING, inputs, owner_id=None)
+        assert called["n"] == 0
+        assert "style_sample" not in inputs
+
+    def test_empty_library_skips(self, store, tmp_path, monkeypatch):
+        """论文库为空 → 不注入、不报错"""
+        import src.knowledge.user_library as ul_mod
+        monkeypatch.setattr(ul_mod, "get_user_library", lambda uid: MagicMock(global_style=lambda: {}))
+        eng = self._make_engine(store, tmp_path)
+        inputs = {"topic": "t"}
+        eng._inject_user_style(WorkflowStage.WRITING, inputs, owner_id="u1")
+        assert "style_sample" not in inputs
+
+    def test_non_writing_stage_skips(self, store, tmp_path, monkeypatch):
+        """非写作阶段不注入"""
+        import src.knowledge.user_library as ul_mod
+        monkeypatch.setattr(ul_mod, "get_user_library", lambda uid: MagicMock(global_style=lambda: {
+            "terms": ["X"], "few_shot": ["Y"], "structure": {},
+        }))
+        eng = self._make_engine(store, tmp_path)
+        inputs = {"topic": "t"}
+        eng._inject_user_style(WorkflowStage.LITERATURE, inputs, owner_id="u1")
+        assert "style_sample" not in inputs
+
+    def test_exception_degrades(self, store, tmp_path, monkeypatch):
+        """风格库异常 → 降级（不抛错、不注入）"""
+        def boom(uid):
+            raise RuntimeError("库损坏")
+
+        import src.knowledge.user_library as ul_mod
+        monkeypatch.setattr(ul_mod, "get_user_library", boom)
+        eng = self._make_engine(store, tmp_path)
+        inputs = {"topic": "t"}
+        eng._inject_user_style(WorkflowStage.WRITING, inputs, owner_id="u1")  # 不应抛异常
+        assert "style_sample" not in inputs

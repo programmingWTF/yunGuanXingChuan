@@ -45,7 +45,7 @@ if ADMIN_MODE:
     app.include_router(admin.router, prefix="/api/admin", tags=["管理后台"])
 else:
     # ── 主站：全部业务路由 ──
-    from api.routes import analyze, hypotheses, strategies, knowledge_graph, verify, parliament, outputs, knowledge, workflow, auth
+    from api.routes import analyze, hypotheses, strategies, knowledge_graph, verify, parliament, outputs, knowledge, workflow, auth, library
 
     # 注册路由
     app.include_router(analyze.router, prefix="/api/analyze", tags=["分析"])
@@ -60,6 +60,7 @@ else:
     app.include_router(auth.router, prefix="/api/auth", tags=["用户认证"])
     from api.routes import user as user_routes
     app.include_router(user_routes.router, prefix="/api/user", tags=["用户模型配置"])
+    app.include_router(library.router, prefix="/api/library", tags=["个人论文库"])
     app.include_router(admin.router, prefix="/api/admin", tags=["管理后台"])
 
 
