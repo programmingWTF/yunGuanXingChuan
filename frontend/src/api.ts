@@ -689,4 +689,87 @@ export async function deleteAdminProject(projectId: string) {
   return res.data as { status: string; project_id: string }
 }
 
+// ============ 个人论文库（library）============
+
+export interface LibraryPaper {
+  id: number
+  title: string
+  file_name: string
+  file_ext: string
+  status: 'uploaded' | 'processing' | 'ready' | 'error'
+  chunk_count: number
+  error_msg: string
+  created_at: string
+}
+
+export interface LibraryStyle {
+  terms: string[]
+  structure: {
+    sections_detected?: string[]
+    abstract_style?: string[]
+    conclusion_style?: string[]
+    avg_sentence_len?: number
+  }
+  few_shot: string[]
+}
+
+export interface LibrarySearchResult {
+  text: string
+  score: number
+  metadata: Record<string, unknown>
+}
+
+export interface LibraryHealth {
+  r2_configured: boolean
+  supported_extensions: string[]
+}
+
+/** 获取 R2 配置状态 */
+export async function getLibraryHealth() {
+  const res = await api.get('/library/health')
+  return res.data as LibraryHealth
+}
+
+/** ① 签发上传 URL（后端建记录，返回 presigned PUT URL 与 paper_id） */
+export async function createLibraryUpload(fileName: string, contentType: string) {
+  const res = await api.post('/library/upload-url', { file_name: fileName, content_type: contentType })
+  return res.data as { upload_url: string; file_key: string; paper_id: number; expires_in: number }
+}
+
+/** ② 确认上传完成，触发后端解析/嵌入/风格提取 */
+export async function confirmLibraryUpload(paperId: number) {
+  const res = await api.post('/library/confirm', { paper_id: paperId })
+  return res.data as { paper_id: number; status: string; chunk_count: number; style: LibraryStyle }
+}
+
+/** 论文列表 */
+export async function listLibraryPapers() {
+  const res = await api.get('/library')
+  return res.data as LibraryPaper[]
+}
+
+/** 论文详情 */
+export async function getLibraryPaper(id: number) {
+  const res = await api.get(`/library/${id}`)
+  return res.data as LibraryPaper
+}
+
+/** 删除论文 */
+export async function deleteLibraryPaper(id: number) {
+  const res = await api.delete(`/library/${id}`)
+  return res.data as { ok: boolean }
+}
+
+/** 检索用户论文库 */
+export async function searchLibrary(query: string, topK = 5) {
+  const res = await api.post('/library/search', { query, top_k: topK })
+  return res.data as { query: string; results: LibrarySearchResult[] }
+}
+
+/** 全局风格三件套 */
+export async function getLibraryStyle() {
+  const res = await api.get('/library/style')
+  return res.data as LibraryStyle
+}
+
 export default api

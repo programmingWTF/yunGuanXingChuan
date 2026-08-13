@@ -24,6 +24,7 @@ import Method from './pages/Method'
 import DataAnalysis from './pages/DataAnalysis'
 import Writing from './pages/Writing'
 import Review from './pages/Review'
+import PaperLibrary from './pages/PaperLibrary'
 import CrossCultural from './pages/CrossCultural'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -40,6 +41,7 @@ const PIPELINE_NAV = [
   { to: '/data-analysis', icon: '📊', label: '数据分析', en: 'ANALYSIS' },
   { to: '/writing', icon: '✍️', label: '学术写作', en: 'WRITING' },
   { to: '/review', icon: '👨‍⚖️', label: '同行评审', en: 'REVIEW' },
+  { to: '/library', icon: '📚', label: '论文库', en: 'PAPER LIBRARY' },
 ]
 
 /* ── 实时时钟 ── */
@@ -224,6 +226,7 @@ function AppLayout() {
               <Route path="/data-analysis" element={<DataAnalysis />} />
               <Route path="/writing" element={<Writing />} />
               <Route path="/review" element={<Review />} />
+              <Route path="/library" element={<PaperLibrary />} />
               <Route path="/cross-cultural" element={<CrossCultural />} />
 
               {/* 管理后台（admin 角色；后端二次校验） */}
