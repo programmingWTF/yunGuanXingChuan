@@ -51,7 +51,7 @@ export default function Writing() {
             {status !== 'running' && (
               <button onClick={confirmRerun} disabled={running}
                 className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
-                {running ? '写作中…' : '重新生成本阶段'}
+                {running ? '写作中…' : '重新运行'}
               </button>
             )}
             {error && <span className="text-[11px] text-red-600">{error}</span>}
@@ -67,9 +67,8 @@ export default function Writing() {
                 <nav className="space-y-1 self-start sticky top-20">
                   {sections.map((s, i) => (
                     <button key={i} onClick={() => { setActiveSection(i); setPolishResult(null); setPolishError('') }}
-                      className={`w-full text-left text-[12px] px-3 py-2 rounded-lg transition-colors ${
-                        activeSection === i ? 'bg-sky-50 text-sky-600 border border-sky-200' : 'text-slate-500 hover:text-slate-600 hover:bg-slate-100'
-                      }`}>
+                      className={`w-full text-left text-[12px] px-3 py-2 rounded-lg transition-colors ${activeSection === i ? 'bg-sky-50 text-sky-600 border border-sky-200' : 'text-slate-500 hover:text-slate-600 hover:bg-slate-100'
+                        }`}>
                       {s.section}
                     </button>
                   ))}
@@ -84,7 +83,7 @@ export default function Writing() {
                           value={instruction}
                           onChange={e => setInstruction(e.target.value)}
                           placeholder="润色要求（可选），如：更简洁、突出创新点"
-                          className="w-52 rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-1.5 text-[11px] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-sky-300"
+                          className="input-field !w-52 !bg-slate-50 !rounded-lg !text-[11px] !px-2.5 !py-1.5"
                         />
                         <button onClick={handlePolish} disabled={polishing}
                           className="text-[11px] px-3 py-1.5 rounded-lg border border-sky-300 bg-sky-50 text-sky-600 hover:bg-sky-100 disabled:opacity-40 transition-all">

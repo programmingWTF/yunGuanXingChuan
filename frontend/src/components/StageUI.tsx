@@ -125,8 +125,12 @@ export function StageActions({
 /** 无项目引导 */
 export function NoProjectHint() {
   return (
-    <div className="card p-10 text-center text-sm text-slate-500">
-      暂无项目上下文 —— 请先到 <Link to="/projects" className="text-sky-600 hover:text-sky-700 font-medium">我的项目</Link> 创建研究项目
+    <div className="card p-12 text-center">
+      <div className="text-4xl mb-4 opacity-30">🔭</div>
+      <p className="text-sm text-slate-500 mb-2">暂无项目上下文</p>
+      <p className="text-xs text-slate-400">
+        请先到 <Link to="/" className="text-sky-600 hover:text-sky-700 font-medium underline underline-offset-2">科研工作台</Link> 创建研究项目
+      </p>
     </div>
   )
 }
@@ -172,14 +176,14 @@ export function useStageExec(stage: number) {
   const rerunConfirmEl = (
     <ConfirmDialog
       open={confirming}
-      title="确认重新生成本阶段？"
+      title="确认重新运行本阶段？"
       description={
         <>
-          重新生成将<strong className="text-red-600 font-medium">清空并覆盖该阶段当前产出物</strong>
+          重新运行将<strong className="text-red-600 font-medium">清空并覆盖该阶段当前产出物</strong>
           ，此操作<strong className="text-red-600 font-medium">不可撤销</strong>。确认将覆盖，否则点「取消」保留现有产出。
         </>
       }
-      confirmText="重新生成"
+      confirmText="重新运行"
       cancelText="取消"
       onCancel={cancelRerun}
       onConfirm={doRerun}

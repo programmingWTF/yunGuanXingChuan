@@ -118,10 +118,7 @@ function PageHeading() {
 /* ── 页脚：深海军蓝 #0E2E4F（他山 8.7：全站唯一大面积深色）── */
 function Footer() {
   return (
-    <footer className="relative z-10 mt-20 bg-footer text-white/70">
-      {/* 顶部渐变：仅在页脚滚入视口时自然过渡（浅页背景 → 深海军蓝），不随固定背景层常驻 */}
-      <div aria-hidden="true" className="pointer-events-none absolute left-0 right-0 -top-20 h-20"
-        style={{ background: 'linear-gradient(180deg, #F8FAFC 0%, #0E2E4F 100%)' }} />
+    <footer className="relative z-10 mt-auto bg-footer text-white/70">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-12 grid gap-10 md:grid-cols-3">
         <div>
           <p className="font-display text-lg font-semibold text-white tracking-wide">云观 · 星传</p>
@@ -149,12 +146,12 @@ function Footer() {
 function AppLayout() {
   const location = useLocation()
   return (
-    <div className="min-h-screen relative font-body">
+    <div className="min-h-screen relative font-body flex flex-col">
       <StarfieldBackground />
       <TopNav />
       <PageHeading />
-      <div className="relative z-10 pt-12">
-        <main className="px-4 sm:px-8 py-8 max-w-[1400px] mx-auto">
+      <div className="relative z-10 pt-12 flex-1 flex flex-col">
+        <main className="px-4 sm:px-8 py-8 max-w-[1400px] mx-auto w-full flex-1">
           <div key={location.pathname} className="page-transition">
             <Routes location={location}>
               {/* 科研工作台（默认页）+ 7 个科研流程页 */}
