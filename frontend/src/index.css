@@ -120,6 +120,41 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, .05);
   --shadow-md: 0 1px 3px rgba(0, 0, 0, .1), 0 1px 2px rgba(0, 0, 0, .06);
   --shadow-lg: 0 4px 6px rgba(0, 0, 0, .07), 0 2px 4px rgba(0, 0, 0, .06);
+
+  /* ── shadcn/ui 组件库 Design Token（映射到上方他山配色）── */
+  --background: 210 40% 98%;          /* #F8FAFC 页面底 */
+  --foreground: 215 28% 17%;          /* #1E293B 正文 */
+  --card: 0 0% 100%;                   /* #FFFFFF 卡片底 */
+  --card-foreground: 215 28% 17%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 215 28% 17%;
+  --primary: 217 91% 60%;             /* #3B82F6 品牌蓝 */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 40% 96%;           /* #F1F5F9 */
+  --secondary-foreground: 215 28% 17%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 20% 45%;    /* #475569 次要文字 */
+  --accent: 199 97% 88%;              /* #E0F2FE 选中底 */
+  --accent-foreground: 199 89% 40%;   /* #0EA5E9 强调天蓝 */
+  --destructive: 0 84% 60%;           /* #EF4444 错误 */
+  --destructive-foreground: 0 0% 100%;
+  --border: 214 32% 91%;              /* #E2E8F0 */
+  --input: 214 32% 91%;
+  --ring: 217 91% 60%;                /* #3B82F6 焦点环 */
+  --radius: 1rem;                     /* 组件基础圆角 16px（呼应 --radius-md 20px）*/
+  --chart-1: 217 91% 60%;
+  --chart-2: 199 89% 48%;
+  --chart-3: 158 64% 52%;
+  --chart-4: 38 92% 50%;
+  --chart-5: 262 83% 58%;
+  --sidebar-background: 210 40% 98%;
+  --sidebar-foreground: 215 28% 17%;
+  --sidebar-primary: 217 91% 60%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 199 97% 88%;
+  --sidebar-accent-foreground: 199 89% 40%;
+  --sidebar-border: 214 32% 91%;
+  --sidebar-ring: 217 91% 60%;
 }
 
 * {
@@ -489,5 +524,18 @@ body {
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: .01ms !important;
+  }
+}
+
+/* ── shadcn/ui base 层：绑定 Design Token，统一组件外观 ── */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  a {
+    @apply no-underline;
   }
 }

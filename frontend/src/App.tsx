@@ -28,6 +28,7 @@ import PaperLibrary from './pages/PaperLibrary'
 import CrossCultural from './pages/CrossCultural'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import UIShowcase from './pages/UIShowcase'
 import Admin from './pages/Admin'
 import Settings from './pages/Settings'
 
@@ -187,6 +188,16 @@ function AppLayout() {
   const location = useLocation()
   const { user, loading } = useAuth()
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register'
+  const isShowcase = location.pathname === '/ui-showcase'
+
+  // 组件展示页：独立布局，不依赖认证/后端，便于验收 shadcn/ui 组件与 Design Token
+  if (isShowcase) {
+    return (
+      <div className="min-h-screen bg-background font-body">
+        <UIShowcase />
+      </div>
+    )
+  }
 
   // 会话探测中：避免闪烁，显示轻量占位
   if (loading) {
@@ -194,7 +205,7 @@ function AppLayout() {
   }
   // 未登录：不再强制跳登录页——主界面可浏览（运行/生成操作替换为登录按钮）
   // 已登录访问登录/注册页则回工作台
-  if (user && isAuthPage) return <Navigate to="/" replace />
+  if (user && (isAuthPage || isShowcase)) return <Navigate to="/" replace />
 
   // 登录/注册页：独立布局（无顶栏/页脚）
   if (isAuthPage) {
