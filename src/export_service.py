@@ -150,33 +150,70 @@ def _pdf_wrap(pdf, text: str, max_width: float) -> list:
     return lines
 
 
+def _find_cjk_font() -> tuple:
+    """查找可用的 CJK 字体，返回 (font_path, font_name)。
+
+    搜索顺序：
+    1. 项目内嵌 config/fonts/NotoSansSC-Regular.ttf（Docker 镜像打包 / 手动放置）
+    2. Windows 系统字体（msyh / simsun）
+    3. Linux 系统字体（fonts-noto-cjk 安装路径）
+    4. macOS 系统字体（PingFang / STSong）
+
+    未找到时返回 (None, "Helvetica")，调用方需做降级处理。
+    """
+    import os
+
+    candidates = [
+        os.path.join(os.path.dirname(__file__), "..", "config", "fonts", "NotoSansSC-Regular.ttf"),
+        "C:/Windows/Fonts/msyh.ttc",
+        "C:/Windows/Fonts/simsun.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
+        "/System/Library/Fonts/PingFang.ttc",
+        "/System/Library/Fonts/STSong.ttf",
+    ]
+    for fp in candidates:
+        norm = os.path.normpath(fp)
+        if os.path.exists(norm):
+            return norm, "CJK"
+    return None, "Helvetica"
+
+
 def export_pdf(data: Dict[str, Any], meta: Dict[str, str]) -> bytes:
-    """导出为 PDF 文件（使用 fpdf2，自动查找中文字体）"""
+    """导出为 PDF 文件（使用 fpdf2，自动查找中文字体）
+
+    字体策略：
+    - 优先使用 CJK 字体（项目内嵌 > 系统 > macOS）
+    - 无 CJK 字体时回退 Helvetica，并在 PDF 首行插入警告水印
+    """
     from fpdf import FPDF
     from fpdf.enums import XPos, YPos
     import os
+    import logging
+
+    logger = logging.getLogger(__name__)
 
     pdf = FPDF()
     pdf.add_page()
 
-    # 查找中文字体（Windows: SimSun / Microsoft YaHei，Linux: NotoSansCJK）
-    font_name = "Helvetica"
-    font_candidates = [
-        "C:/Windows/Fonts/msyh.ttc",      # 微软雅黑
-        "C:/Windows/Fonts/simsun.ttc",     # 宋体
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
-        os.path.join(os.path.dirname(__file__), "..", "config", "fonts", "NotoSansSC-Regular.ttf"),
-    ]
-    for fp in font_candidates:
-        if os.path.exists(fp):
-            try:
-                pdf.add_font("CJK", "", fp)
-                pdf.add_font("CJK", "B", fp)
-                font_name = "CJK"
-                break
-            except Exception:
-                continue
+    font_path, font_name = _find_cjk_font()
+    cjk_available = font_path is not None
+
+    if cjk_available:
+        try:
+            pdf.add_font("CJK", "", font_path)
+            pdf.add_font("CJK", "B", font_path)
+            font_name = "CJK"
+        except Exception as e:
+            logger.warning(f"加载 CJK 字体失败 ({font_path}): {e}，回退 Helvetica")
+            font_name = "Helvetica"
+            cjk_available = False
+    else:
+        logger.warning(
+            "未找到 CJK 字体，PDF 中文将显示为方框。"
+            "请将 NotoSansSC-Regular.ttf 放入 config/fonts/ 或安装系统字体（fonts-noto-cjk / 微软雅黑）"
+        )
 
     max_width = pdf.w - pdf.l_margin - pdf.r_margin
 
@@ -186,6 +223,11 @@ def export_pdf(data: Dict[str, Any], meta: Dict[str, str]) -> bytes:
         for phys in _pdf_wrap(pdf, text, max_width):
             pdf.cell(0, h, phys, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
+    if not cjk_available:
+        write("⚠ PDF 中文字体缺失 — 中文内容将显示异常", size=10, bold=True, color=(200, 0, 0), h=6)
+        write("请将 NotoSansSC-Regular.ttf 放入 config/fonts/ 目录", size=8, color=(150, 0, 0), h=5)
+        pdf.ln(4)
+
     write(f"{meta.get('name', 'Result')}: {meta.get('topic', '')}", size=16, bold=True, h=10)
     pdf.ln(4)
     write(
@@ -194,9 +236,8 @@ def export_pdf(data: Dict[str, Any], meta: Dict[str, str]) -> bytes:
     )
     pdf.ln(6)
 
-    # 逐行写入内容
     md_lines = export_markdown(data, meta).decode("utf-8").split("\n")
-    for line in md_lines[4:]:  # 跳过标题和 meta 行
+    for line in md_lines[4:]:
         if not line.strip():
             pdf.ln(3)
             continue

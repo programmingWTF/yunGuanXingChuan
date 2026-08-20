@@ -184,7 +184,8 @@ export default function Workspace() {
         URL.revokeObjectURL(url)
       } else {
         const { content } = await exportWorkflowProject(detail.id, fmt) as { content: string }
-        downloadText(`${detail.title}.${fmt}`, content, fmt === 'md' ? 'text/markdown' : 'application/json')
+        const safeTitle = (detail.title || '云观星传科研项目').replace(/[\r\n"\x00-\x1f]/g, '').trim() || '云观星传科研项目'
+        downloadText(`${safeTitle}.${fmt}`, content, fmt === 'md' ? 'text/markdown' : 'application/json')
       }
     } catch {
       setError('导出失败，请确认后端已启动')
@@ -318,18 +319,16 @@ export default function Workspace() {
                 <button
                   key={p.id}
                   onClick={() => handleSelect(p.id)}
-                  className={`group w-full text-left rounded-xl border px-3 py-2.5 transition-all ${
-                    selected === p.id || (projects[0]?.id === p.id && selected === null)
+                  className={`group w-full text-left rounded-xl border px-3 py-2.5 transition-all ${selected === p.id || (projects[0]?.id === p.id && selected === null)
                       ? 'border-sky-300 bg-sky-50'
                       : 'border-slate-200 bg-slate-50 hover:border-slate-300'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[13px] font-medium text-slate-700 truncate">{p.title}</p>
                     <span className="flex items-center gap-1.5 shrink-0">
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded border ${
-                        p.status === 'completed' ? 'text-emerald-600 border-emerald-200' : 'text-sky-600 border-sky-200'
-                      }`}>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded border ${p.status === 'completed' ? 'text-emerald-600 border-emerald-200' : 'text-sky-600 border-sky-200'
+                        }`}>
                         {p.status === 'completed' ? '已完成' : '进行中'}
                       </span>
                       {/* 删除（hover 显示防误触；第一击进确认态 → 第二击真正删除） */}
@@ -338,13 +337,12 @@ export default function Workspace() {
                         tabIndex={-1}
                         aria-label={`删除项目 ${p.title}`}
                         onClick={e => { e.stopPropagation(); handleDeleteClick(p.id) }}
-                        className={`px-1.5 py-0.5 rounded text-[10px] border transition-all select-none ${
-                          deletingId === p.id
+                        className={`px-1.5 py-0.5 rounded text-[10px] border transition-all select-none ${deletingId === p.id
                             ? 'opacity-60 cursor-wait bg-red-50 text-red-400 border-red-200'
                             : confirmDeleteId === p.id
                               ? 'bg-red-600 text-white border-red-600 font-medium'
                               : 'opacity-0 group-hover:opacity-100 text-slate-400 border-transparent hover:text-red-600 hover:border-red-200 cursor-pointer'
-                        }`}
+                          }`}
                       >
                         {deletingId === p.id ? '删除中…' : confirmDeleteId === p.id ? '确认删除？' : '🗑 删除'}
                       </span>

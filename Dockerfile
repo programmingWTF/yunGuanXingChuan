@@ -18,6 +18,13 @@ RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ -r req
 # 复制项目代码（.dockerignore 排除不必要的文件）
 COPY . .
 
+# 确保 PDF 中文字体可用：若 config/fonts/ 下无 NotoSansSC-Regular.ttf，
+# 从系统字体目录（fonts-noto-cjk 已安装）复制一份到项目内嵌路径
+RUN if [ ! -f config/fonts/NotoSansSC-Regular.ttf ]; then \
+      mkdir -p config/fonts && \
+      find /usr/share/fonts -name "NotoSansCJK-Regular.ttc" -o -name "NotoSansSC-Regular.otf" -o -name "NotoSansSC-Regular.ttf" 2>/dev/null | head -1 | xargs -I{} cp "{}" config/fonts/NotoSansSC-Regular.ttc 2>/dev/null || true; \
+    fi
+
 # ADMIN_MODE=true：tzb-admin 独立管理后台镜像（使用 dist-admin 前端产物；
 # 后端只挂 /api/admin/* 且不校验身份，认证交给 Cloudflare Access）
 ARG ADMIN_MODE=false
