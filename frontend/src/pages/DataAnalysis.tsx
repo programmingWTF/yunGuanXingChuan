@@ -32,8 +32,8 @@ function wordStyle(category: string, count: number, maxCount: number) {
   // 深浅色层级：>0.7 深蓝加粗前景 / >0.4 青绿 / 低 浅灰（远景弱化）
   const cls =
     w > 0.7 ? 'text-sky-700 font-semibold'
-    : w > 0.4 ? 'text-emerald-600 font-medium'
-    : 'text-slate-400'
+      : w > 0.4 ? 'text-emerald-600 font-medium'
+        : 'text-slate-400'
   const transform = `rotate(${rotate}deg) translateY(${offsetY}px)`
   return { fontSize, transform, cls }
 }
@@ -168,7 +168,7 @@ export default function DataAnalysis() {
             {status !== 'running' && (
               <button onClick={confirmRerun} disabled={running}
                 className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
-                {running ? '分析中…' : '重新生成本阶段（框架性分析）'}
+                {running ? '分析中…' : '重新运行（框架性分析）'}
               </button>
             )}
             {error && <span className="text-[11px] text-red-600">{error}</span>}
@@ -190,7 +190,7 @@ export default function DataAnalysis() {
                 onChange={e => setPasteText(e.target.value)}
                 placeholder="粘贴报道文本 / 访谈记录 / 数据表格内容…"
                 rows={2}
-                className="flex-1 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-sky-300 resize-none"
+                className="input-field flex-1 !bg-slate-50 !rounded-lg !text-xs resize-none"
               />
               <div className="flex gap-2 shrink-0">
                 <button onClick={addPasted} disabled={!pasteText.trim()}

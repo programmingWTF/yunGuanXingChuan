@@ -163,7 +163,7 @@ body {
   background: #94A3B8;
 }
 
-/* ── 隐藏滚动条但保留滚动能力（移动端横向导航等）── */
+/* ── 隐藏滚动条但保留滚动能力（导航横向滚动区 / 移动端等）── */
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -209,21 +209,22 @@ body {
     pointer-events: none;
   }
 
-  /* 卡片扫光：hover 时 105deg 半透明白斜条扫过（他山 cardSpecularSweep，克制） */
+  /* 卡片扫光：hover 时 105deg 半透明白斜条扫过（他山 cardSpecularSweep，克制）
+   * 起始位置 -150% 确保非悬停时完全隐藏不出边（issue #56 修复） */
   .panel-sweep::after {
     content: '';
     position: absolute;
     top: 0;
     bottom: 0;
-    width: 42%;
-    background: linear-gradient(105deg, transparent 18%, rgba(255, 255, 255, .28) 44%, transparent 68%);
-    transform: translateX(-130%) skewX(-18deg);
+    width: 38%;
+    background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .22) 46%, transparent 72%);
+    transform: translateX(-150%) skewX(-18deg);
     transition: transform .9s cubic-bezier(.22, 1, .36, 1);
     pointer-events: none;
   }
 
   .panel-sweep:hover::after {
-    transform: translateX(280%) skewX(-18deg);
+    transform: translateX(300%) skewX(-18deg);
   }
 
   /* 旧卡片兼容：默认克制（白底 + 右上光晕），不带 hover 扫光；
@@ -279,18 +280,15 @@ body {
     content: '';
     position: absolute;
     top: 0;
-    left: 0;
-    width: 50%;
-    height: 100%;
-    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.28), transparent);
-    transform: translateX(-150%) skewX(-20deg);
-    opacity: 0;
-    transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.15s ease;
-    pointer-events: none;
+    bottom: 0;
+    width: 32%;
+    background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .14) 46%, transparent 72%);
+    transform: translateX(-150%) skewX(-18deg);
+    transition: transform .7s ease;
   }
+
   .btn-primary:hover:not(:disabled)::after {
-    transform: translateX(250%) skewX(-20deg);
-    opacity: 1;
+    transform: translateX(280%) skewX(-18deg);
   }
 
   /* ═══ 次级按钮：白底细边框（他山：边框区分而非阴影）═══ */
@@ -412,6 +410,19 @@ body {
 
 .animate-fade-in {
   animation: fadeIn .25s cubic-bezier(.22, 1, .36, 1) forwards;
+}
+
+/* ── 页脚顶部渐变过渡（浅页背景 → 深海军蓝，替代旧版 absolute 浮层）── */
+.bg-footer {
+  position: relative;
+}
+
+.bg-footer::before {
+  content: '';
+  display: block;
+  height: 80px;
+  background: linear-gradient(180deg, var(--bg-page) 0%, #0E2E4F 100%);
+  pointer-events: none;
 }
 
 /* ── 呼吸光晕（装饰）── */

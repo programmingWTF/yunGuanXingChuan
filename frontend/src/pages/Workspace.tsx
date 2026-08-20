@@ -279,7 +279,7 @@ export default function Workspace() {
               onChange={e => setInterest(e.target.value)}
               placeholder="输入研究兴趣，如：嫦娥七号月球南极探测的国际报道"
               rows={3}
-              className="w-full rounded-lg bg-slate-50 border border-slate-200 px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-sky-300 resize-none"
+              className="input-field !bg-slate-50 !rounded-lg resize-none"
             />
             {error && <p className="text-[11px] text-red-600 mt-2">{error}</p>}
             {!user ? (
@@ -313,15 +313,18 @@ export default function Workspace() {
                 </div>
               )}
               {user && projects.length === 0 && (
-                <p className="text-[11px] text-slate-400 py-4 text-center">暂无项目，从上方创建第一个吧</p>
+                <div className="text-center py-8">
+                  <div className="text-3xl mb-3 opacity-20">📁</div>
+                  <p className="text-xs text-slate-400">暂无项目，从上方创建第一个吧</p>
+                </div>
               )}
               {projects.map(p => (
                 <button
                   key={p.id}
                   onClick={() => handleSelect(p.id)}
                   className={`group w-full text-left rounded-xl border px-3 py-2.5 transition-all ${selected === p.id || (projects[0]?.id === p.id && selected === null)
-                      ? 'border-sky-300 bg-sky-50'
-                      : 'border-slate-200 bg-slate-50 hover:border-slate-300'
+                    ? 'border-sky-300 bg-sky-50'
+                    : 'border-slate-200 bg-slate-50 hover:border-slate-300'
                     }`}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -338,10 +341,10 @@ export default function Workspace() {
                         aria-label={`删除项目 ${p.title}`}
                         onClick={e => { e.stopPropagation(); handleDeleteClick(p.id) }}
                         className={`px-1.5 py-0.5 rounded text-[10px] border transition-all select-none ${deletingId === p.id
-                            ? 'opacity-60 cursor-wait bg-red-50 text-red-400 border-red-200'
-                            : confirmDeleteId === p.id
-                              ? 'bg-red-600 text-white border-red-600 font-medium'
-                              : 'opacity-0 group-hover:opacity-100 text-slate-400 border-transparent hover:text-red-600 hover:border-red-200 cursor-pointer'
+                          ? 'opacity-60 cursor-wait bg-red-50 text-red-400 border-red-200'
+                          : confirmDeleteId === p.id
+                            ? 'bg-red-600 text-white border-red-600 font-medium'
+                            : 'opacity-0 group-hover:opacity-100 text-slate-400 border-transparent hover:text-red-600 hover:border-red-200 cursor-pointer'
                           }`}
                       >
                         {deletingId === p.id ? '删除中…' : confirmDeleteId === p.id ? '确认删除？' : '🗑 删除'}
@@ -365,7 +368,11 @@ export default function Workspace() {
         {/* 右：选中项目详情 */}
         <div className="card-sweep p-5">
           {!detail ? (
-            <p className="text-xs text-slate-400 text-center py-16">创建项目后，这里将展示 7 阶段进度与产出物</p>
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="text-5xl mb-5 opacity-20">📋</div>
+              <p className="text-sm text-slate-500 mb-1.5">尚未选择项目</p>
+              <p className="text-xs text-slate-400 max-w-xs">创建项目后，这里将展示 7 阶段进度与产出物</p>
+            </div>
           ) : (
             <div className="space-y-5">
               {/* 项目头 + 操作 */}
