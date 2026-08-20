@@ -184,7 +184,8 @@ export default function Workspace() {
         URL.revokeObjectURL(url)
       } else {
         const { content } = await exportWorkflowProject(detail.id, fmt) as { content: string }
-        downloadText(`${detail.title}.${fmt}`, content, fmt === 'md' ? 'text/markdown' : 'application/json')
+        const safeTitle = (detail.title || '云观星传科研项目').replace(/[\r\n"\x00-\x1f]/g, '').trim() || '云观星传科研项目'
+        downloadText(`${safeTitle}.${fmt}`, content, fmt === 'md' ? 'text/markdown' : 'application/json')
       }
     } catch {
       setError('导出失败，请确认后端已启动')
