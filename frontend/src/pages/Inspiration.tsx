@@ -27,7 +27,7 @@ export default function Inspiration() {
             {status !== 'running' && (
               <button onClick={confirmRerun} disabled={running}
                 className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
-                {running ? '生成中…' : '重新生成本阶段'}
+                {running ? '生成中…' : '重新运行'}
               </button>
             )}
             {error && <span className="text-[11px] text-red-600">{error}</span>}
@@ -68,7 +68,7 @@ export default function Inspiration() {
             </p>
           )}
           {directions.length === 0 && rec?.status === 'completed' && (
-            <p className="text-[11px] text-slate-400">该阶段未生成方向卡片，可点击"重新生成本阶段"</p>
+            <p className="text-[11px] text-slate-400">该阶段未生成方向卡片，可点击「重新运行」</p>
           )}
         </div>
       )}

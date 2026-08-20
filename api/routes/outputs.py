@@ -360,13 +360,19 @@ async def export_output(task_id: str, format: str = "markdown"):
     safe_topic = _safe_name(meta["topic"])
     filename = f"{meta['name']}_{safe_topic}{fmt_info['ext']}"
 
-    # 中文文件名用 RFC 5987 编码（filename* ），否则 latin-1 header 会 500
+    # 中文文件名：RFC 5987（filename*=UTF-8''%xx）+ ASCII 回退（filename="..."）
+    # 仅 filename* 时，部分旧浏览器/下载器无法解析导致文件名乱码
     from urllib.parse import quote
-    ascii_name = quote(filename, safe="")
+    ascii_ext = fmt_info["ext"]
+    ascii_fallback = f"export{ascii_ext}"
+    encoded_name = quote(filename, safe="")
     return Response(
         content=content,
         media_type=fmt_info["mime"],
-        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{ascii_name}"},
+        headers={
+            "Content-Disposition":
+                f"attachment; filename=\"{ascii_fallback}\"; filename*=UTF-8''{encoded_name}",
+        },
     )
 
 

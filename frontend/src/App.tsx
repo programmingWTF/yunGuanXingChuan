@@ -111,8 +111,8 @@ function TopNav() {
               )}
               <NavLink to="/settings"
                 className={({ isActive }) => `text-[11px] font-medium px-2 py-1 rounded-md border transition-all ${isActive ? 'border-sky-300 bg-sky-50 text-sky-700' : 'border-slate-200 text-slate-500 hover:border-sky-300 hover:text-sky-700'}`}>
-                  ⚙ 模型设置
-                </NavLink>
+                ⚙ 模型设置
+              </NavLink>
               <span className="text-xs font-medium text-slate-600 max-w-[80px] truncate" title={user.email}>{user.name}</span>
               <button onClick={() => void logout()}
                 className="text-[11px] text-slate-400 hover:text-red-600 transition-colors shrink-0">
@@ -159,7 +159,7 @@ function PageHeading() {
 /* ── 页脚：深海军蓝 #0E2E4F（他山 8.7：全站唯一大面积深色）── */
 function Footer() {
   return (
-    <footer className="relative z-10 mt-20 bg-footer text-white/70">
+    <footer className="relative z-10 mt-auto bg-footer text-white/70">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-12 grid gap-10 md:grid-cols-3">
         <div>
           <p className="font-display text-lg font-semibold text-white tracking-wide">云观 · 星传</p>
@@ -218,12 +218,12 @@ function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen relative font-body">
+    <div className="min-h-screen relative font-body flex flex-col">
       <StarfieldBackground />
       <TopNav />
       <PageHeading />
-      <div className="relative z-10 pt-12">
-        <main className="px-4 sm:px-8 py-8 max-w-[1400px] mx-auto">
+      <div className="relative z-10 pt-12 flex-1 flex flex-col">
+        <main className="px-4 sm:px-8 py-8 max-w-[1400px] mx-auto w-full flex-1">
           <div key={location.pathname} className="page-transition">
             <Routes location={location}>
               {/* 科研工作台（默认页）+ 7 个科研流程页 */}
