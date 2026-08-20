@@ -12,8 +12,9 @@
  *   /review        ⑦ 同行评审
  */
 import { useEffect, useState } from 'react'
-import { BrowserRouter as Router, Routes, Route, NavLink, useLocation } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
 import { StoreProvider, useStore } from './store'
+import { AuthProvider, useAuth } from './auth'
 import StarfieldBackground from './components/StarfieldBackground'
 import Workspace from './pages/Workspace'
 import Inspiration from './pages/Inspiration'
@@ -23,6 +24,12 @@ import Method from './pages/Method'
 import DataAnalysis from './pages/DataAnalysis'
 import Writing from './pages/Writing'
 import Review from './pages/Review'
+import PaperLibrary from './pages/PaperLibrary'
+import CrossCultural from './pages/CrossCultural'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import Admin from './pages/Admin'
+import Settings from './pages/Settings'
 
 /* ── 导航定义：科研工作台 + 科研流程 ── */
 const PIPELINE_NAV = [
@@ -34,6 +41,7 @@ const PIPELINE_NAV = [
   { to: '/data-analysis', icon: '📊', label: '数据分析', en: 'ANALYSIS' },
   { to: '/writing', icon: '✍️', label: '学术写作', en: 'WRITING' },
   { to: '/review', icon: '👨‍⚖️', label: '同行评审', en: 'REVIEW' },
+  { to: '/library', icon: '📚', label: '论文库', en: 'PAPER LIBRARY' },
 ]
 
 /* ── 实时时钟 ── */
@@ -65,17 +73,18 @@ function BackendDot() {
 
 /* ── 顶部导航：白底 48px + 1px 底边框 + 衬线链接（他山 8.1）── */
 function TopNav() {
+  const { user, logout } = useAuth()
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-slate-200/80">
-      <div className="max-w-[1400px] mx-auto h-12 flex items-center justify-between gap-4 px-4 sm:px-8">
+      <div className="mx-auto h-12 flex items-center justify-between gap-4 px-4 sm:px-8 lg:px-10">
         <div className="flex items-center gap-6 min-w-0">
           {/* Logo：衬线 + 字间留白（他山 Logo 写法） */}
           <NavLink to="/" className="font-display font-bold text-[15px] text-slate-900 tracking-wide shrink-0 whitespace-nowrap">
             云观 · 星传
             <span className="ml-1.5 font-sans text-[10px] font-semibold text-slate-400 tracking-[0.22em] uppercase">AI Scientist</span>
           </NavLink>
-          {/* 科研流程导航（小屏横向滚动） */}
-          <nav className="flex items-center gap-0.5 overflow-x-auto no-scrollbar">
+          {/* 科研流程导航（窄屏横向滚动，滚动条隐藏） */}
+          <nav className="flex items-center gap-0.5 overflow-x-auto no-scrollbar min-w-0">
             {PIPELINE_NAV.map(item => (
               <NavLink key={item.to} to={item.to} end={item.end ?? false}
                 className={({ isActive }) => `nav-link whitespace-nowrap ${isActive ? 'active' : ''}`}>
@@ -85,12 +94,43 @@ function TopNav() {
             ))}
           </nav>
         </div>
-        <div className="flex items-center gap-5 shrink-0">
+        <div className="flex items-center gap-4 shrink-0">
           <span className="hidden lg:inline text-[10px] font-sans text-slate-400 tracking-[0.22em] uppercase">
             Research Workspace
           </span>
           <BackendDot />
           <LiveClock />
+          {user ? (
+            <div className="flex items-center gap-2.5 pl-3 border-l border-slate-200">
+              {user.role === 'admin' && (
+                <NavLink to="/admin"
+                  className={({ isActive }) => `text-[11px] font-medium px-2 py-1 rounded-md border transition-all ${isActive ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-200 text-slate-500 hover:border-amber-300 hover:text-amber-700'}`}>
+                  🛡 管理后台
+                </NavLink>
+              )}
+              <NavLink to="/settings"
+                className={({ isActive }) => `text-[11px] font-medium px-2 py-1 rounded-md border transition-all ${isActive ? 'border-sky-300 bg-sky-50 text-sky-700' : 'border-slate-200 text-slate-500 hover:border-sky-300 hover:text-sky-700'}`}>
+                ⚙ 模型设置
+              </NavLink>
+              <span className="text-xs font-medium text-slate-600 max-w-[80px] truncate" title={user.email}>{user.name}</span>
+              <button onClick={() => void logout()}
+                className="text-[11px] text-slate-400 hover:text-red-600 transition-colors shrink-0">
+                退出
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
+              {/* 未登录：主界面可用（浏览），但运行操作需登录 */}
+              <NavLink to="/register"
+                className="text-[11px] font-medium px-2 py-1 rounded-md border border-slate-200 text-slate-500 hover:border-sky-300 hover:text-sky-700 transition-all">
+                注册
+              </NavLink>
+              <NavLink to="/login"
+                className="text-[11px] font-medium px-3 py-1 rounded-md bg-sky-600 text-white hover:bg-sky-700 transition-all">
+                登录
+              </NavLink>
+            </div>
+          )}
         </div>
       </div>
     </header>
@@ -145,6 +185,27 @@ function Footer() {
 
 function AppLayout() {
   const location = useLocation()
+  const { user, loading } = useAuth()
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register'
+
+  // 会话探测中：避免闪烁，显示轻量占位
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center text-xs text-slate-400">加载中…</div>
+  }
+  // 未登录：不再强制跳登录页——主界面可浏览（运行/生成操作替换为登录按钮）
+  // 已登录访问登录/注册页则回工作台
+  if (user && isAuthPage) return <Navigate to="/" replace />
+
+  // 登录/注册页：独立布局（无顶栏/页脚）
+  if (isAuthPage) {
+    return (
+      <Routes location={location}>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+      </Routes>
+    )
+  }
+
   return (
     <div className="min-h-screen relative font-body flex flex-col">
       <StarfieldBackground />
@@ -165,6 +226,14 @@ function AppLayout() {
               <Route path="/data-analysis" element={<DataAnalysis />} />
               <Route path="/writing" element={<Writing />} />
               <Route path="/review" element={<Review />} />
+              <Route path="/library" element={<PaperLibrary />} />
+              <Route path="/cross-cultural" element={<CrossCultural />} />
+
+              {/* 管理后台（admin 角色；后端二次校验） */}
+              <Route path="/admin" element={<Admin />} />
+
+              {/* 模型设置（多租户自带钥匙：用户自己的 LLM API） */}
+              <Route path="/settings" element={<Settings />} />
 
               {/* 兜底：未知路径回科研工作台 */}
               <Route path="*" element={<Workspace />} />
@@ -179,11 +248,13 @@ function AppLayout() {
 
 function App() {
   return (
-    <StoreProvider>
-      <Router>
-        <AppLayout />
-      </Router>
-    </StoreProvider>
+    <AuthProvider>
+      <StoreProvider>
+        <Router>
+          <AppLayout />
+        </Router>
+      </StoreProvider>
+    </AuthProvider>
   )
 }
 

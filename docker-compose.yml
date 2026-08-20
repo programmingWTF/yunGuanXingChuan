@@ -17,3 +17,26 @@ services:
       - NO_PROXY=localhost,127.0.0.1,172.17.0.1,192.168.0.150
     extra_hosts:
       - 'host.docker.internal:host-gateway'
+
+  # ── 管理后台（端口 8124）：tzb-admin.liguiyu.com ──
+  # 模仿 liguiyu-home 的 admin.liguiyu.com：应用层无鉴权，身份认证由 Cloudflare Access 完成
+  admin:
+    build:
+      context: .
+      args:
+        ADMIN_MODE: 'true'
+    container_name: yunguanxingchuan-admin
+    ports:
+      - '8124:8000'
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+      - ADMIN_MODE=true
+      - HTTP_PROXY=http://172.17.0.1:7890
+      - HTTPS_PROXY=http://172.17.0.1:7890
+      - NO_PROXY=localhost,127.0.0.1,172.17.0.1,192.168.0.150
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'

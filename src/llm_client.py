@@ -32,8 +32,13 @@ class LLMClient:
         model: Optional[str] = None,
         max_retries: int = 3,
         retry_delay: float = 2.0,
+        embedding_api_key: Optional[str] = None,
+        embedding_base_url: Optional[str] = None,
+        embedding_model: Optional[str] = None,
     ):
-        self.api_key = api_key or QWEN_API_KEY
+        # 空 key 用占位符：openai SDK 在构造时校验空 key 会抛 Missing credentials；
+        # 占位后构造成功、真实调用时才失败（便于测试/无 key 环境加载模块）
+        self.api_key = api_key or QWEN_API_KEY or "missing"
         self.base_url = base_url or QWEN_BASE_URL
         self.model = model or QWEN_MODEL
         self.max_retries = max_retries
@@ -44,9 +49,42 @@ class LLMClient:
             base_url=self.base_url,
         )
         # Embedding 用单独的客户端（独立端点和 Key）
-        self._embedding_client = OpenAI(
-            api_key=QWEN_EMBEDDING_API_KEY,
-            base_url=QWEN_EMBEDDING_BASE_URL,
+        # 多租户模式：用户可填可选 embedding 配置；不填则 _embedding_client=None，
+        # get_embedding 返回 None → 调用方降级（如字符串匹配）
+        self._embedding_model = embedding_model or QWEN_EMBEDDING_MODEL
+        # 全局默认模式（无用户配置）：可用平台独立 embedding key（QWEN_EMBEDDING_API_KEY）。
+        # 多租户模式（from_config）会显式把 embedding_api_key 设置为用户 key（自带钥匙），
+        # 因此这里只需"传入什么用什么，没传用平台默认"。
+        embedding_api_key = embedding_api_key or QWEN_EMBEDDING_API_KEY
+        embedding_base_url = embedding_base_url or QWEN_EMBEDDING_BASE_URL
+        if embedding_api_key:
+            self._embedding_client = OpenAI(
+                api_key=embedding_api_key,
+                base_url=embedding_base_url,
+            )
+        else:
+            self._embedding_client = None
+
+    @classmethod
+    def from_config(cls, cfg: dict) -> "LLMClient":
+        """
+        从用户模型配置构造 per-user 客户端（多租户自带钥匙模式）。
+        cfg = {llm: {api_key, base_url, model}, embedding: {api_key, base_url, model} | None}
+        """
+        llm = (cfg or {}).get("llm") or {}
+        emb = (cfg or {}).get("embedding") or {}
+        # 多租户"自带钥匙"：向量模型只用当前用户的密钥。
+        # 用户未单独配置 embedding 时，fallback 到用户自己的主 LLM key/base_url，
+        # 绝不 fallback 平台独立 embedding key（避免跨租户串用/偷偷消耗平台额度）。
+        user_main_key = llm.get("api_key") or None
+        user_main_base = llm.get("base_url") or None
+        return cls(
+            api_key=user_main_key,
+            base_url=user_main_base,
+            model=llm.get("model") or None,
+            embedding_api_key=emb.get("api_key") or user_main_key,
+            embedding_base_url=emb.get("base_url") or user_main_base or QWEN_EMBEDDING_BASE_URL,
+            embedding_model=emb.get("model") or None,
         )
 
     def chat(
@@ -78,15 +116,26 @@ class LLMClient:
             {"role": "user", "content": user_prompt},
         ]
 
-        kwargs: Dict[str, Any] = {
-            "model": model or self.model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        }
-
         if json_mode:
-            kwargs["response_format"] = {"type": "json_object"}
+            # DeepSeek 官方要求：json_object 模式下 prompt 必须包含 "json" 字样，
+            # 否则 400 invalid_request_error（OpenAI 兼容实现的差异）
+            if "json" not in (system_prompt + user_prompt).lower():
+                user_prompt = user_prompt + "\n\n[重要] 请严格以 JSON 格式输出，不要包含其他内容。"
+                messages[1]["content"] = user_prompt
+            kwargs: Dict[str, Any] = {
+                "model": model or self.model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "response_format": {"type": "json_object"},
+            }
+        else:
+            kwargs: Dict[str, Any] = {
+                "model": model or self.model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
 
         # 启用联网搜索
         # qwen3.8-max-preview 仅支持 Responses API 联网搜索
@@ -470,20 +519,17 @@ class LLMClient:
 
         return ""
 
-    def get_embedding(self, text: str) -> List[float]:
+    def get_embedding(self, text: str) -> Optional[List[float]]:
         """
-        获取文本的向量表示
-
-        Args:
-            text: 输入文本
-
-        Returns:
-            向量列表
+        获取文本的向量表示。
+        未配置 embedding API 时返回 None（调用方降级，如字符串匹配）。
         """
+        if self._embedding_client is None:
+            return None
         for attempt in range(self.max_retries):
             try:
                 response = self._embedding_client.embeddings.create(
-                    model=QWEN_EMBEDDING_MODEL,
+                    model=self._embedding_model,
                     input=text,
                 )
                 return response.data[0].embedding
@@ -496,22 +542,18 @@ class LLMClient:
                 else:
                     raise
 
-        return []
+        return None
 
     def get_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
         """
-        批量获取文本向量
-
-        Args:
-            texts: 文本列表
-
-        Returns:
-            向量列表的列表
+        批量获取文本向量。未配置 embedding API 时返回空列表（调用方降级）。
         """
+        if self._embedding_client is None:
+            return []
         for attempt in range(self.max_retries):
             try:
                 response = self._embedding_client.embeddings.create(
-                    model=QWEN_EMBEDDING_MODEL,
+                    model=self._embedding_model,
                     input=texts,
                 )
                 return [item.embedding for item in response.data]
@@ -531,8 +573,14 @@ class LLMClient:
 _llm_client: Optional[LLMClient] = None
 
 
-def get_llm_client() -> LLMClient:
-    """获取全局 LLM 客户端单例"""
+def get_llm_client(config: Optional[dict] = None) -> LLMClient:
+    """
+    获取 LLM 客户端。
+    - config 提供：构造 per-user 客户端（多租户模式，推荐）
+    - config 为 None：返回全局单例（用环境变量默认配置；遗留 API 兼容）
+    """
+    if config:
+        return LLMClient.from_config(config)
     global _llm_client
     if _llm_client is None:
         _llm_client = LLMClient()

@@ -7,6 +7,7 @@ import axios from 'axios'
 const api = axios.create({
   baseURL: '/api',
   timeout: 300000, // Pipeline 可能运行较久，5分钟超时
+  withCredentials: true, // 会话 Cookie（httpOnly，same-origin）
 })
 
 // ============ 类型定义 ============
@@ -73,7 +74,8 @@ export interface SearchSource {
   url: string
   title: string
   content: string
-  score: number
+  /** 可选：工作流阶段产出物（search_sources）不携带 score，仅旧版 pipeline 的 SearchSource.to_dict() 有 */
+  score?: number
   source: string  // "TavilySearch" | "QwenWebSearch"
 }
 
@@ -565,6 +567,210 @@ export async function polishWorkflowSection(
 export async function getHotTopics(limit: number = 6) {
   const res = await api.get('/workflow/hot-topics', { params: { limit } })
   return res.data as { topics: { title: string; url: string; source: string; content: string }[] }
+}
+
+// ============ 用户认证（用户系统对齐 liguiyu-home）============
+
+export interface AuthUser {
+  id: string
+  email: string
+  name: string
+  role: 'user' | 'admin'
+  /** 是否已配置自己的 LLM API（多租户自带钥匙模式） */
+  llm_configured?: boolean
+}
+
+/** 注册前发送邮箱验证码（6 位，10 分钟有效） */
+export async function sendAuthCode(email: string) {
+  const res = await api.post('/auth/send-code', { email })
+  return res.data as { success: boolean; message: string }
+}
+
+/** 注册：昵称 + 邮箱 + 密码 + 验证码 */
+export async function registerUser(name: string, email: string, password: string, code: string) {
+  const res = await api.post('/auth/register', { name, email, password, code })
+  return res.data as { success: boolean; message: string; user?: AuthUser }
+}
+
+/** 登录：邮箱 + 密码（会话 httpOnly Cookie） */
+export async function loginUser(email: string, password: string) {
+  const res = await api.post('/auth/login', { email, password })
+  return res.data as { success: boolean; user: AuthUser }
+}
+
+export async function logoutUser() {
+  const res = await api.post('/auth/logout')
+  return res.data as { success: boolean }
+}
+
+/** 当前登录用户（未登录 401） */
+export async function getMe() {
+  const res = await api.get('/auth/me')
+  return res.data as { user: AuthUser & { created_at: number; llm_configured: boolean } }
+}
+
+// ============ 用户模型配置（多租户自带钥匙）============
+
+export interface LlmConfigView {
+  api_key_masked: string
+  configured: boolean
+  base_url: string
+  model: string
+}
+
+export interface LlmConfigResponse {
+  llm: LlmConfigView
+  embedding: LlmConfigView
+}
+
+/** 查看当前用户模型配置（key 掩码） */
+export async function getLlmConfig() {
+  const res = await api.get('/user/llm-config')
+  return res.data as LlmConfigResponse
+}
+
+/** 保存模型配置（自动验证连通；embedding 留空 = 清除/降级） */
+export async function saveLlmConfig(cfg: {
+  llm: { api_key: string; base_url: string; model: string }
+  embedding?: { api_key: string; base_url: string; model: string } | null
+}) {
+  const res = await api.put('/user/llm-config', cfg)
+  return res.data as { success: boolean; message: string }
+}
+
+// ============ 管理后台（admin）============
+
+export interface AdminUser {
+  id: string
+  email: string
+  name: string
+  role: string
+  created_at: number
+  project_count: number
+  llm_configured?: boolean
+}
+
+export interface AdminProject extends ResearchProject {
+  owner: { id: string; email: string; name: string } | null
+}
+
+/** 用户列表（含各自项目数） */
+export async function listAdminUsers() {
+  const res = await api.get('/admin/users')
+  return res.data as { users: AdminUser[]; total_projects: number }
+}
+
+/** 全部项目 + 归属人（含无主 legacy 项目） */
+export async function listAdminProjects() {
+  const res = await api.get('/admin/projects')
+  return res.data as { projects: AdminProject[]; count: number }
+}
+
+/** 项目详情（admin 视角，与前台同构） */
+export async function getAdminProject(id: string) {
+  const res = await api.get(`/admin/projects/${id}`)
+  return res.data as { project: AdminProject }
+}
+
+/** 设置/取消管理员角色 */
+export async function setAdminRole(userId: string, role: 'admin' | 'user') {
+  const res = await api.post(`/admin/users/${userId}/role`, { role })
+  return res.data as { success: boolean; user_id: string; role: string }
+}
+
+/** 删除用户（级联删除其全部项目） */
+export async function deleteAdminUser(userId: string) {
+  const res = await api.delete(`/admin/users/${userId}`)
+  return res.data as { success: boolean; deleted_user: string; deleted_projects: number }
+}
+
+/** 删除项目（物理移除） */
+export async function deleteAdminProject(projectId: string) {
+  const res = await api.delete(`/admin/projects/${projectId}`)
+  return res.data as { status: string; project_id: string }
+}
+
+// ============ 个人论文库（library）============
+
+export interface LibraryPaper {
+  id: number
+  title: string
+  file_name: string
+  file_ext: string
+  status: 'uploaded' | 'processing' | 'ready' | 'error'
+  chunk_count: number
+  error_msg: string
+  created_at: string
+}
+
+export interface LibraryStyle {
+  terms: string[]
+  structure: {
+    sections_detected?: string[]
+    abstract_style?: string[]
+    conclusion_style?: string[]
+    avg_sentence_len?: number
+  }
+  few_shot: string[]
+}
+
+export interface LibrarySearchResult {
+  text: string
+  score: number
+  metadata: Record<string, unknown>
+}
+
+export interface LibraryHealth {
+  r2_configured: boolean
+  supported_extensions: string[]
+}
+
+/** 获取 R2 配置状态 */
+export async function getLibraryHealth() {
+  const res = await api.get('/library/health')
+  return res.data as LibraryHealth
+}
+
+/** ① 签发上传 URL（后端建记录，返回 presigned PUT URL 与 paper_id） */
+export async function createLibraryUpload(fileName: string, contentType: string) {
+  const res = await api.post('/library/upload-url', { file_name: fileName, content_type: contentType })
+  return res.data as { upload_url: string; file_key: string; paper_id: number; expires_in: number }
+}
+
+/** ② 确认上传完成，触发后端解析/嵌入/风格提取 */
+export async function confirmLibraryUpload(paperId: number) {
+  const res = await api.post('/library/confirm', { paper_id: paperId })
+  return res.data as { paper_id: number; status: string; chunk_count: number; style: LibraryStyle }
+}
+
+/** 论文列表 */
+export async function listLibraryPapers() {
+  const res = await api.get('/library')
+  return res.data as LibraryPaper[]
+}
+
+/** 论文详情 */
+export async function getLibraryPaper(id: number) {
+  const res = await api.get(`/library/${id}`)
+  return res.data as LibraryPaper
+}
+
+/** 删除论文 */
+export async function deleteLibraryPaper(id: number) {
+  const res = await api.delete(`/library/${id}`)
+  return res.data as { ok: boolean }
+}
+
+/** 检索用户论文库 */
+export async function searchLibrary(query: string, topK = 5) {
+  const res = await api.post('/library/search', { query, top_k: topK })
+  return res.data as { query: string; results: LibrarySearchResult[] }
+}
+
+/** 全局风格三件套 */
+export async function getLibraryStyle() {
+  const res = await api.get('/library/style')
+  return res.data as LibraryStyle
 }
 
 export default api

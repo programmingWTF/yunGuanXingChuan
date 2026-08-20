@@ -67,12 +67,13 @@ class ProjectStore:
     # ------------------------------------------------------------------
     # CRUD
     # ------------------------------------------------------------------
-    def create(self, title: str = "", interest: str = "") -> ResearchProject:
+    def create(self, title: str = "", interest: str = "", owner_id: str = "") -> ResearchProject:
         """创建研究项目（初始化 7 个阶段记录；id 用微秒时间戳保证单调递增）"""
         now = datetime.now().isoformat(timespec="microseconds")
         project = ResearchProject(
             # 微秒时间戳 id：单调递增（Windows 时钟分辨率 ~15ms，uuid 不保证可排序）
             id=f"proj_{int(time.time() * 1_000_000)}",
+            owner_id=owner_id or None,
             title=title or interest or "未命名研究项目",
             interest=interest,
             created_at=now,
@@ -87,8 +88,8 @@ class ProjectStore:
     def get(self, project_id: str) -> Optional[ResearchProject]:
         return self._read(project_id)
 
-    def list(self) -> List[ResearchProject]:
-        """按创建顺序倒序返回全部项目（id 微秒时间戳单调递增，天然可排序）"""
+    def list(self, owner_id: Optional[str] = None) -> List[ResearchProject]:
+        """按创建顺序倒序返回项目。owner_id 为空 = 全部（admin 视角）；否则只返回该用户的项目。"""
         projects = []
         for path in sorted(self.base_dir.glob("proj_*.json"), reverse=True):
             try:
@@ -98,6 +99,8 @@ class ProjectStore:
                 logger.warning(f"[ProjectStore] 跳过损坏项目文件 {path.name}: {e}")
         # 按 id（微秒时间戳）倒序：后创建在前；兼容旧 uuid id 项目（排最前/最后无妨）
         projects.sort(key=lambda p: p.id, reverse=True)
+        if owner_id:
+            projects = [p for p in projects if p.owner_id == owner_id]
         return projects
 
     def delete(self, project_id: str) -> bool:
@@ -106,6 +109,28 @@ class ProjectStore:
             path.unlink()
             return True
         return False
+
+    def claim_ownerless(self, owner_id: str) -> int:
+        """把无主（legacy）项目认领给指定用户。返回认领数量。"""
+        claimed = 0
+        with self._lock:
+            for p in self.list():
+                if not p.owner_id:
+                    p.owner_id = owner_id
+                    self._write(p)
+                    claimed += 1
+        if claimed:
+            logger.info(f"[ProjectStore] 认领 {claimed} 个无主项目 → {owner_id}")
+        return claimed
+
+    def delete_by_owner(self, owner_id: str) -> int:
+        """删除某用户全部项目（级联删除，删除用户时用）。返回删除数量。"""
+        deleted = 0
+        with self._lock:
+            for p in self.list():
+                if p.owner_id == owner_id and self.delete(p.id):
+                    deleted += 1
+        return deleted
 
     # ------------------------------------------------------------------
     # 阶段状态更新

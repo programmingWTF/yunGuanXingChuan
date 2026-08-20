@@ -34,11 +34,13 @@ class WorkflowEngine:
         self.store = store or get_project_store()
         # agents: {stage: BaseAgent}；不传则延迟构建（避免导入环 + 测试可注入 mock）
         self._agents = agents or {}
+        # 缓存对应的 llm_client（多租户防串号：缓存 agent 绑定的客户端）
+        self._agents_client = None
 
     # ------------------------------------------------------------------
     # Agent 构建（延迟导入，避免循环依赖）
     # ------------------------------------------------------------------
-    def _build_agents(self) -> Dict[int, Any]:
+    def _build_agents(self, llm_client=None) -> Dict[int, Any]:
         from src.agents.research_inspiration_agent import ResearchInspirationAgent
         from src.agents.literature_review_agent import LiteratureReviewAgent
         from src.agents.research_question_agent import ResearchQuestionAgent
@@ -50,34 +52,45 @@ class WorkflowEngine:
         # max_retries=1：LLM 输出不合格时快速失败，让前端立即显示错误；
         # max_tokens 按阶段调大以保障生成质量（写作/评审最大），配合 run_stage 240s 超时
         return {
-            WorkflowStage.INSPIRATION: ResearchInspirationAgent(max_retries=1, max_tokens=6000),
-            WorkflowStage.LITERATURE: LiteratureReviewAgent(max_retries=1, max_tokens=6000),
-            WorkflowStage.DESIGN: ResearchQuestionAgent(max_retries=1, max_tokens=5000),
-            WorkflowStage.METHOD: MethodAdvisorAgent(max_retries=1, max_tokens=5000),
-            WorkflowStage.DATA_ANALYSIS: DataAnalysisAgent(max_retries=1, max_tokens=6000),
-            WorkflowStage.WRITING: PaperWriterAgent(max_retries=1, max_tokens=8000),
-            WorkflowStage.REVIEW: ReviewerSimulatorAgent(max_retries=1, max_tokens=6000),
+            WorkflowStage.INSPIRATION: ResearchInspirationAgent(llm_client=llm_client, max_retries=1, max_tokens=6000),
+            WorkflowStage.LITERATURE: LiteratureReviewAgent(llm_client=llm_client, max_retries=1, max_tokens=6000),
+            WorkflowStage.DESIGN: ResearchQuestionAgent(llm_client=llm_client, max_retries=1, max_tokens=5000),
+            WorkflowStage.METHOD: MethodAdvisorAgent(llm_client=llm_client, max_retries=1, max_tokens=5000),
+            WorkflowStage.DATA_ANALYSIS: DataAnalysisAgent(llm_client=llm_client, max_retries=1, max_tokens=6000),
+            WorkflowStage.WRITING: PaperWriterAgent(llm_client=llm_client, max_retries=1, max_tokens=8000),
+            WorkflowStage.REVIEW: ReviewerSimulatorAgent(llm_client=llm_client, max_retries=1, max_tokens=6000),
         }
 
-    def _get_agent(self, stage: int) -> Any:
+    def _get_agent(self, stage: int, llm_client=None) -> Any:
+        """
+        获取阶段 agent。缓存策略（多租户防串号）：
+        - 缓存为空 → 构建并记录归属 client
+        - 缓存归属的 client 与本次不同 → 整体重建（用户 A 的 agent 绝不复用给用户 B）
+        - 同 client / fixture 注入的 mock agents（无归属）→ 复用缓存
+        """
+        if not self._agents:
+            self._agents = self._build_agents(llm_client=llm_client)
+            self._agents_client = llm_client
+        elif llm_client is not None and self._agents_client is not None and self._agents_client is not llm_client:
+            # 缓存 agent 绑定的是其他用户的 client → 整体重建（防串号）
+            self._agents = self._build_agents(llm_client=llm_client)
+            self._agents_client = llm_client
         if stage not in self._agents:
-            if not self._agents:
-                self._agents = self._build_agents()
-            else:
-                # 部分注入时补齐缺失
-                built = self._build_agents()
-                for k, v in built.items():
-                    self._agents.setdefault(k, v)
+            # 部分缺失时补齐
+            built = self._build_agents(llm_client=llm_client)
+            for k, v in built.items():
+                self._agents.setdefault(k, v)
+            self._agents_client = llm_client
         return self._agents.get(stage)
 
     # ------------------------------------------------------------------
     # 项目 CRUD
     # ------------------------------------------------------------------
-    def create_project(self, title: str = "", interest: str = "") -> ResearchProject:
-        return self.store.create(title=title, interest=interest)
+    def create_project(self, title: str = "", interest: str = "", owner_id: str = "") -> ResearchProject:
+        return self.store.create(title=title, interest=interest, owner_id=owner_id)
 
-    def list_projects(self) -> List[ResearchProject]:
-        return self.store.list()
+    def list_projects(self, owner_id: Optional[str] = None) -> List[ResearchProject]:
+        return self.store.list(owner_id=owner_id)
 
     def get_project(self, project_id: str) -> Optional[ResearchProject]:
         return self.store.get(project_id)
@@ -86,6 +99,14 @@ class WorkflowEngine:
         """物理删除项目（含产出物文件）。返回是否确有删除（False=文件不存在）。"""
         return self.store.delete(project_id)
 
+    def claim_ownerless(self, owner_id: str) -> int:
+        """无主（legacy）项目认领给指定用户，返回认领数量"""
+        return self.store.claim_ownerless(owner_id)
+
+    def delete_projects_by_owner(self, owner_id: str) -> int:
+        """级联删除某用户的全部项目，返回删除数量"""
+        return self.store.delete_by_owner(owner_id)
+
     def get_stage_meta(self) -> list:
         """阶段元数据列表（前端 Research Pipeline 渲染）"""
         return get_stage_meta_list()
@@ -93,14 +114,20 @@ class WorkflowEngine:
     # ------------------------------------------------------------------
     # 阶段执行
     # ------------------------------------------------------------------
-    def run_stage(self, project_id: str, stage: int, inputs: Dict[str, Any]) -> StageRecord:
+    def run_stage(self, project_id: str, stage: int, inputs: Dict[str, Any],
+                  llm_config: Optional[dict] = None, owner_id: Optional[str] = None) -> StageRecord:
         """
-        执行指定阶段智能体。
+        执行指定阶段智能体（多租户：llm_config 为当前用户模型配置，None 则用全局默认）。
 
         - 前置校验：项目存在；阶段在 [1,7]；未解锁（> current_stage）拒绝
         - 注入知识库/搜索上下文（try/except 降级）
         - 产出物落盘为 awaiting_review（等待研究者确认）
         """
+        from src.llm_client import get_llm_client
+        # 多租户：仅当调用方提供用户配置时才构造 per-user client（
+        # 无配置/测试环境不触发 openai SDK 构造，避免污染与副作用）
+        llm_client = get_llm_client(llm_config) if llm_config else None
+
         project = self.store.get(project_id)
         if project is None:
             raise ValueError(f"项目不存在: {project_id}")
@@ -113,15 +140,16 @@ class WorkflowEngine:
                 f"阶段 {stage} 未解锁：当前进度在第 {project.current_stage} 阶段"
             )
 
-        agent = self._get_agent(stage)
+        agent = self._get_agent(stage, llm_client)
         if agent is None:
             raise RuntimeError(f"阶段 {stage} 无对应智能体")
 
-        # 标记运行中（清空旧产出物避免失败残留；递增运行次数）
+        # 标记运行中（清空旧产出物与错误避免失败残留；递增运行次数）
         self.store.update_stage(
             project_id, stage,
             status=StageStatus.RUNNING,
             clear_output=True,
+            error=None,
             increment_run_count=True,
             append_history={"stage": stage, "action": "run_start", "summary": f"开始执行{STAGE_META[WorkflowStage(stage)]['name']}"},
         )
@@ -130,9 +158,66 @@ class WorkflowEngine:
         full_inputs = dict(inputs or {})
         full_inputs.setdefault("topic", project.interest)
         full_inputs.setdefault("project_title", project.title)
+        # 议题语料自动补齐：若本地无该议题的 science facts，自动生成并重建索引/KG，
+        # 避免新议题（如天问三号）因无事实语料导致 RAG/KG 校验大面积 unverified。
+        # 降级策略：任何异常仅告警，绝不影响阶段主流程。
+        try:
+            from src.pipeline import _safe_name
+            from src.knowledge.data_loader import get_data_loader
+            from pathlib import Path as _Path
+            topic = full_inputs.get("topic", "")
+            if topic:
+                loader = get_data_loader()
+                if not loader.load_science_facts(topic):
+                    logger.info(f"[WorkflowEngine] 本地无「{topic}」科学数据，自动生成中...")
+                    client = llm_client or get_llm_client()
+                    result = client.chat_json(
+                        system_prompt="你是航天科技领域数据标注专家。为给定议题生成结构化科学事实。必须输出标准 JSON。",
+                        user_prompt=(
+                            f"请为以下科技议题生成结构化科学事实数据：\n\n议题：{topic}\n\n"
+                            '输出格式（严格 JSON）：{"topic": "<议题>", "key_facts": ["事实1（来源）", "...至少8条"], '
+                            '"entities": [{"name": "实体名", "type": "mission/body/technology/organization/person/event", "attributes": {}, "description": "描述"}], '
+                            '"relations": [{"subject": "主体", "predicate": "关系", "object": "客体", "confidence": 0.9, "source": "来源"}], '
+                            '"timeline": [{"date": "YYYY-MM-DD", "event": "事件"}], "data_sources": ["来源1"]}'
+                        ),
+                        temperature=0.2,
+                        enable_search=True,
+                    )
+                    science_dir = _Path(__file__).parent.parent.parent / "data" / "science"
+                    science_dir.mkdir(parents=True, exist_ok=True)
+                    safe = _safe_name(topic)
+                    with open(science_dir / f"{safe}_facts.json", "w", encoding="utf-8") as f:
+                        json.dump(result, f, ensure_ascii=False, indent=2)
+                    # 生成后：science_fact 并入向量索引 + KG 并入图谱（修复后 build 保留全类型）
+                    from src.knowledge.vector_store import get_vector_store
+                    vs = get_vector_store()
+                    try:
+                        vs._load_index()
+                    except Exception:
+                        pass
+                    docs = list(vs.documents)
+                    new_docs = []
+                    for fact in result.get("key_facts", []):
+                        new_docs.append({"text": fact, "source": f"{safe}_facts", "type": "science_fact", "title": topic})
+                    for ent in result.get("entities", []):
+                        new_docs.append({
+                            "text": f"{ent.get('name')} ({ent.get('type')}): {json.dumps(ent.get('attributes', {}), ensure_ascii=False)}",
+                            "source": f"{safe}_facts", "type": "entity", "title": ent.get("name"),
+                        })
+                    vs.build_index(docs + new_docs)
+                    from src.knowledge.kg_builder import get_knowledge_graph
+                    try:
+                        get_knowledge_graph().build_from_data()
+                    except Exception as e:
+                        logger.warning(f"[WorkflowEngine] KG 更新失败（忽略）: {e}")
+                    logger.info(f"[WorkflowEngine] ✓ 「{topic}」语料已补齐并入库")
+        except Exception as e:
+            logger.warning(f"[WorkflowEngine] 议题语料补齐失败（不影响主流程）: {e}")
         context = self._build_stage_context(stage, full_inputs)
         full_inputs.update(context)
         self._inject_previous_outputs(project, stage, full_inputs)
+        # 用户论文库风格注入（写作阶段）：用户上传过论文时，自动学习其写作风格（降级保护）
+        self._inject_user_style(stage, full_inputs, owner_id)
 
         try:
             output = self._run_with_timeout(lambda: agent.run(full_inputs), 240.0, None, "智能体生成", swallow_exc=False)
@@ -143,8 +228,10 @@ class WorkflowEngine:
                 if not output.get("topic"):
                     output["topic"] = full_inputs.get("topic", "")
                 output.setdefault("project_title", full_inputs.get("project_title", ""))
+                # 联网搜索来源：把注入 LLM 的 search_context 作为结构化 search_sources 随产出物返回，供前端渲染可点击链接（Issue #98）
+                self._attach_search_sources(output, full_inputs.get("search_context") or [])
                 # RAG + KG 双校验：对产出物中的关键断言做事实校验，结果附加到产出物（不阻塞、可降级）
-                self._attach_verification(stage, output, full_inputs.get("topic", ""))
+                self._attach_verification(stage, output, full_inputs.get("topic", ""), llm_client)
             updated = self.store.update_stage(
                 project_id, stage,
                 status=StageStatus.AWAITING_REVIEW,
@@ -192,7 +279,9 @@ class WorkflowEngine:
     # ------------------------------------------------------------------
     def run_all(self, project_id: str, materials: Optional[List[Dict]] = None,
                 style_sample: Optional[str] = None,
-                topic: Optional[str] = None) -> Dict[str, Any]:
+                topic: Optional[str] = None,
+                llm_config: Optional[dict] = None,
+                owner_id: Optional[str] = None) -> Dict[str, Any]:
         """
         一键跑通全部 7 个科研阶段（选题→文献→设计→方法→数据→写作→评审）。
 
@@ -200,7 +289,12 @@ class WorkflowEngine:
         - 数据分析（⑤）无素材时由 Agent 做框架性分析；写作（⑥）无风格样本用规范风格
         - 单阶段失败即停止（后续阶段依赖前序产出）
         - 所有阶段直接置 COMPLETED，项目 status=completed
+        - 多租户：llm_config 为当前用户模型配置（None 用全局默认）
         """
+        from src.llm_client import get_llm_client
+        # 多租户：仅当调用方提供用户配置时才构造 per-user client（
+        # 无配置/测试环境不触发 openai SDK 构造，避免污染与副作用）
+        llm_client = get_llm_client(llm_config) if llm_config else None
         project = self.store.get(project_id)
         if project is None:
             raise ValueError(f"项目不存在: {project_id}")
@@ -229,13 +323,15 @@ class WorkflowEngine:
                 inputs["materials"] = materials
             if stage == WorkflowStage.WRITING and style_sample:
                 inputs["style_sample"] = style_sample
+            # 用户论文库风格注入（降级保护，不影响主流程）
+            self._inject_user_style(stage, inputs, owner_id)
 
             # 注入上下文 + 前序产出
             context = self._build_stage_context(stage, inputs)
             inputs.update(context)
             self._inject_previous_outputs(project, stage, inputs)
 
-            agent = self._get_agent(stage)
+            agent = self._get_agent(stage, llm_client)
             try:
                 output = self._run_with_timeout(
                     lambda a=agent, i=dict(inputs): a.run(i),
@@ -247,8 +343,10 @@ class WorkflowEngine:
                     if not output.get("topic"):
                         output["topic"] = topic
                     output.setdefault("project_title", project.title)
+                    # 联网搜索来源：把注入 LLM 的 search_context 作为结构化 search_sources 随产出物返回，供前端渲染可点击链接（Issue #98）
+                    self._attach_search_sources(output, inputs.get("search_context") or [])
                     # RAG + KG 双校验：对产出物中的关键断言做事实校验，结果附加到产出物（不阻塞、可降级）
-                    self._attach_verification(stage, output, topic)
+                    self._attach_verification(stage, output, topic, llm_client)
                 project = self.store.update_stage(
                     project_id, stage,
                     status=StageStatus.COMPLETED,
@@ -464,7 +562,59 @@ class WorkflowEngine:
                 entities.append(str(rq.get("id") or rq.get("text"))[:30])
         return [e for e in entities if e][:4]
 
-    def _attach_verification(self, stage: int, output: Dict[str, Any], topic: str) -> None:
+    @staticmethod
+    def _attach_search_sources(output: Dict[str, Any], search_context: List[Any]) -> None:
+        """把检索到的联网搜索来源作为结构化 search_sources 附加到产出物（Issue #98）。
+
+        - search_context 来自 _build_stage_context（含 url/title/content/source）
+        - 附加为 output["search_sources"]，供前端渲染可点击来源链接
+        - 仅当存在有效来源时才写字段：无来源时不污染产出物，前端组件对缺失/空字段有兜底
+        """
+        sources = [
+            {
+                "url": str(s.get("url", "")),
+                "title": str(s.get("title", "")),
+                "content": str(s.get("content", "") or ""),
+                "source": str(s.get("source", "")),
+            }
+            for s in (search_context or [])
+            if isinstance(s, dict)
+        ]
+        if sources:
+            output["search_sources"] = sources
+    def _inject_user_style(self, stage: int, inputs: Dict[str, Any], owner_id: Optional[str] = None) -> None:
+        """
+        用户论文库风格注入（个人论文库模块）。
+
+        - 仅写作阶段（WRITING）注入；用户已提供 style_sample 时不覆盖
+        - owner_id 为 None（未登录/测试）跳过
+        - 任何异常均降级（不影响主流程）：用户没传论文 / 库空 / 解析失败都静默跳过
+        - 注入内容：few-shot 风格示例 + 术语表（写入 style_sample 供 PaperWriter 消费）
+        """
+        if stage != WorkflowStage.WRITING or not owner_id:
+            return
+        if inputs.get("style_sample"):
+            return  # 用户显式提供的风格样本优先
+        try:
+            from src.knowledge.user_library import get_user_library
+            lib = get_user_library(owner_id)
+            style = lib.global_style()
+            if not style:
+                return
+            parts = []
+            few = style.get("few_shot") or []
+            terms = style.get("terms") or []
+            if few:
+                parts.append("【个人论文风格示例（来自用户论文库）】\n" + "\n---\n".join(few))
+            if terms:
+                parts.append("【个人常用术语】" + "、".join(terms))
+            if parts:
+                inputs["style_sample"] = "\n\n".join(parts)
+                logger.info(f"[WorkflowEngine] ✓ 已注入用户论文库风格（owner={owner_id}, few_shot={len(few)}, terms={len(terms)}）")
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"[WorkflowEngine] 用户风格注入失败（忽略）: {e}")
+
+    def _attach_verification(self, stage: int, output: Dict[str, Any], topic: str, llm_client=None) -> None:
         """
         RAG + KG 双校验：对产出物关键断言做交叉校验，结果挂到 output["verification"]。
 
@@ -485,7 +635,7 @@ class WorkflowEngine:
         entities = self._extract_entities(output, topic)
 
         try:
-            validator = CrossValidator()
+            validator = CrossValidator(llm_client=llm_client)
         except Exception as e:
             logger.warning(f"[WorkflowEngine] 校验器初始化失败，跳过校验: {e}")
             return
@@ -540,14 +690,16 @@ class WorkflowEngine:
     # ------------------------------------------------------------------
     # 章节润色 / 今日热点（轻量服务，不涉及阶段状态机）
     # ------------------------------------------------------------------
-    def polish_section(self, section: str, content: str, instruction: str = "") -> str:
+    def polish_section(self, section: str, content: str, instruction: str = "",
+                      llm_config: Optional[dict] = None) -> str:
         """
         AI 润色论文章节（独立于阶段状态机，不落盘）。
 
         - 返回润色后的章节正文；超时/异常抛错由路由转 500
+        - 多租户：llm_config 为当前用户模型配置
         """
         from src.llm_client import get_llm_client
-        llm = get_llm_client()
+        llm = get_llm_client(llm_config)
         instruction = (instruction or "").strip() or (
             "在保持原意与学术规范的前提下润色：表达更凝练、逻辑更清晰、减少AI味；"
             "不改动事实数据与参考文献信息。"

@@ -9,7 +9,11 @@
     "content": "China has become the first nation to bring back samples from the far side of the Moon, a feat that scientists say could reshape our understanding of lunar geology. The Chang'e-6 mission landed in the South Pole-Aitken basin, one of the largest impact craters in the solar system. British planetary scientists expressed excitement about the potential findings, noting the samples could reveal details about the Moon's early bombardment history.",
     "framework": "progress",
     "sentiment": "positive",
-    "key_phrases": ["historic achievement", "reshape understanding", "scientific excitement"]
+    "key_phrases": [
+      "historic achievement",
+      "reshape understanding",
+      "scientific excitement"
+    ]
   },
   {
     "id": "uk_002",
@@ -21,7 +25,11 @@
     "content": "As China celebrates its Chang'e-6 success, Western policymakers are grappling with the implications of Beijing's expanding space programme. The mission's international payloads suggest China is building an alternative space cooperation network outside US-led frameworks. Experts warn that without inclusive governance mechanisms, space could become another arena for geopolitical rivalry.",
     "framework": "competition",
     "sentiment": "neutral",
-    "key_phrases": ["geopolitical rivalry", "alternative cooperation network", "governance mechanisms"]
+    "key_phrases": [
+      "geopolitical rivalry",
+      "alternative cooperation network",
+      "governance mechanisms"
+    ]
   },
   {
     "id": "uk_003",
@@ -33,7 +41,11 @@
     "content": "The 1,935 grams of lunar material returned by China's Chang'e-6 mission represent an unprecedented scientific opportunity. Unlike previous samples from the Moon's near side, these rocks come from a region that has never been directly sampled. UK researchers at the Open University are among those hoping to gain access to the samples through international collaboration agreements.",
     "framework": "progress",
     "sentiment": "positive",
-    "key_phrases": ["unprecedented opportunity", "international collaboration", "never been sampled"]
+    "key_phrases": [
+      "unprecedented opportunity",
+      "international collaboration",
+      "never been sampled"
+    ]
   },
   {
     "id": "uk_004",
@@ -45,7 +57,11 @@
     "content": "China's methodical advance in space exploration is forcing a reassessment of Western assumptions about technological leadership. The Chang'e-6 success, combined with the operational Tiangong space station, demonstrates Beijing's capacity to execute complex multi-year space programmes. Investment analysts note that China's space economy is growing at 15% annually, potentially rivalling US commercial space ventures within a decade.",
     "framework": "competition",
     "sentiment": "neutral",
-    "key_phrases": ["technological leadership", "methodical advance", "rivaling US ventures"]
+    "key_phrases": [
+      "technological leadership",
+      "methodical advance",
+      "rivaling US ventures"
+    ]
   },
   {
     "id": "uk_005",
@@ -57,7 +73,11 @@
     "content": "Preliminary analysis of Chang'e-6 samples has revealed basaltic rocks formed by volcanic eruptions 2.8 billion years ago on the Moon's far side — much more recent than expected. This challenges existing models of lunar thermal evolution and suggests the far side retained internal heat longer than the near side. The discovery has implications for understanding planetary cooling processes across the solar system.",
     "framework": "progress",
     "sentiment": "positive",
-    "key_phrases": ["challenges existing models", "volcanic surprise", "planetary cooling"]
+    "key_phrases": [
+      "challenges existing models",
+      "volcanic surprise",
+      "planetary cooling"
+    ]
   },
   {
     "id": "uk_006",
@@ -69,6 +89,176 @@
     "content": "British space scientists are exploring avenues to access samples from China's Chang'e-6 mission through bilateral science agreements. The Royal Astronomical Society has called for the UK government to facilitate research partnerships with Chinese space institutions, arguing that scientific cooperation should transcend political tensions. Several UK universities have already submitted proposals for sample analysis.",
     "framework": "cooperation",
     "sentiment": "positive",
-    "key_phrases": ["bilateral science agreements", "cooperation transcends politics", "research partnerships"]
+    "key_phrases": [
+      "bilateral science agreements",
+      "cooperation transcends politics",
+      "research partnerships"
+    ]
+  },
+  {
+    "id": "uk_007",
+    "source": "BBC News",
+    "title": "China and Russia push ahead with Moon station despite Western rivalry",
+    "date": "2026-04-24",
+    "language": "en",
+    "country": "uk",
+    "content": "China and Russia have moved their International Lunar Research Station from diplomatic slogan towards engineering reality, according to statements released at a lunar exploration conference in Beijing. The China National Space Administration said Chang'e-7, due to launch in 2026, will survey ice-bearing terrain near the lunar south pole, while Chang'e-8, planned for 2028, will test technologies for using local resources. Together they are intended to form the robotic core of a base that Beijing hopes to expand into a crewed facility by the mid-2030s. The project, announced with Russia's Roscosmos in 2021, now includes partners from Asia, Africa, the Middle East and Latin America, although Western space agencies remain largely outside. Russian officials have said a nuclear power unit could be delivered to the Moon by 2035 to support year-round operations. UK analysts say the programme is both a scientific venture and a marker of geopolitical influence. 'This is infrastructure diplomacy,' said a London-based space policy adviser. 'Whoever can provide power, communications and landing services will shape the rules of lunar activity.' BBC science correspondent Victoria Gill said the station's promoters invited Western scientists to participate, but US legal restrictions on cooperation with China make British involvement difficult. The result is a Moon increasingly divided into rival blocs, even as both camps promise peaceful science.",
+    "framework": "geopolitical competition",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "International Lunar Research Station",
+      "Chang'e-7",
+      "lunar south pole",
+      "Roscosmos",
+      "nuclear power"
+    ]
+  },
+  {
+    "id": "uk_009",
+    "source": "The Guardian",
+    "title": "China's Moon station plan reveals a space race with two rulebooks",
+    "date": "2026-05-25",
+    "language": "en",
+    "country": "uk",
+    "content": "China's International Lunar Research Station has become the clearest sign that the Moon is being drawn into a new geopolitical contest. Beijing and Moscow present the project as an open scientific platform, inviting countries excluded from or wary of US-led space cooperation to join missions to the lunar south pole. By 2035, they aim to complete a basic robotic base, with a nuclear reactor proposed to supply power during the two-week lunar night. The plan is unfolding alongside Nasa's Artemis programme and its network of Artemis Accords, which set out American-backed norms for lunar activity. The result is a rivalry dressed in the language of partnership. 'We are seeing two coalitions, two timelines and two visions of who governs space,' said a space-policy researcher at the London School of Economics. 'The danger is that scientific cooperation becomes a cover for strategic positioning.' The Guardian has long argued that space should not become an arena for terrestrial score-settling. Yet the ILRS's expanding membership among global south states suggests that China's offer of hardware, launch capacity and data access is proving attractive. For Britain and Europe, the challenge is not simply to cheer the scientific promise or decry the strategic threat, but to articulate a credible multilateral alternative before lunar governance fragments irreversibly.",
+    "framework": "competition and governance",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "International Lunar Research Station",
+      "Artemis Accords",
+      "lunar governance",
+      "global south",
+      "space race"
+    ]
+  },
+  {
+    "id": "uk_011",
+    "source": "New Scientist",
+    "title": "Robotic Moon outpost could transform lunar science - if politics allows",
+    "date": "2026-06-10",
+    "language": "en",
+    "country": "uk",
+    "content": "The International Lunar Research Station could become the most ambitious robotic science facility ever built beyond Earth, if its backers can turn political promises into working hardware. Planned by China and Russia with a growing list of partner nations, the station is designed to begin as an uncrewed outpost near the lunar south pole in the early 2030s, then expand into a base capable of supporting astronauts by around 2036. Its scientific agenda is broad: drilling for water ice, monitoring the lunar environment, testing in-situ resource use, and eventually hosting telescopes that exploit the radio-quiet far side. Missions such as Chang'e-7 and Chang'e-8 are meant to lay the groundwork, searching for volatiles and demonstrating 3D-printing or construction techniques using regolith. A proposed nuclear power plant would allow operations through the brutal two-week lunar night. For researchers, the appeal is obvious. 'A permanent lunar station would give us repeatable access to a world that preserves 4.5 billion years of Solar System history,' says a planetary scientist at the University of Manchester. The question is whether Western scientists will be able to collaborate with the ILRS, given US restrictions on working with China. If they can, the Moon could become a genuine international laboratory. If not, science may become collateral damage in a new space race.",
+    "framework": "scientific progress and cooperation",
+    "sentiment": "positive",
+    "key_phrases": [
+      "lunar science",
+      "robotic outpost",
+      "water ice",
+      "in-situ resource use",
+      "Chang'e-8"
+    ]
+  },
+  {
+    "id": "uk_010",
+    "source": "BBC News",
+    "title": "China outlines Chang'e 8 Moon landing plans",
+    "date": "2026-04-24",
+    "language": "en",
+    "country": "uk",
+    "content": "China has outlined detailed plans for Chang'e 8, a robotic lunar mission expected to land near the Moon's south pole no earlier than 2028, according to statements carried by state media and repeated by international space agencies. The spacecraft is designed to test technologies for using lunar resources, including extracting oxygen and water from regolith and possibly producing building materials on the surface. Officials say the lander may carry international scientific instruments selected through cooperation with other countries and institutions. The mission would extend China's rapid lunar programme, which has already delivered samples from the near side and the far side, and would support preparations for a crewed Chinese landing before 2030. Speaking at a space conference, a programme scientist described Chang'e 8 as an 'engineering bridge' between exploration and long-term presence on the Moon. Western analysts note that the project also has strategic significance, because the south pole is widely viewed as a valuable location due to permanently shadowed craters that may contain water ice. The BBC's science correspondent says the mission will be watched closely in Washington, where Nasa's Artemis campaign faces schedule pressure, and in Europe, where governments are weighing whether to engage with China's International Lunar Research Station concept.",
+    "framework": "scientific progress and strategic competition",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "Chang'e 8",
+      "lunar south pole",
+      "in-situ resource utilisation",
+      "Artemis",
+      "International Lunar Research Station"
+    ]
+  },
+  {
+    "id": "uk_012",
+    "source": "The Guardian",
+    "title": "Chang'e 8 and the new lunar race over resources and rules",
+    "date": "2026-04-27",
+    "language": "en",
+    "country": "uk",
+    "content": "Beijing's plans for Chang'e 8 are being read in Washington and Europe as evidence that China intends to establish a durable presence at the Moon's strategically important south pole. The mission, expected around 2028, is meant to demonstrate in-situ resource utilisation: extracting water and oxygen from lunar soil, testing construction techniques and laying groundwork for the International Lunar Research Station, China's answer to the US-led Artemis Accords. Chinese officials present the project as peaceful and open to international participation, and several foreign payloads have reportedly been considered. Yet the framing in British and American policy circles is increasingly competitive. Lunar resources, particularly water ice in permanently shadowed craters, could become the basis for fuel, life support and power, giving early arrivals political and technical leverage. A UK space policy researcher told the Guardian that the 'real race is not flags and footprints, but infrastructure, standards and access'. With Nasa's Artemis timeline under strain and commercial landers facing delays, Chang'e 8 could reinforce the perception that China has momentum. The danger is not an imminent military confrontation, but a future in which lunar governance is shaped by rival blocs rather than a strengthened multilateral regime. Britain and its allies must decide whether to treat China solely as a rival or to seek limited scientific safeguards.",
+    "framework": "geopolitical competition and governance",
+    "sentiment": "negative",
+    "key_phrases": [
+      "Chang'e 8",
+      "lunar resources",
+      "Artemis Accords",
+      "International Lunar Research Station",
+      "lunar governance"
+    ]
+  },
+  {
+    "id": "uk_014",
+    "source": "New Scientist",
+    "title": "How Chang'e 8 could learn to live off the Moon",
+    "date": "2026-05-12",
+    "language": "en",
+    "country": "uk",
+    "content": "Chang'e 8 could become one of the most scientifically significant lunar missions of the decade if it succeeds in testing technologies for living off the Moon. Planned for launch around 2028, the Chinese lander is expected to touch down near the lunar south pole, where permanently shadowed craters may hold billions of tonnes of water ice. The mission will probably carry instruments for analysing regolith, searching for volatiles and demonstrating methods for extracting oxygen, water and possibly metals. It may also test 3D-printed construction approaches and small-scale energy systems. Researchers say these demonstrations are crucial because future lunar bases will depend on local resources rather than supplies launched from Earth. Chang'e 8 is part of China's broader effort to build the International Lunar Research Station, and officials have invited international payloads. That offers a possible avenue for scientific cooperation even amid US-China tensions, although legal restrictions such as the Wolf Amendment limit NASA collaboration. 'The Moon is becoming a laboratory for resource utilisation,' says one planetary scientist. If Chang'e 8 can show that lunar ice can be detected, accessed and processed, it would reduce the cost of deep-space missions and shift the focus from brief visits to sustained settlement. The science, not the symbolism, may be its most lasting contribution.",
+    "framework": "science, technology and cooperation",
+    "sentiment": "positive",
+    "key_phrases": [
+      "Chang'e 8",
+      "water ice",
+      "regolith",
+      "resource utilisation",
+      "lunar base"
+    ]
+  },
+  {
+    "id": "uk_013",
+    "source": "BBC News",
+    "title": "China's new reusable rocket reaches orbit but booster landing fails",
+    "date": "2025-12-04",
+    "language": "en",
+    "country": "uk",
+    "content": "China's private space company Landspace successfully sent its new reusable rocket into orbit on its maiden flight early Wednesday morning, though an attempt to land the first stage for reuse ended in failure moments before touchdown. The 66-metre-tall, stainless steel Zhuque-3 lifted off from the Jiuquan Satellite Launch Centre in northwest China, sending its upper stage into a planned 200-by-200-kilometre orbit inclined 55 degrees. The booster then descended under powered control towards a landing zone before crashing during the final phase of descent. Landspace said all primary mission events were performed nominally and that it was investigating the landing anomaly. The methane-fuelled rocket, comparable in size to SpaceX's Falcon 9, is designed to be reused at least 20 times and to launch multi-satellite payloads of about 18 tonnes. Analysts said that while losing the booster will disappoint the company, reaching orbit and executing a near-successful controlled descent on a first attempt marks significant progress. 'Getting this close to a landing on your first try is genuinely impressive. SpaceX went through several hard crashes before it worked,' one Western industry observer said. The flight underlines how quickly China's commercial launch sector is closing the gap with the United States.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "Zhuque-3",
+      "LandSpace",
+      "reusable rocket",
+      "booster landing failure",
+      "Jiuquan Satellite Launch Centre",
+      "Falcon 9 comparison"
+    ]
+  },
+  {
+    "id": "uk_015",
+    "source": "The Guardian",
+    "title": "China takes aim at SpaceX as reusable Zhuque-3 rocket reaches orbit",
+    "date": "2025-12-05",
+    "language": "en",
+    "country": "uk",
+    "content": "China has staged its most direct challenge yet to Elon Musk's dominance of the global launch market, after a reusable rocket built by the private firm Landspace reached orbit on its maiden flight. The Zhuque-3, a stainless steel, methane-fuelled vehicle often described as China's answer to the Falcon 9, lifted off from Jiuquan on Wednesday morning. Its upper stage reached orbit successfully, but the first stage, attempting a controlled powered landing, crashed in the final seconds. Beijing has poured resources into a commercial space sector it views as strategically vital, with reusable rockets central to plans for giant satellite constellations such as Guowang and Qianfan that are intended to rival Starlink. The programme's speed is now unsettling Western policymakers. 'This is no longer a story about catching up — it is about contested infrastructure, contested markets and potentially contested orbits,' said one European security analyst. US officials have repeatedly framed China's space advances as a national security challenge, while defence analysts warn that cheap, reusable launch would multiply the resilience and scale of Chinese satellite networks, including those with military applications. Critics note that even a failed landing attempt delivers invaluable flight data. With Landspace targeting at least 20 reuses per booster and further launches planned in 2026, the era of unchallenged US dominance of commercial launch may be ending sooner than many assumed.",
+    "framework": "threat",
+    "sentiment": "negative",
+    "key_phrases": [
+      "Zhuque-3",
+      "SpaceX rivalry",
+      "satellite constellations",
+      "Guowang",
+      "Qianfan",
+      "national security",
+      "commercial launch market"
+    ]
+  },
+  {
+    "id": "uk_017",
+    "source": "New Scientist",
+    "title": "Zhuque-3: China's reusable rocket is closing in on SpaceX's lead",
+    "date": "2026-02-26",
+    "language": "en",
+    "country": "uk",
+    "content": "Less than three months after its first flight, the team behind China's Zhuque-3 rocket say they are preparing another recovery attempt, an unusually rapid pace of iteration that suggests the country is closing in on the reusable-rocket technology that SpaceX has monopolised for a decade. The stainless steel, methane-fuelled vehicle reached orbit in December 2025, but its booster was lost metres from the landing pad after what developer Landspace described as an anomaly during the final descent. 'They did everything right until the last few seconds, and that is a tremendous result for a first attempt,' says a launch propulsion researcher. Zhuque-3 uses nine methalox engines on its first stage, together with grid fins and deployable legs for the return, and is designed for at least 20 reuses — an architecture echoing SpaceX's Falcon 9, though built from inexpensive stainless steel. Reusability could cut the cost of reaching orbit dramatically, which matters enormously for China's plans to launch tens of thousands of constellation satellites. With Landspace planning multiple recovery tests in 2026 and a rocket capable of lifting roughly 18 tonnes to low-Earth orbit, analysts expect a successful Chinese booster landing within the year. 'The question is no longer if, but how soon,' the researcher says.",
+    "framework": "scientific progress",
+    "sentiment": "positive",
+    "key_phrases": [
+      "Zhuque-3",
+      "reusability",
+      "methalox engines",
+      "booster recovery",
+      "low-Earth orbit",
+      "launch costs"
+    ]
   }
 ]

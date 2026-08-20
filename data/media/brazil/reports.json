@@ -9,7 +9,11 @@
     "content": "A missão chinesa Chang'e-6 conseguiu trazer de volta à Terra amostras da face oculta da Lua, um feito nunca antes realizado na história da exploração espacial. Para países em desenvolvimento como o Brasil, a conquista chinesa representa uma oportunidade de participação mais ampla na ciência espacial, longe do monopólio das potências tradicionais. Cientistas brasileiros expressaram interesse em colaborar na análise das amostras.",
     "framework": "development",
     "sentiment": "positive",
-    "key_phrases": ["oportunidade", "países em desenvolvimento", "colaboração"]
+    "key_phrases": [
+      "oportunidade",
+      "países em desenvolvimento",
+      "colaboração"
+    ]
   },
   {
     "id": "br_002",
@@ -21,7 +25,11 @@
     "content": "O sucesso da missão Chang'e-6 da China abre novas perspectivas para a cooperação espacial entre países do Sul Global. Diferente da abordagem exclusiva das potências ocidentais, a China tem demonstrado disposição para compartilhar conquistas espaciais com nações em desenvolvimento. O programa espacial brasileiro poderia se beneficiar de parcerias com a China em áreas como observação terrestre e telecomunicações.",
     "framework": "cooperation",
     "sentiment": "positive",
-    "key_phrases": ["cooperação Sul-Sul", "compartilhar conquistas", "parcerias"]
+    "key_phrases": [
+      "cooperação Sul-Sul",
+      "compartilhar conquistas",
+      "parcerias"
+    ]
   },
   {
     "id": "br_003",
@@ -33,7 +41,11 @@
     "content": "As amostras trazidas pela Chang'e-6 não pertencem apenas à China - elas pertencem à humanidade. Cientistas de todo o mundo, incluindo do Brasil, poderão estudar essas amostras para entender melhor a história do nosso sistema solar. A Agência Espacial Brasileira (AEB) manifestou interesse em estabelecer canais de cooperação com a CNSA para acesso a dados científicos da missão.",
     "framework": "development",
     "sentiment": "positive",
-    "key_phrases": ["pertencem à humanidade", "cientistas de todo o mundo", "cooperação"]
+    "key_phrases": [
+      "pertencem à humanidade",
+      "cientistas de todo o mundo",
+      "cooperação"
+    ]
   },
   {
     "id": "br_004",
@@ -45,6 +57,64 @@
     "content": "Enquanto EUA e China intensificam sua competição espacial, países como o Brasil buscam uma terceira via. O sucesso da Chang'e-6 demonstra que a exploração espacial não precisa ser um jogo de soma zero. Especialistas brasileiros defendem que o país deve aproveitar tanto a cooperação com a China quanto com os EUA para desenvolver suas próprias capacidades espaciais, mantendo uma posição de não-alinhamento estratégico.",
     "framework": "development",
     "sentiment": "neutral",
-    "key_phrases": ["terceira via", "não-alinhamento estratégico", "capacidades espaciais"]
+    "key_phrases": [
+      "terceira via",
+      "não-alinhamento estratégico",
+      "capacidades espaciais"
+    ]
+  },
+  {
+    "id": "brazil_005",
+    "source": "Folha de S.Paulo",
+    "title": "Brazil Looks to China-Led Lunar Station as Space Diplomacy Splits Into Two Camps",
+    "date": "2026-07-29",
+    "language": "en",
+    "country": "brazil",
+    "content": "Folha de S.Paulo reports that Brazilian diplomats and space scientists are debating possible cooperation with the International Lunar Research Station, the China-Russia-led program for lunar bases and surface research, while Brasília remains a signatory of the U.S.-backed Artemis Accords. The discussion reflects a broader foreign-policy tension: how to defend scientific autonomy without jeopardizing access to American technology. Officials say no decision has been made, but Brazil could seek limited participation in data sharing, lunar geology training or satellite components. 'Brazil cannot afford to treat space as a luxury,' a former director of the Brazilian Space Agency told Folha, arguing that partnerships with China could strengthen national research and reduce the country's historical dependence on a single supplier. The paper notes that the ILRS, backed by CNSA and Roscosmos, aims to operate experiments on the Moon's south pole by the mid-2030s, while the Artemis Accords have attracted 70 signatories as of July 2026. Folha's editorial line is cautious but pragmatic: it frames the Moon less as a battlefield than as a test of Brazil's ability to pursue 'active non-alignment' in high technology. The newspaper warns that Brasília must set transparent rules, protect academic freedom and avoid becoming a junior partner in any bloc.",
+    "framework": "cooperation/competition",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "International Lunar Research Station",
+      "Artemis Accords",
+      "Brazil space diplomacy",
+      "China-Russia lunar cooperation",
+      "scientific autonomy"
+    ]
+  },
+  {
+    "id": "brazil_006",
+    "source": "Folha de S.Paulo",
+    "title": "China's Chang'e-8 Moon mission opens a window for Brazil in the new lunar race",
+    "date": "2026-07-30",
+    "language": "en",
+    "country": "brazil",
+    "content": "Folha de S.Paulo reports that China's planned Chang'e-8 mission, expected to land near the Moon's south pole around 2028 or 2029, is becoming a test case for a new kind of space diplomacy. The China National Space Administration says the probe will carry ten international payloads selected from an open call that offered 200 kilograms of capacity, working alongside Chang'e-7 to prepare for the International Lunar Research Station. For Brazilian scientists, the project represents both a scientific opportunity and a strategic dilemma. 'Brazil has competencies in space science, robotics and Earth observation, but limited funding,' a researcher affiliated with a Brazilian university tells Folha. 'Participating in missions like Chang'e-8 could give our teams access to unique data and strengthen South America's role in lunar exploration.' The newspaper notes, however, that Brazil must weigh the benefits against geopolitical friction, particularly U.S. restrictions on cooperation with China and Brazil's own reliance on NASA-led Artemis Accords partnerships. Folha concludes that Chang'e-8 is less a simple robotic mission than a signal that lunar governance is being contested through infrastructure, standards and alliances. For Brazil, the challenge is to turn scientific curiosity into a coherent space policy.",
+    "framework": "cooperation",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "Chang'e-8",
+      "China lunar program",
+      "Brazil space diplomacy",
+      "International Lunar Research Station",
+      "lunar south pole"
+    ]
+  },
+  {
+    "id": "brazil_007",
+    "source": "Folha de S.Paulo",
+    "title": "China's Reusable Rocket Advance Pressures SpaceX and Draws Brazil's Attention",
+    "date": "2026-07-10",
+    "language": "en",
+    "country": "brazil",
+    "content": "Folha de S.Paulo framed China's reusable rocket progress as a milestone in intensifying space competition, while cautioning that the technology still needs to prove commercial reliability. In its Mensageiro Sideral blog, the newspaper noted that China became the second country to recover the first stage of an orbital-class launcher, following the United States, and linked the advance to Beijing's longer-term lunar ambitions. The report recalled that LandSpace's Zhuque-3, a stainless-steel, methane-powered vehicle, reached orbit on its Dec. 3, 2025 maiden flight but lost its booster during the landing attempt. Folha said the company remains among China's leading private challengers and that further recovery tests could consolidate reusable launch capability. The tone was analytical rather than celebratory: the outlet stressed that reusability lowers costs only through high flight frequency, rigorous inspection and rapid refurbishment, areas where SpaceX retains a wide lead. It also suggested that Brazil should watch the trend closely, because cheaper access to orbit could influence future partnerships involving satellite launches and the Alcântara spaceport. 'The recovery narrows the gap with SpaceX, but repetition is the real test,' the coverage argued. Overall, Folha presented Zhuque-3 as evidence of a more competitive multipolar space economy, with scientific significance and geopolitical pressure on launch-market incumbents.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "Zhuque-3",
+      "reusable rocket",
+      "LandSpace",
+      "SpaceX competition",
+      "Alcântara"
+    ]
   }
 ]

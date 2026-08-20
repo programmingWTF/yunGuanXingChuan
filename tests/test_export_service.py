@@ -8,11 +8,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import pytest
 from unittest.mock import MagicMock
 
-# Mock 重型依赖
-for mod_name in ['faiss', 'httpx']:
-    if mod_name not in sys.modules:
-        sys.modules[mod_name] = MagicMock()
-
 from src.export_service import (
     export_json, export_markdown, export_html, export_pdf, export_word,
     get_export_formats, do_export, EXPORT_FORMATS,

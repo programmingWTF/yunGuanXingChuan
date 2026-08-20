@@ -8,11 +8,14 @@
  */
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import axios from 'axios'
+import { Link, useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
+import { useAuth } from '../auth'
 import { runAllWorkflow, getWorkflowProject, exportWorkflowProject, getHotTopics, deleteWorkflowProject } from '../api'
 import type { ResearchProject } from '../api'
 import ResearchPipeline from '../components/ResearchPipeline'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { StageSources } from '../components/StageUI'
 
 const STAGE_NAMES: Record<string, string> = {
   '1': '选题孵化', '2': '文献综述', '3': '研究设计',
@@ -43,6 +46,8 @@ function downloadText(filename: string, content: string, mime: string) {
 
 export default function Workspace() {
   const { projects, currentProject, refreshProjects, loadProject, createProject, setCurrentProject, setProjects } = useStore()
+  const { user } = useAuth()
+  const navigate = useNavigate()
   const [interest, setInterest] = useState('')
   const [creating, setCreating] = useState(false)
   const [generatingAll, setGeneratingAll] = useState(false)
@@ -190,6 +195,18 @@ export default function Workspace() {
 
   return (
     <div className="space-y-6">
+      {/* 未配置 LLM API 引导（多租户自带钥匙模式） */}
+      {user && !user.llm_configured && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+          <p className="text-xs text-amber-700">
+            ⚙️ 平台不提供推理 API：生成前请先在<b>模型设置</b>里填你自己的 Qwen API（Key / BaseURL / 模型ID，阿里云百炼或 Token Plan 获取，新用户有免费额度）。向量模型可选，不填自动降级。
+          </p>
+          <Link to="/settings" className="text-[11px] font-medium px-3 py-1.5 rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-all shrink-0">
+            去配置 →
+          </Link>
+        </div>
+      )}
+
       {/* 顶部标语（他山 Hero：短句 Slogan 体） */}
       <div className="py-4">
         <h2 className="font-display text-3xl font-semibold text-slate-900 tracking-tight leading-tight">
@@ -264,10 +281,18 @@ export default function Workspace() {
               className="input-field !bg-slate-50 !rounded-lg resize-none"
             />
             {error && <p className="text-[11px] text-red-600 mt-2">{error}</p>}
-            <button type="submit" disabled={creating || generatingAll || !interest.trim()}
-              className="btn-primary w-full mt-3 text-xs disabled:opacity-40 disabled:cursor-not-allowed">
-              {creating ? '创建中…' : generatingAll ? '⏳ 全流程生成中…' : '🚀 新建并一键生成'}
-            </button>
+            {!user ? (
+              /* 未登录：主界面可浏览，运行需登录 */
+              <button onClick={() => navigate('/login')}
+                className="btn-primary w-full mt-3 text-xs">
+                🔑 登录后使用
+              </button>
+            ) : (
+              <button type="submit" disabled={creating || generatingAll || !interest.trim()}
+                className="btn-primary w-full mt-3 text-xs disabled:opacity-40 disabled:cursor-not-allowed">
+                {creating ? '创建中…' : generatingAll ? '⏳ 全流程生成中…' : '🚀 新建并一键生成'}
+              </button>
+            )}
             {generatingAll && (
               <p className="text-[10px] text-sky-600 mt-2 animate-pulse">AI 正在串行生成 7 个阶段（约 8-12 分钟），进度实时更新，可离开页面</p>
             )}
@@ -275,9 +300,18 @@ export default function Workspace() {
 
           {/* 历史记录 */}
           <div className="card p-4">
-            <h3 className="sec-label !mb-2">历史记录（{projects.length}）</h3>
+            <h3 className="sec-label !mb-2">历史记录（{user ? projects.length : '—'}）</h3>
             <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-              {projects.length === 0 && (
+              {!user && (
+                <div className="text-center py-8">
+                  <p className="text-[11px] text-slate-400">登录后查看你的项目历史</p>
+                  <button onClick={() => navigate('/login')}
+                    className="mt-3 text-[11px] font-medium px-4 py-1.5 rounded-lg bg-sky-600 text-white hover:bg-sky-700 transition-all">
+                    去登录
+                  </button>
+                </div>
+              )}
+              {user && projects.length === 0 && (
                 <div className="text-center py-8">
                   <div className="text-3xl mb-3 opacity-20">📁</div>
                   <p className="text-xs text-slate-400">暂无项目，从上方创建第一个吧</p>
@@ -394,9 +428,12 @@ export default function Workspace() {
                         <span className={`text-[10px] shrink-0 px-2 py-0.5 rounded border ${meta.cls}`}>{meta.label}</span>
                       </div>
                       {rec?.output && (
-                        <pre className="text-[9px] text-slate-500 whitespace-pre-wrap bg-slate-50 rounded-lg p-2.5 mt-2 max-h-24 overflow-y-auto">
-                          {JSON.stringify(rec.output, null, 1).slice(0, 500)}
-                        </pre>
+                        <>
+                          <StageSources output={rec.output} />
+                          <pre className="text-[9px] text-slate-500 whitespace-pre-wrap bg-slate-50 rounded-lg p-2.5 mt-2 max-h-24 overflow-y-auto">
+                            {JSON.stringify(rec.output, null, 1).slice(0, 500)}
+                          </pre>
+                        </>
                       )}
                     </div>
                   )

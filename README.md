@@ -173,8 +173,20 @@ cd yunGuanXingChuan
    | `DASHSCOPE_API_KEY` | 联网搜索能力 | 同上（可与 QWEN_API_KEY 共用一个） |
    | `TAVILY_API_KEY` | 搜索国际新闻 | [Tavily 官网](https://app.tavily.com/) |
    | `TASHAN_TOKEN` | 他山世界 TopicLab 搜索（可选） | 组长处获取 |
+   | `RESEND_API_KEY` | 注册邮箱验证码（用户系统，可选） | [Resend](https://resend.com/api-keys) |
+   | `ADMIN_EMAILS` | 管理员邮箱（逗号分隔，注册即自动授予 admin） | 填你自己的邮箱 |
 
    > 💡 **最小启动配置**：只填 `QWEN_API_KEY` 和 `DASHSCOPE_API_KEY`（可以是同一个 Key），项目就能跑起来。Tavily、他山都是可选的。
+
+   > 🔐 **用户系统说明**：注册流程为「昵称 + 邮箱 + 密码（含确认密码、明文切换、一致性校验）→ 邮箱验证码 → 完成注册」。
+   配置 `RESEND_API_KEY` 后即可发验证码（发件人 `liguiyu.com <noreply@liguiyu.com>`，与 liguiyu-home 一致）；不配置则验证码发送失败。
+   `ADMIN_EMAILS` 中的邮箱注册后自动获得 admin 角色，可访问 `/admin` 管理后台查看全部用户的使用历史记录与归属。
+
+   > 🔑 **多租户「自带钥匙」模式**：平台不提供推理 API，**每次生成使用用户自己的 Qwen 模型 Key**（Key 加密存储，管理后台不可见）。
+   > - 注册后到顶栏「⚙ 模型设置」填写：LLM（API Key / BaseURL / 模型ID，必填）+ 向量模型（可选，不填自动降级文本匹配）
+   > - 获取 Key：**阿里云百炼** [bailian.console.aliyun.com](https://bailian.console.aliyun.com/)（新用户 90 天免费额度）或 **Token Plan** 订阅（同控制台 → Token Plan → 我的订阅，专属 sk-tp-/sk-sp- Key）
+   > - 联网搜索：配置百炼/TokenPlan 端点后自动启用；保存时自动验证连通性；未配置时生成被拦截并引导去设置页
+   > - 未登录用户可浏览主界面（热点/布局），运行操作显示「登录后使用」引导
 
 ---
 

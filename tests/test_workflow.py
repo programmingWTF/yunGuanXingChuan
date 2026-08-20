@@ -377,6 +377,49 @@ class TestWorkflowEngine:
         record = engine.run_stage(p.id, 1, {"topic": "朱雀2号火箭"})
         assert record.status == StageStatus.AWAITING_REVIEW
 
+    def test_attach_search_sources_with_sources(self, engine):
+        """存在有效搜索来源时，structured search_sources 附加到产出物（Issue #98）"""
+        output: dict = {}
+        context = [
+            {"url": "https://example.com/a", "title": "来源A", "content": "摘要A", "source": "TavilySearch"},
+            {"url": "https://example.com/b", "title": "来源B", "content": "", "source": "QwenWebSearch"},
+            {"url": "", "title": "无URL来源", "content": "x", "source": ""},  # 无 url 也应透传（前端负责兜底）
+            "非字典项",  # 应被过滤
+        ]
+        WorkflowEngine._attach_search_sources(output, context)
+        assert len(output["search_sources"]) == 3
+        assert output["search_sources"][0] == {
+            "url": "https://example.com/a", "title": "来源A", "content": "摘要A", "source": "TavilySearch",
+        }
+        assert output["search_sources"][2]["url"] == ""
+        assert not any(k == "非字典项" for s in output["search_sources"] for k in s)
+
+    def test_attach_search_sources_empty_omits_field(self, engine):
+        """无搜索来源时产出物不附加空 search_sources 字段，避免污染"""
+        output: dict = {"topic": "t", "directions": []}
+        WorkflowEngine._attach_search_sources(output, [])
+        assert "search_sources" not in output
+
+    def test_run_stage_attaches_search_sources_to_output(self, engine):
+        """run_stage 全链路：搜索上下文非空时产出物携带 search_sources"""
+        p = engine.create_project(interest="朱雀2号火箭")
+        with patch(
+            "src.search.unified_search.get_unified_search_service"
+        ) as mock_svc:
+            svc = MagicMock()
+            hit = MagicMock()
+            hit.url = "https://example.com/rocket"
+            hit.title = "朱雀2号点火"
+            hit.content = "发射成功"
+            hit.source = "TavilySearch"
+            svc.search_for_topic.return_value = [hit]
+            mock_svc.return_value = svc
+            with patch("src.workflow.engine.WorkflowEngine._attach_verification"):
+                record = engine.run_stage(p.id, 1, {"topic": "朱雀2号火箭"})
+        assert record.status == StageStatus.AWAITING_REVIEW
+        assert record.output["search_sources"][0]["title"] == "朱雀2号点火"
+        assert record.output["search_sources"][0]["url"] == "https://example.com/rocket"
+
 
 # ---------------------------------------------------------------------------
 # 7 个科研流程 Agent（mock LLM）
@@ -553,17 +596,79 @@ def api_engine(store, tmp_path):
         yield eng
 
 
+def _make_auth_client(app, *, email=None, admin=False):
+    """创建已登录 TestClient：直连建用户 + 签发 JWT，绕开真实邮件验证码。
+    用户系统（Issue #90）上线后 /api/workflow 项目接口全部要求登录。"""
+    import os
+    import secrets as _secrets
+    from fastapi.testclient import TestClient
+    from api.auth import create_user, issue_token, SESSION_COOKIE
+
+    if email is None:
+        email = f"t{_secrets.token_hex(6)}@test.local"
+    if admin:
+        prev = os.environ.get("ADMIN_EMAILS")
+        os.environ["ADMIN_EMAILS"] = email
+        try:
+            user = create_user(email, "管理员", "Test@123456")
+        finally:
+            if prev is None:
+                os.environ.pop("ADMIN_EMAILS", None)
+            else:
+                os.environ["ADMIN_EMAILS"] = prev
+    else:
+        user = create_user(email, "测试用户", "Test@123456")
+    # 多租户模式：API 测试默认给用户配 mock LLM（绕过「未配置 400」拦截；agent 层已 mock）
+    from api.auth import set_user_llm_config
+    set_user_llm_config(user["id"], {
+        "llm": {"api_key": "test-key", "base_url": "http://llm.test/v1", "model": "test-model"},
+        "embedding": None,
+    })
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, issue_token(user["id"]))
+    return user, client
+
+
 class TestWorkflowAPI:
     def test_create_and_get_project(self, api_engine):
-        from fastapi.testclient import TestClient
         from api.main import app
-        with TestClient(app) as client:
+        _, client = _make_auth_client(app)
+        with client:
             r = client.post("/api/workflow/projects", json={"title": "我的研究", "interest": "朱雀2号"})
             assert r.status_code == 200
             pid = r.json()["project"]["id"]
             r2 = client.get(f"/api/workflow/projects/{pid}")
             assert r2.status_code == 200
             assert r2.json()["project"]["interest"] == "朱雀2号"
+
+    def test_unauthenticated_401(self, api_engine):
+        """用户系统上线后：未登录访问项目接口一律 401"""
+        from fastapi.testclient import TestClient
+        from api.main import app
+        with TestClient(app) as client:
+            assert client.post("/api/workflow/projects", json={"interest": "x"}).status_code == 401
+            assert client.get("/api/workflow/projects").status_code == 401
+            assert client.get("/api/workflow/projects/proj_nope").status_code == 401
+            assert client.delete("/api/workflow/projects/proj_nope").status_code == 401
+
+    def test_project_isolation_between_users(self, api_engine):
+        """历史隔离（Issue #90 核心）：他人项目 404，admin 可见全部"""
+        from api.main import app
+        _, client_a = _make_auth_client(app)
+        r = client_a.post("/api/workflow/projects", json={"title": "A的研究", "interest": "朱雀2号"})
+        assert r.status_code == 200
+        pid = r.json()["project"]["id"]
+        # 用户 B：他人项目一律 404
+        _, client_b = _make_auth_client(app)
+        assert client_b.get(f"/api/workflow/projects/{pid}").status_code == 404
+        assert client_b.delete(f"/api/workflow/projects/{pid}").status_code == 404
+        # 用户 A：自己的项目列表可见
+        ids = [p["id"] for p in client_a.get("/api/workflow/projects").json()["projects"]]
+        assert pid in ids
+        # admin：全部可见
+        _, admin_client = _make_auth_client(app, admin=True)
+        ids = [p["id"] for p in admin_client.get("/api/workflow/projects").json()["projects"]]
+        assert pid in ids
 
     def test_stages_meta_endpoint(self, api_engine):
         from fastapi.testclient import TestClient
@@ -574,9 +679,9 @@ class TestWorkflowAPI:
             assert len(r.json()["stages"]) == 7
 
     def test_run_approve_export_flow(self, api_engine):
-        from fastapi.testclient import TestClient
         from api.main import app
-        with TestClient(app) as client:
+        _, client = _make_auth_client(app)
+        with client:
             pid = client.post("/api/workflow/projects", json={"interest": "朱雀2号"}).json()["project"]["id"]
             # 未解锁阶段 400
             assert client.post(f"/api/workflow/projects/{pid}/stages/3/run", json={"inputs": {}}).status_code == 400
@@ -598,16 +703,16 @@ class TestWorkflowAPI:
             assert "选题孵化" in r.json()["content"]
 
     def test_404_unknown_project(self, api_engine):
-        from fastapi.testclient import TestClient
         from api.main import app
-        with TestClient(app) as client:
+        _, client = _make_auth_client(app)
+        with client:
             assert client.get("/api/workflow/projects/proj_nope").status_code == 404
 
     def test_delete_project(self, api_engine):
         """DELETE /api/workflow/projects/{id}：物理删除项目与产出物文件"""
-        from fastapi.testclient import TestClient
         from api.main import app
-        with TestClient(app) as client:
+        _, client = _make_auth_client(app)
+        with client:
             pid = client.post("/api/workflow/projects", json={"interest": "朱雀2号"}).json()["project"]["id"]
             # 删除前项目文件存在
             assert api_engine.store.get(pid) is not None
@@ -623,10 +728,113 @@ class TestWorkflowAPI:
 
     def test_delete_project_404(self, api_engine):
         """删除不存在的项目返回 404"""
+        from api.main import app
+        _, client = _make_auth_client(app)
+        with client:
+            assert client.delete("/api/workflow/projects/proj_nope").status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# /api/auth 用户认证（Issue #90）
+# ---------------------------------------------------------------------------
+
+
+class TestAuthAPI:
+    def test_send_code_validation(self):
+        """非法邮箱 400；已注册邮箱 409"""
+        import secrets as _secrets
         from fastapi.testclient import TestClient
         from api.main import app
+        from api.auth import create_user
+
+        taken_email = f"taken{_secrets.token_hex(4)}@test.local"
+        create_user(taken_email, "已注册", "Test@123456")
         with TestClient(app) as client:
-            assert client.delete("/api/workflow/projects/proj_nope").status_code == 404
+            assert client.post("/api/auth/send-code", json={"email": "not-an-email"}).status_code == 400
+            assert client.post("/api/auth/send-code", json={"email": taken_email}).status_code == 409
+
+    def test_register_login_me_logout_flow(self):
+        """完整注册流程：发码 → 错码 400 → 正确码注册 → 冷却 429 → 重复注册 409 → 登录 → me → 登出"""
+        import secrets as _secrets
+        from fastapi.testclient import TestClient
+        from api.main import app
+        from api.routes import auth as auth_routes
+
+        email = f"u{_secrets.token_hex(4)}@test.local"
+        with TestClient(app) as client:
+            with patch.object(auth_routes, "send_verification_code", return_value=True) as send_mock:
+                r = client.post("/api/auth/send-code", json={"email": email})
+                assert r.status_code == 200
+                code = send_mock.call_args[0][1]
+                assert len(code) == 6 and code.isdigit()
+            # 60s 冷却期内重发 → 429
+            assert client.post("/api/auth/send-code", json={"email": email}).status_code == 429
+            # 错误验证码 → 400
+            r = client.post("/api/auth/register", json={"name": "测试", "email": email, "password": "Passw0rd!", "code": "000000"})
+            assert r.status_code == 400
+            # 正确验证码 → 注册成功（普通 user 角色；201 对齐 liguiyu-home）
+            r = client.post("/api/auth/register", json={"name": "测试", "email": email, "password": "Passw0rd!", "code": code})
+            assert r.status_code == 201
+            assert r.json()["user"]["role"] == "user"
+            # 重复注册 → 409
+            r = client.post("/api/auth/register", json={"name": "测试", "email": email, "password": "Passw0rd!", "code": code})
+            assert r.status_code == 409
+            # 未登录 me → 401
+            assert client.get("/api/auth/me").status_code == 401
+            # 错误密码 → 401
+            assert client.post("/api/auth/login", json={"email": email, "password": "wrong"}).status_code == 401
+            # 登录成功 → 会话 Cookie + me
+            r = client.post("/api/auth/login", json={"email": email, "password": "Passw0rd!"})
+            assert r.status_code == 200
+            assert r.json()["user"]["email"] == email
+            r = client.get("/api/auth/me")
+            assert r.status_code == 200
+            assert r.json()["user"]["email"] == email
+            # 登出后 me → 401
+            assert client.post("/api/auth/logout").status_code == 200
+            assert client.get("/api/auth/me").status_code == 401
+
+    def test_admin_email_gets_admin_role(self):
+        """ADMIN_EMAILS 中的邮箱注册即 admin（照搬 liguiyu-home）"""
+        import os
+        import secrets as _secrets
+        from fastapi.testclient import TestClient
+        from api.main import app
+        from api.routes import auth as auth_routes
+
+        email = f"boss{_secrets.token_hex(4)}@test.local"
+        prev = os.environ.get("ADMIN_EMAILS")
+        os.environ["ADMIN_EMAILS"] = email
+        try:
+            with TestClient(app) as client:
+                with patch.object(auth_routes, "send_verification_code", return_value=True) as send_mock:
+                    client.post("/api/auth/send-code", json={"email": email})
+                    code = send_mock.call_args[0][1]
+                r = client.post("/api/auth/register", json={"name": "老板", "email": email, "password": "Passw0rd!", "code": code})
+                assert r.status_code == 201
+                assert r.json()["user"]["role"] == "admin"
+        finally:
+            if prev is None:
+                os.environ.pop("ADMIN_EMAILS", None)
+            else:
+                os.environ["ADMIN_EMAILS"] = prev
+
+    def test_admin_endpoints(self):
+        """管理后台：admin 可见用户/项目列表；普通用户 403；不存在项目 404"""
+        from unittest.mock import MagicMock, patch as _patch
+        from api.main import app
+
+        fake_engine = MagicMock()
+        fake_engine.list_projects.return_value = []
+        fake_engine.get_project.return_value = None
+        with _patch("api.routes.admin.get_workflow_engine", return_value=fake_engine):
+            _, admin_client = _make_auth_client(app, admin=True)
+            assert admin_client.get("/api/admin/users").status_code == 200
+            assert admin_client.get("/api/admin/projects").status_code == 200
+            assert admin_client.get("/api/admin/projects/nope").status_code == 404
+            _, user_client = _make_auth_client(app)
+            assert user_client.get("/api/admin/users").status_code == 403
+            assert user_client.get("/api/admin/projects").status_code == 403
 
 
 # ---------------------------------------------------------------------------
@@ -808,9 +1016,9 @@ class TestWorkflowEnhancements:
 
     def test_export_word_pdf_binary_download_http(self, api_engine):
         """Word/PDF 经 HTTP 下载返回 200 且 Content-Disposition 中文名 RFC5987 编码（防 latin-1 报错）"""
-        from fastapi.testclient import TestClient
         from api.main import app
-        with TestClient(app) as client:
+        _, client = _make_auth_client(app)
+        with client:
             pid = client.post("/api/workflow/projects", json={"interest": "嫦娥六号"}).json()["project"]["id"]
             client.post(f"/api/workflow/projects/{pid}/stages/1/run", json={"inputs": {"topic": "嫦娥六号"}})
             for fmt, magic in [("word", b"PK"), ("pdf", b"%PDF")]:
@@ -885,3 +1093,112 @@ class TestWorkflowEnhancements:
         d = r.model_dump()
         assert d["directions"][0]["reasons"] == ["理由一", "理由二"]
         assert d["directions"][0]["keywords"] == ["关键词A", "关键词B"]
+
+
+class TestTopicCorpusAutoFill:
+    """议题语料自动补齐（新议题冷启动防护）"""
+
+    def test_load_science_facts_empty_trigger(self):
+        """本地无该议题 facts 时应触发补齐分支（_ensure 逻辑判定）"""
+        from src.knowledge.data_loader import get_data_loader
+        loader = get_data_loader()
+        # 一个极不可能存在的议题 → 应返回空（触发补齐）
+        fake = "完全不存在的议题XYZ_2026"
+        assert loader.load_science_facts(fake) == []
+
+
+# ---------------------------------------------------------------------------
+# 用户论文库风格注入（个人论文库模块接入点）
+# ---------------------------------------------------------------------------
+
+
+class TestUserStyleInjection:
+    """WorkflowEngine._inject_user_style：写作阶段自动注入用户论文库风格
+
+    直接白盒调用该方法（不走完整 run_stage——前置校验/语料补齐/校验层太重）。
+    """
+
+    def _make_engine(self, store, tmp_path):
+        agents = {
+            WorkflowStage.INSPIRATION: make_mock_agent({"topic": "t", "directions": []}),
+            WorkflowStage.WRITING: make_mock_agent({"topic": "t", "sections": []}),
+        }
+        return WorkflowEngine(store=store, agents=agents)
+
+    def test_writing_stage_injects_style(self, store, tmp_path, monkeypatch):
+        """WRITING 阶段且用户有论文库 → 注入 style_sample"""
+        # _inject_user_style 内部是 `from src.knowledge.user_library import get_user_library`，
+        # 运行时从该模块取绑定 → patch 模块属性即可生效
+        import src.knowledge.user_library as ul_mod
+        fake_style = {
+            "terms": ["深度学习", "Transformer"],
+            "few_shot": ["本文基于深度学习框架展开研究，系统比较了多种模型结构的性能差异。"],
+            "structure": {},
+        }
+        monkeypatch.setattr(ul_mod, "get_user_library", lambda uid: MagicMock(global_style=lambda: fake_style))
+
+        eng = self._make_engine(store, tmp_path)
+        inputs = {"topic": "t"}
+        eng._inject_user_style(WorkflowStage.WRITING, inputs, owner_id="u1")
+        assert "style_sample" in inputs
+        assert "深度学习" in inputs["style_sample"]
+        assert "个人论文风格示例" in inputs["style_sample"]
+
+    def test_style_sample_not_overwritten(self, store, tmp_path, monkeypatch):
+        """用户显式提供 style_sample 时不覆盖"""
+        import src.knowledge.user_library as ul_mod
+        monkeypatch.setattr(ul_mod, "get_user_library", lambda uid: MagicMock(global_style=lambda: {
+            "terms": ["A"], "few_shot": ["B"], "structure": {},
+        }))
+        eng = self._make_engine(store, tmp_path)
+        inputs = {"topic": "t", "style_sample": "用户显式风格"}
+        eng._inject_user_style(WorkflowStage.WRITING, inputs, owner_id="u1")
+        assert inputs["style_sample"] == "用户显式风格"
+
+    def test_no_owner_skips(self, store, tmp_path, monkeypatch):
+        """未提供 owner_id（未登录/内部调用）→ 跳过注入"""
+        called = {"n": 0}
+
+        def fake_lib(uid):
+            called["n"] += 1
+            return MagicMock(global_style=lambda: {"terms": ["X"], "few_shot": [], "structure": {}})
+
+        import src.knowledge.user_library as ul_mod
+        monkeypatch.setattr(ul_mod, "get_user_library", fake_lib)
+        eng = self._make_engine(store, tmp_path)
+        inputs = {"topic": "t"}
+        eng._inject_user_style(WorkflowStage.WRITING, inputs, owner_id=None)
+        assert called["n"] == 0
+        assert "style_sample" not in inputs
+
+    def test_empty_library_skips(self, store, tmp_path, monkeypatch):
+        """论文库为空 → 不注入、不报错"""
+        import src.knowledge.user_library as ul_mod
+        monkeypatch.setattr(ul_mod, "get_user_library", lambda uid: MagicMock(global_style=lambda: {}))
+        eng = self._make_engine(store, tmp_path)
+        inputs = {"topic": "t"}
+        eng._inject_user_style(WorkflowStage.WRITING, inputs, owner_id="u1")
+        assert "style_sample" not in inputs
+
+    def test_non_writing_stage_skips(self, store, tmp_path, monkeypatch):
+        """非写作阶段不注入"""
+        import src.knowledge.user_library as ul_mod
+        monkeypatch.setattr(ul_mod, "get_user_library", lambda uid: MagicMock(global_style=lambda: {
+            "terms": ["X"], "few_shot": ["Y"], "structure": {},
+        }))
+        eng = self._make_engine(store, tmp_path)
+        inputs = {"topic": "t"}
+        eng._inject_user_style(WorkflowStage.LITERATURE, inputs, owner_id="u1")
+        assert "style_sample" not in inputs
+
+    def test_exception_degrades(self, store, tmp_path, monkeypatch):
+        """风格库异常 → 降级（不抛错、不注入）"""
+        def boom(uid):
+            raise RuntimeError("库损坏")
+
+        import src.knowledge.user_library as ul_mod
+        monkeypatch.setattr(ul_mod, "get_user_library", boom)
+        eng = self._make_engine(store, tmp_path)
+        inputs = {"topic": "t"}
+        eng._inject_user_style(WorkflowStage.WRITING, inputs, owner_id="u1")  # 不应抛异常
+        assert "style_sample" not in inputs

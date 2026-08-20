@@ -18,6 +18,13 @@ RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ -r req
 # 复制项目代码（.dockerignore 排除不必要的文件）
 COPY . .
 
+# ADMIN_MODE=true：tzb-admin 独立管理后台镜像（使用 dist-admin 前端产物；
+# 后端只挂 /api/admin/* 且不校验身份，认证交给 Cloudflare Access）
+ARG ADMIN_MODE=false
+RUN if [ "$ADMIN_MODE" = "true" ]; then \
+      rm -rf frontend/dist && mv frontend/dist-admin frontend/dist; \
+    fi
+
 # 暴露端口
 EXPOSE 8000
 

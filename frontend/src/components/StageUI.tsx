@@ -8,9 +8,12 @@
  * 点击前弹二次确认（ConfirmDialog），避免误触覆盖已确认产出物（issue #66）。
  */
 import { useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
+import { useAuth } from '../auth'
 import ConfirmDialog from './ConfirmDialog'
+import SearchSources from './SearchSources'
+import type { SearchSource } from '../api'
 
 export interface StageInfo {
   stage: number
@@ -77,10 +80,21 @@ export function StageActions({
 }) {
   // 重新运行属覆盖型危险操作：仅当该阶段已有已确认/产出物待覆盖时才需二次确认
   const [confirming, setConfirming] = useState(false)
+  const { user } = useAuth()
+  const navigate = useNavigate()
   const isRerun = status === 'completed'
   const handleRunClick = () => {
     if (isRerun) setConfirming(true) // 先确认再执行，避免误触清空旧产出物
     else onRun()
+  }
+  // 未登录：主界面可浏览，运行需登录
+  if (!user) {
+    return (
+      <button onClick={() => navigate('/login')}
+        className="btn-primary text-xs">
+        🔑 登录后使用
+      </button>
+    )
   }
   return (
     <div className="flex items-center gap-3 flex-wrap">
@@ -211,9 +225,12 @@ export function useStageExec(stage: number) {
 export function OutputView({ output }: { output: Record<string, unknown> | null }) {
   if (!output) return <p className="text-[11px] text-slate-400">暂无产出物</p>
   return (
-    <pre className="text-[10px] text-slate-500 whitespace-pre-wrap bg-slate-50 border border-slate-100 rounded-lg p-3 max-h-64 overflow-y-auto">
-      {JSON.stringify(output, null, 2)}
-    </pre>
+    <div>
+      <StageSources output={output} />
+      <pre className="text-[10px] text-slate-500 whitespace-pre-wrap bg-slate-50 border border-slate-100 rounded-lg p-3 max-h-64 overflow-y-auto">
+        {JSON.stringify(output, null, 2)}
+      </pre>
+    </div>
   )
 }
 
@@ -281,6 +298,23 @@ export function VerificationPanel({ verification }: { verification: Verification
           )
         })}
       </div>
+    </div>
+  )
+}
+
+/**
+ * 阶段页联网搜索来源面板（Issue #98）。
+ *
+ * 从阶段产出物 rec.output.search_sources 读取结构化来源并渲染为可点击链接。
+ * 产出物无来源时渲染 null，不占版面。
+ */
+export function StageSources({ output }: { output: Record<string, unknown> | null | undefined }) {
+  if (!output) return null
+  const sources = (output as { search_sources?: SearchSource[] | null }).search_sources
+  if (!Array.isArray(sources) || sources.length === 0) return null
+  return (
+    <div className="mt-4">
+      <SearchSources sources={sources} />
     </div>
   )
 }

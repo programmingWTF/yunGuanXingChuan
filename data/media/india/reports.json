@@ -9,7 +9,11 @@
     "content": "China's Chang'e-6 mission success comes just months after India's own Chandrayaan-3 soft landing near the lunar south pole. Together, these achievements mark Asia's emergence as a dominant force in lunar exploration. Indian scientists at ISRO have expressed interest in collaborative studies of the far-side samples, particularly regarding the South Pole-Aitken basin's geology.",
     "framework": "progress",
     "sentiment": "positive",
-    "key_phrases": ["Asian space exploration", "collaborative studies", "dominant force"]
+    "key_phrases": [
+      "Asian space exploration",
+      "collaborative studies",
+      "dominant force"
+    ]
   },
   {
     "id": "in_002",
@@ -21,7 +25,11 @@
     "content": "The back-to-back successes of Chandrayaan-3 and Chang'e-6 have intensified the narrative of an India-China space race. While both nations emphasize peaceful exploration, defence analysts note the strategic implications of lunar presence. India's upcoming Chandrayaan-4 sample return mission will be watched closely as a response to China's capabilities.",
     "framework": "competition",
     "sentiment": "neutral",
-    "key_phrases": ["space race", "strategic implications", "lunar supremacy"]
+    "key_phrases": [
+      "space race",
+      "strategic implications",
+      "lunar supremacy"
+    ]
   },
   {
     "id": "in_003",
@@ -33,7 +41,11 @@
     "content": "China's willingness to share lunar samples with international researchers represents a significant opportunity for developing nations' scientific communities. Indian planetary scientists argue that access to far-side samples could accelerate India's own lunar science programme without the cost of an independent sample return mission. This democratization of space science benefits the entire Global South.",
     "framework": "development",
     "sentiment": "positive",
-    "key_phrases": ["Global South science", "democratization", "accelerate programme"]
+    "key_phrases": [
+      "Global South science",
+      "democratization",
+      "accelerate programme"
+    ]
   },
   {
     "id": "in_004",
@@ -45,7 +57,11 @@
     "content": "Despite border tensions, Indian space scientists are exploring channels for scientific cooperation with Chinese counterparts on lunar sample analysis. The Physical Research Laboratory in Ahmedabad has expertise in extraterrestrial sample analysis from Chandrayaan missions and could contribute unique analytical capabilities to joint studies.",
     "framework": "cooperation",
     "sentiment": "positive",
-    "key_phrases": ["scientific cooperation", "despite tensions", "unique capabilities"]
+    "key_phrases": [
+      "scientific cooperation",
+      "despite tensions",
+      "unique capabilities"
+    ]
   },
   {
     "id": "in_005",
@@ -57,7 +73,11 @@
     "content": "China's systematic lunar exploration programme serves as both inspiration and competitive pressure for India's space ambitions. While ISRO operates on a fraction of China's space budget, Indian scientists argue that frugal innovation can achieve comparable results. The success of Chang'e-6 validates the approach of step-by-step capability building that India has also adopted.",
     "framework": "competition",
     "sentiment": "neutral",
-    "key_phrases": ["inspiration and pressure", "frugal innovation", "step-by-step approach"]
+    "key_phrases": [
+      "inspiration and pressure",
+      "frugal innovation",
+      "step-by-step approach"
+    ]
   },
   {
     "id": "in_006",
@@ -69,6 +89,175 @@
     "content": "The volcanic basalts from the Moon's far side returned by Chang'e-6 open new research avenues for Indian planetary scientists. Studies of these samples could inform India's own lunar south pole exploration strategy, as similar geological processes may have shaped both regions. The scientific community benefits regardless of which nation delivers the samples.",
     "framework": "progress",
     "sentiment": "positive",
-    "key_phrases": ["treasure trove", "new research avenues", "scientific community benefits"]
+    "key_phrases": [
+      "treasure trove",
+      "new research avenues",
+      "scientific community benefits"
+    ]
+  },
+  {
+    "id": "india_007",
+    "source": "Times of India",
+    "title": "China's Moon base plans push ahead faster than NASA's — where does India stand?",
+    "date": "2026-05-23",
+    "language": "en",
+    "country": "india",
+    "content": "China's accelerated push to build the International Lunar Research Station (ILRS) on the Moon is outpacing NASA's Artemis plans, sharpening the race for a permanent lunar presence and forcing India to weigh its strategic options carefully. The China-Russia-led project aims to complete basic construction in the early 2030s and become fully operational between 2035 and 2045, with Beijing and Moscow planning a nuclear reactor on the lunar surface by 2035 to power the base. China formally invited India to join the ILRS in May 2025, but New Delhi has kept its response deliberately ambiguous. Officials say the proposal is under examination, with no decision taken. India signed the US-led Artemis Accords in June 2023 as the 27th signatory. TOI had first reported in September 2024 that India was considering participation in Russia's proposal for a lunar nuclear power plant capable of generating up to half a megawatt. Analysts describe India's posture as strategic hedging. 'India is not picking sides in a lunar cold war; our first priority is building our own capabilities,' a senior official said. Meanwhile, ISRO is pressing ahead with Chandrayaan-4, the sample-return mission slated for 2028, and an Indian crewed Moon landing by 2040.",
+    "framework": "competition/strategic hedging",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "International Lunar Research Station",
+      "strategic hedging",
+      "Artemis Accords",
+      "lunar nuclear power plant",
+      "Chandrayaan-4"
+    ]
+  },
+  {
+    "id": "india_009",
+    "source": "The Hindu",
+    "title": "ISRO for bridging rival lunar coalitions as India weighs ILRS invitation",
+    "date": "2025-09-27",
+    "language": "en",
+    "country": "india",
+    "content": "India should work to bridge the two rival coalitions shaping lunar exploration — the US-led Artemis programme and the China-Russia International Lunar Research Station (ILRS) — ISRO Chairman V. Narayanan has indicated, even as New Delhi continues to deliberate on Beijing's invitation to join the latter. Speaking at a space policy forum, Narayanan said the Moon's south pole, which harbours water-ice deposits of immense scientific value, demands collaborative research rather than competition. 'India is actively collaborating with over 60 countries in space activities; lunar exploration should be a shared human endeavour,' he said. His remarks come months after China formally invited India, in May, to partner in the ILRS, a proposed permanent base near the lunar south pole expected to be operational between 2035 and 2045. India signed the US-led Artemis Accords in June 2023. The ILRS consortium already counts a dozen-plus partner countries, including Pakistan and Venezuela, and plans a nuclear power unit on the Moon by 2035. Analysts say New Delhi's posture reflects multi-alignment in space: neither joining a China-dominated architecture nor closing the door on Russia, a key Gaganyaan partner. 'India's best strategy is to invest in its own missions — Chandrayaan-4 and the Bharatiya Antariksh Station — while keeping partnerships flexible,' a space policy researcher said.",
+    "framework": "cooperation/science diplomacy",
+    "sentiment": "positive",
+    "key_phrases": [
+      "ILRS invitation",
+      "multi-alignment",
+      "lunar south pole",
+      "science diplomacy",
+      "Bharatiya Antariksh Station"
+    ]
+  },
+  {
+    "id": "india_011",
+    "source": "NDTV",
+    "title": "'Chandrayaan-4 By 2028, Space Station By 2035': India's Moon Roadmap Amid China's ILRS Push",
+    "date": "2025-11-16",
+    "language": "en",
+    "country": "india",
+    "content": "India will launch Chandrayaan-4, its first lunar sample-return mission, by 2028 and build its own space station by 2035, ISRO Chairman V. Narayanan said, laying out an ambitious roadmap just as China accelerates expansion of its International Lunar Research Station (ILRS). The government has approved Chandrayaan-4, which Narayanan called 'India's most complex space mission'; it will land on the Moon, collect samples and return them to Earth. India also aims to land astronauts on the Moon by 2040. The announcement comes amid speculation over Beijing's invitation, extended in May this year, for New Delhi to join the China-Russia-led ILRS, a proposed permanent lunar base slated to be operational between 2035 and 2045. Officials have said no decision has been taken on joining the China-led project. India signed the US-led Artemis Accords in 2023 but insists its space programme is not driven by bloc politics. 'Our focus is on technology, science and working with all countries,' Narayanan said, noting that India is collaborating with over 60 nations. Analysts say the roadmap signals that New Delhi would rather build independent capability than simply hitch itself to either lunar camp.",
+    "framework": "progress/national capability",
+    "sentiment": "positive",
+    "key_phrases": [
+      "Chandrayaan-4",
+      "sample-return mission",
+      "ISRO roadmap",
+      "International Lunar Research Station",
+      "space station 2035"
+    ]
+  },
+  {
+    "id": "india_010",
+    "source": "Times of India",
+    "title": "China's Chang'e-8 Moon mission: Beijing races for lunar base as India pushes Chandrayaan-4",
+    "date": "2025-04-26",
+    "language": "en",
+    "country": "india",
+    "content": "NEW DELHI: China has moved a step closer to a permanent foothold on the Moon, selecting 10 international payloads for its Chang'e-8 mission, which will target the lunar south pole around 2028-29 and lay the groundwork for a China-led International Lunar Research Station (ILRS). The China National Space Administration (CNSA) said the mission will test in-situ resource utilisation - including making bricks from lunar soil - and work in tandem with Chang'e-7, scheduled for 2026, to build a 'basic model' of the robotic station. Beijing plans to land taikonauts on the Moon by 2030. The announcement sharpens the Asian space race. India, whose Chandrayaan-3 became the first mission to touch down near the lunar south pole in August 2023, is readying Chandrayaan-4, a sample-return mission slated for 2027-28. 'China's cadence - one major lunar mission roughly every two years - is something ISRO cannot yet match on budget alone,' a Delhi-based strategic analyst said, pointing to the gulf between India's space budget and the billions Washington and Beijing pour into lunar programmes. Officials, however, insist New Delhi's path is deliberate rather than lagging: cheaper missions, indigenous rockets and a crewed lunar landing goal by 2040. Notably, India is not among Chang'e-8's payload partners; New Delhi signed NASA's rival Artemis Accords in 2023, aligning with the US-led bloc in the widening Moon divide.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "Chang'e-8",
+      "International Lunar Research Station",
+      "Chandrayaan-4",
+      "lunar south pole",
+      "space race",
+      "ISRO"
+    ]
+  },
+  {
+    "id": "india_012",
+    "source": "The Hindu",
+    "title": "Chang'e-8 Explained | What China's lunar south pole mission means for science - and for India",
+    "date": "2025-05-04",
+    "language": "en",
+    "country": "india",
+    "content": "China's Chang'e-8 mission, slated for the end of this decade, represents a significant step in the scientific effort to make the Moon a site for sustained research. The China National Space Administration has said the mission will land near the Leibnitz-Beta plateau close to the lunar south pole, working with Chang'e-7 (2026) to form the embryo of an International Lunar Research Station. Its payloads - 10 projects from 11 countries and one international organisation selected in April 2025 - will study lunar geology, search for water ice, and demonstrate technologies such as in-situ resource utilisation and 3D printing with regolith. For scientists, the value is considerable. 'Every dataset from the south pole enriches our understanding of lunar volatiles and impact history; this is science that benefits everyone,' a Bengaluru-based planetary scientist told The Hindu. India's own trajectory intersects with these questions: Chandrayaan-3's 2023 landing demonstrated south-pole access, and Chandrayaan-4, approved for 2027-28, will attempt to bring back samples. India is not a payload partner on Chang'e-8, having joined the US-led Artemis Accords in 2023, yet Indian researchers continue to engage with global lunar datasets. The takeaway: rivalry may define the politics, but the Moon's science is increasingly collaborative - and India has both the capability and the reason to stay in the game.",
+    "framework": "science",
+    "sentiment": "positive",
+    "key_phrases": [
+      "Chang'e-8",
+      "lunar science",
+      "in-situ resource utilisation",
+      "Chandrayaan-4",
+      "water ice",
+      "international cooperation"
+    ]
+  },
+  {
+    "id": "india_014",
+    "source": "NDTV",
+    "title": "China's Chang'e-8 Mission To Lay Foundation For Lunar Research Station: What It Means For India",
+    "date": "2025-04-25",
+    "language": "en",
+    "country": "india",
+    "content": "Beijing has confirmed that its Chang'e-8 lunar mission, planned for around 2028-29, will lay the foundation for an International Lunar Research Station on the Moon's south pole - and India is watching closely. China's space agency said the mission will carry 10 international payloads from 11 countries and test technologies to use lunar resources, including converting moon dust into building material. Combined with Chang'e-7, launching around 2026, the station's 'basic model' should be in place by the decade's end, ahead of China's goal of putting astronauts on the Moon by 2030. The timeline puts pressure on India's lunar roadmap. ISRO's Chandrayaan-4, a sample-return mission, is targeted for 2027-28, and New Delhi aims to land an Indian astronaut on the Moon by 2040. 'India does not need to copy China's pace, but it must not be shut out of the lunar economy,' a former senior ISRO scientist told NDTV. Notably, India is absent from Chang'e-8's international payload list - a reflection of geopolitical alignments, with New Delhi signed up to the US-led Artemis Accords. Analysts say the next decade will see two competing architectures on the Moon: China's research station and NASA's Artemis programme. For India, the challenge is to secure scientific returns and strategic relevance from both worlds without being boxed into either.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "Chang'e-8",
+      "International Lunar Research Station",
+      "ISRO",
+      "Chandrayaan-4",
+      "Artemis Accords",
+      "lunar south pole"
+    ]
+  },
+  {
+    "id": "india_013",
+    "source": "Times of India",
+    "title": "China's Zhuque-3 test rings alarm bells for India's space push",
+    "date": "2025-12-04",
+    "language": "en",
+    "country": "india",
+    "content": "China's LandSpace has entered the exclusive club of firms attempting orbital-class reusable rockets after its stainless-steel Zhuque-3 reached orbit from Jiuquan, even though the first-stage landing attempt ended in failure. The 72-metre, liquid-methane vehicle is designed to lift about 18 tonnes to low-Earth orbit in recoverable mode and, eventually, be reused at least 20 times. For Indian strategists, the message is stark: Beijing's commercial space sector is no longer a copycat but a pace-setter in cost-sensitive launch services. \"The Zhuque-3 flight shows China's ability to compress development cycles through private enterprise,\" a Delhi-based space policy analyst said, warning that India must accelerate its own reusable launch vehicle programme and deepen industry participation. New Delhi's concern is not only prestige. Cheaper Chinese access to orbit could reshape pricing for satellite launches, a market where ISRO has competed successfully on reliability and low cost. The test should be treated as a \"strategic reminder,\" the analyst added, urging faster reforms, additional launch pads and risk-tolerant funding for Indian startups. If New Delhi treats space only as a scientific enterprise, rather than a strategic and commercial contest, it may find its hard-won market position eroded by China's faster iteration cycle.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "Zhuque-3",
+      "LandSpace",
+      "reusable launch vehicles",
+      "ISRO",
+      "space competition"
+    ]
+  },
+  {
+    "id": "india_015",
+    "source": "The Hindu",
+    "title": "Zhuque-3 and the economics of reusable rockets",
+    "date": "2026-02-27",
+    "language": "en",
+    "country": "india",
+    "content": "LandSpace's Zhuque-3 deserves attention less for its failed landing than for what it reveals about China's method of mastering reusable launch technology. The maiden flight placed the second stage into the designated orbit, and the company said all primary mission events were completed nominally before the booster was lost during descent. That is a familiar pattern in aerospace development: ambitious systems are refined through visible setbacks, telemetry and redesign. The 72-metre, stainless-steel rocket uses liquid methane and liquid oxygen, a combination chosen for cleaner combustion, easier engine reuse and lower cost. In its full configuration, Zhuque-3 is intended to carry more than 18 tonnes to low-Earth orbit while returning the first stage for reuse. For India, the lesson is scientific and institutional. ISRO's reusable launch vehicle experiments have shown promise, but the country needs an ecosystem that can test, fail and iterate rapidly without treating every anomaly as a national embarrassment. \"The real competition is not between rockets, but between learning cycles,\" a Bengaluru aerospace engineer argued. If India wants to remain competitive in launch services and support Gaganyaan and future satellite constellations, it must invest in propulsion test stands, landing trials, industrial supply chains and commercial demand. Zhuque-3 is evidence that reusable spaceflight is becoming a repeatable engineering discipline, not a one-off spectacle.",
+    "framework": "scientific progress",
+    "sentiment": "positive",
+    "key_phrases": [
+      "Zhuque-3",
+      "reusable rockets",
+      "liquid methane",
+      "ISRO",
+      "engineering iteration"
+    ]
+  },
+  {
+    "id": "india_017",
+    "source": "NDTV",
+    "title": "China's SpaceX Challenger: What Zhuque-3 Means For India",
+    "date": "2026-06-26",
+    "language": "en",
+    "country": "india",
+    "content": "China's LandSpace, often described as SpaceX's biggest Chinese challenger, has kept its Zhuque-3 programme moving despite a failed booster landing during the rocket's debut flight. The company says the methane-fuelled vehicle reached orbit and that the second stage entered its planned trajectory, while investigators study data from the descent phase. The rocket is built from stainless steel and is designed for repeated flights, with an eventual goal of reusing the first stage at least 20 times. For Indian viewers, the story is a reminder that the global space race is no longer limited to superpowers. Private firms in China are testing technologies that could undercut launch prices and expand satellite internet, remote sensing and dual-use capabilities. \"India cannot watch from the sidelines,\" a former Indian space official said, noting that New Delhi must back ISRO's next-generation vehicles and private launch startups with long-term funding. NDTV's assessment is that the first landing failure does not erase the strategic signal. Beijing has already created a commercial ecosystem willing to test expensive hardware in public. If Zhuque-3 succeeds in later flights, India will face both a commercial rival and a technology benchmark, one that could pressure New Delhi to move faster on reusable rockets, launch infrastructure and space diplomacy.",
+    "framework": "competition",
+    "sentiment": "neutral",
+    "key_phrases": [
+      "Zhuque-3",
+      "SpaceX challenger",
+      "India space race",
+      "satellite launch market",
+      "LandSpace"
+    ]
   }
 ]

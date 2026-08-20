@@ -3,7 +3,7 @@
  * 展示三审稿人评分与一键修改说明
  */
 import { useState } from 'react'
-import { StageLayout, ScoreBar, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
+import { StageLayout, StageSources, ScoreBar, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
 
 const INFO: StageInfo = {
   stage: 7, icon: '👨‍⚖️', title: '同行评审', en: 'PEER REVIEW',
@@ -53,6 +53,7 @@ export default function Review() {
 
           {/* RAG + KG 双校验报告（产出物后置校验） */}
           <VerificationPanel verification={(rec?.output as { verification?: VerificationReport } | null)?.verification ?? null} />
+          <StageSources output={rec?.output ?? null} />
 
           {reviewers.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

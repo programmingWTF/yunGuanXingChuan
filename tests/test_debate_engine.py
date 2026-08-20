@@ -337,6 +337,91 @@ class TestDebateEngineClose:
         assert transcript.completed_at != ""
         mock_speaker.close_parliament.assert_called_once()
 
+    def test_close_attaches_accumulated_search_sources(self):
+        """辩论累积的联网搜索来源应结构化挂入 final_strategies（Issue #97）"""
+        from src.parliament.debate_engine import DebateEngine
+        from src.search.tavily_search import SearchSource
+
+        mock_speaker = MagicMock()
+        mock_speaker.close_parliament.return_value = {"summary": "辩论总结"}
+        eng = DebateEngine(speaker=mock_speaker, agents={"scientist": MagicMock()})
+        # 模拟 _run_debate_round 中累积的结构化来源
+        eng._search_sources = [
+            {"url": "https://example.com/a", "title": "来源A", "content": "摘要", "score": 0.9, "source": "TavilySearch"},
+            {"url": "https://example.com/b", "title": "来源B", "content": "", "score": 0.0, "source": "QwenWebSearch"},
+        ]
+
+        transcript = eng.close_parliament()
+        fs = transcript.final_strategies or {}
+        assert fs.get("search_sources") == eng._search_sources
+        assert fs["search_sources"][0]["url"] == "https://example.com/a"
+        assert fs["search_sources"][0]["source"] == "TavilySearch"
+
+    def test_close_respects_external_final_strategies(self):
+        """外部（pipeline）已带 search_sources 时，不要覆盖外部来源，只补缺失"""
+        from src.parliament.debate_engine import DebateEngine
+
+        mock_speaker = MagicMock()
+        mock_speaker.close_parliament.return_value = {"summary": "x"}
+        eng = DebateEngine(speaker=mock_speaker, agents={"scientist": MagicMock()})
+        eng._search_sources = [{"url": "https://stacked.example", "title": "累积", "content": "", "source": "TavilySearch"}]
+
+        external = {"strategy": "A", "pipeline_strategies": {"k": "v"}}
+        transcript = eng.close_parliament(final_strategies=external)
+        # 外部无 search_sources → 补上累积来源
+        assert transcript.final_strategies.get("search_sources") == eng._search_sources
+        assert transcript.final_strategies.get("strategy") == "A"
+
+        # 外部已带 search_sources → 尊重外部
+        ext2 = {"search_sources": [{"url": "https://ext.example", "source": "QwenWebSearch"}]}
+        t2 = eng.close_parliament(final_strategies=ext2)
+        assert t2.final_strategies["search_sources"][0]["url"] == "https://ext.example"
+
+    def test_run_debate_round_accumulates_search_sources(self):
+        """辩论轮次执行时会累积去重后的结构化 search_sources（Issue #97）"""
+        from src.parliament.debate_engine import DebateEngine
+        from src.schemas import Motion, MotionType
+
+        mock_speaker = MagicMock()
+        mock_speaker.plan_round.return_value = {
+            "phase": "debate",
+            "current_topic": "第1轮讨论",
+            "next_speakers": ["scientist"],
+            "speaker_weights": {"fact": 0.5, "culture": 0.2, "strategy": 0.2, "methodology": 0.1},
+            "weight_rationale": "测试",
+            "motion_to_vote": "M001",
+        }
+        mock_speaker.rule_deadlock.return_value = {"ruling": "passed", "ruling_rationale": "测试裁定"}
+        mock_agent = MagicMock()
+        mock_agent.run.return_value = {"content": "发言内容", "stance": "support"}
+        eng = DebateEngine(speaker=mock_speaker, agents={"scientist": mock_agent}, max_rounds=1)
+        eng.topic = "嫦娥六号"
+        eng.motions = [Motion(motion_id="M001", motion_type=MotionType.FACT_CLAIM,
+                              proposer="scientist", content="测试", confidence=0.8)]
+
+        src1 = {
+            "url": "https://example.com/1", "title": "T1", "content": "摘要1",
+            "score": 0.8, "source": "TavilySearch",
+        }
+        src2 = {
+            "url": "https://example.com/2", "title": "T2", "content": "摘要2",
+            "score": 0.6, "source": "QwenWebSearch",
+        }
+        fake = MagicMock()
+        fake.format_search_context.return_value = "[TavilySearch] 摘要"
+        fake.search_for_topic.return_value = [_to_obj(src1), _to_obj(src2)]
+
+        with patch("src.search.unified_search.get_unified_search_service", return_value=fake):
+            eng.debate_round(1)
+
+        urls = {s["url"] for s in eng._search_sources}
+        assert urls == {"https://example.com/1", "https://example.com/2"}
+
+
+def _to_obj(d):
+    from src.search.tavily_search import SearchSource
+    return SearchSource(**d)
+
 
 class TestWeightTemplates:
     """权重模板测试"""

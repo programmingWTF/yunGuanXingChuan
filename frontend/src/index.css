@@ -163,7 +163,7 @@ body {
   background: #94A3B8;
 }
 
-/* ── 隐藏滚动条（导航横向滚动区用，保留滚动能力）── */
+/* ── 隐藏滚动条但保留滚动能力（导航横向滚动区 / 移动端等）── */
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -283,7 +283,7 @@ body {
     bottom: 0;
     width: 32%;
     background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .14) 46%, transparent 72%);
-    transform: translateX(-140%) skewX(-18deg);
+    transform: translateX(-150%) skewX(-18deg);
     transition: transform .7s ease;
   }
 

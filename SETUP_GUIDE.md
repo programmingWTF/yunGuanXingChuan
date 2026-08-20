@@ -80,10 +80,35 @@ DASHSCOPE_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ### 💰 费用说明
 
 - 阿里云百炼采用**按量计费**模式
-- 新用户注册通常有**免费试用额度**（几十万到几百万 Token）
+- 新用户注册通常有**免费试用额度**（90 天内各模型 100 万 Token）
 - 对于本项目的测试使用，免费额度完全够用
 - Qwen3 系列模型价格大约 2-4 元/百万 Token（非常便宜）
 - 查看余额：百炼控制台 → 账户 → 余额
+
+---
+
+## 1️⃣➕ 获取 Token Plan API Key（可选：有订阅就用它）
+
+Token Plan 是阿里云百炼的**订阅制套餐**（买断额度，不用按量计费），Key 格式为 `sk-tp-` / `sk-sp-` 开头：
+
+1. 打开 **https://bailian.console.aliyun.com/** → 进入 **Token Plan** 订阅页
+2. 选择套餐并购买（个人版/团队版均可）
+3. 进入 **我的订阅** → 获取**专属 API Key** 与 **Base URL**（以页面展示为准，形如 `https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1`）
+4. 把 Key / Base URL / 模型 ID（如 `qwen3.8-max-preview`）填入云观星传「⚙ 模型设置」
+
+> ⚠️ Token Plan 专属 Key 与普通百炼 Key 不通用；Base URL 必须用 Token Plan 页面展示的地址。
+
+---
+
+## 1️⃣🔑 平台用户系统的 Key 说明（重要）
+
+云观星传部署版（tzb.liguiyu.com）是**多租户「自带钥匙」模式**：
+
+- **平台不提供推理 API**，每个用户在「⚙ 模型设置」里填**自己的** Qwen Key（上面两种方式任选）
+- LLM 配置（Key/BaseURL/模型ID）为**必填**，未配置时生成会被引导去设置页
+- **向量模型（Embedding）可选**：不填自动降级为文本匹配，填了历史经验匹配更精准
+- Key 加密存储，管理后台（管理员）也看不到明文
+- 账号角色：`ADMIN_EMAILS` 中的邮箱注册自动成为管理员，可访问 `/admin` 管理后台
 
 ---
 

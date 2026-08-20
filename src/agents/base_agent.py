@@ -55,7 +55,8 @@ class BaseAgent(ABC):
             max_tokens: 输出 token 上限（None 用 LLM 客户端默认）
         """
         self.llm_client = llm_client or get_llm_client()
-        self.model = model or QWEN_MODEL
+        # 多租户：优先用用户配置（llm_client.model）的模型，其次显式 model，最后全局默认
+        self.model = model or (getattr(self.llm_client, "model", None) or QWEN_MODEL)
         self.max_retries = max_retries
         self.temperature = temperature
         self.max_tokens = max_tokens

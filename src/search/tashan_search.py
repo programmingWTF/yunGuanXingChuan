@@ -11,10 +11,11 @@
 - AMiner 未配置 token 时自动跳过（日志说明），配置后启用
 """
 import logging
-import os
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional
+
+from config.settings import TASHAN_TOKEN
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -24,8 +25,6 @@ logger = logging.getLogger(__name__)
 
 # 他山世界 API 基础地址
 TASHAN_BASE_URL = "https://world.tashan.chat/api/v1"
-# 可选 token：从环境变量读取（config/settings 不强制），配置后启用 AMiner
-TASHAN_TOKEN = os.getenv("TASHAN_TOKEN", "")
 
 # 来源标识（与 issue #42 约定一致，新增 literature/signals 两路）
 SOURCE_AMINER = "TashanAminer"
