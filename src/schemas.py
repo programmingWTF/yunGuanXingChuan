@@ -44,6 +44,14 @@ def _normalize_str_list(v):
 StrList = Annotated[List[str], BeforeValidator(_normalize_str_list)]
 
 
+def _wrap_list_root(data, field: str):
+    """LLM 格式漂移容错：结果对象被直接输出为数组（未包成 {field: [...]} 对象）时，
+    自动包装进指定列表字段。实测高发：方法推荐/文献综述等 Agent 把整个结果写成数组"""
+    if isinstance(data, list):
+        return {field: data}
+    return data
+
+
 class FrameworkType(str, Enum):
     """传播框架类型"""
     COMPETITION = "competition"   # 竞争框架
@@ -489,6 +497,11 @@ class InspirationResult(BaseModel):
     discussion_summary: str = ""              # 多学者讨论纪要
 
 
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_list_root(cls, data):
+        """LLM 格式漂移容错：结果直接输出为数组时自动包装"""
+        return _wrap_list_root(data, "directions")
 class LiteratureSection(BaseModel):
     """文献综述章节（②文献综述助手输出项）"""
     theme: str                                # 主题（按主题/时间/方法论维度归类）
@@ -576,6 +589,11 @@ class LiteratureReview(BaseModel):
     theory_relations: List[TheoryRelation] = Field(default_factory=list)  # 理论关系图
 
 
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_list_root(cls, data):
+        """LLM 格式漂移容错：结果直接输出为数组时自动包装"""
+        return _wrap_list_root(data, "sections")
 class ResearchQuestion(BaseModel):
     """研究问题（RQ）"""
     id: str                                   # RQ1
@@ -605,6 +623,11 @@ class ResearchDesignResult(BaseModel):
     quality_report: QuestionQualityReport = Field(default_factory=QuestionQualityReport)
 
 
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_list_root(cls, data):
+        """LLM 格式漂移容错：结果直接输出为数组时自动包装"""
+        return _wrap_list_root(data, "research_questions")
 class MethodRecommendation(BaseModel):
     """研究方法推荐（④方法顾问输出项）"""
     name: str                                 # 方法名，如"内容分析"
@@ -621,6 +644,11 @@ class MethodRecommendationResult(BaseModel):
     methods: List[MethodRecommendation] = Field(default_factory=list)
 
 
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_list_root(cls, data):
+        """LLM 格式漂移容错：结果直接输出为数组时自动包装"""
+        return _wrap_list_root(data, "methods")
 class AnalysisCodingCategory(BaseModel):
     """分析编码类目统计（⑤数据分析助手输出项）"""
     category: str
@@ -652,6 +680,11 @@ class AnalysisResult(BaseModel):
     interpretation: str = ""                  # 初步解读
 
 
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_list_root(cls, data):
+        """LLM 格式漂移容错：结果直接输出为数组时自动包装"""
+        return _wrap_list_root(data, "findings")
 class PaperSection(BaseModel):
     """论文章节（⑥论文写手输出项）"""
     section: str                              # 摘要/引言/文献综述/方法/发现/讨论/结论
@@ -666,6 +699,11 @@ class PaperDraft(BaseModel):
     style_notes: List[str] = Field(default_factory=list)      # 风格蒸馏说明
 
 
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_list_root(cls, data):
+        """LLM 格式漂移容错：结果直接输出为数组时自动包装"""
+        return _wrap_list_root(data, "sections")
 class ReviewerScores(BaseModel):
     """审稿人评分（⑦评审模拟器输出项）"""
     innovation: int = Field(ge=0, le=100, default=0)      # 创新性
