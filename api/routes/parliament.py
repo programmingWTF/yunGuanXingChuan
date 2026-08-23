@@ -12,6 +12,8 @@ from typing import Optional, Dict
 from datetime import datetime
 from uuid import uuid4
 
+from api.routes.security import is_safe_task_id
+
 router = APIRouter()
 
 # 结果持久化目录
@@ -319,6 +321,10 @@ async def get_parliament_result(task_id: str):
     """获取议会辩论记录（内存优先，回退磁盘）"""
     if task_id in parliament_results:
         return parliament_results[task_id]
+
+    # 防路径穿越/glob 注入：task_id 参与 glob 模式拼接
+    if not is_safe_task_id(task_id):
+        raise HTTPException(status_code=400, detail="非法的 task_id 格式")
 
     # 回退：从磁盘文件中查找（文件名含 task_id 前8位，但必须精确匹配 task_id）
     # 注意：不能用 f.stem.endswith(prefix) 判断——task_id[:8] 对 parl_ 前缀任务恒相同，

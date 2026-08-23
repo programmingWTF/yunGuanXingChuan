@@ -156,6 +156,10 @@ class ProjectStore:
             now = datetime.now().isoformat(timespec="microseconds")
             if status is not None:
                 record.status = status
+                # 成功状态清除历史失败信息：否则阶段"失败→重跑成功"后
+                # error 字段残留，前端会继续展示陈旧错误
+                if status in (StageStatus.AWAITING_REVIEW, StageStatus.COMPLETED):
+                    record.error = None
             if clear_output:
                 record.output = None
             if output is not None:

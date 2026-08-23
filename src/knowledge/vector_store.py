@@ -57,6 +57,11 @@ class VectorStore:
         Returns:
             文档块列表，每块包含 text 和 metadata
         """
+        # 参数保护：chunk_size 至少为 1；overlap 必须落在 [0, chunk_size-1]，
+        # 否则当 overlap >= chunk_size 时 start 不前进，会造成死循环
+        chunk_size = max(1, int(chunk_size))
+        overlap = max(0, min(int(overlap), chunk_size - 1))
+
         chunks = []
         start = 0
         chunk_id = 0

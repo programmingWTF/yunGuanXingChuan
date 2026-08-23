@@ -14,6 +14,7 @@ from uuid import uuid4
 import asyncio
 
 from src.pipeline import Pipeline
+from api.routes.security import is_safe_task_id
 
 router = APIRouter()
 
@@ -209,6 +210,9 @@ async def get_task_status(task_id: str):
 @router.get("/result/{task_id}")
 async def get_task_result(task_id: str):
     """获取任务结果（内存或磁盘）"""
+    if not is_safe_task_id(task_id):
+        # 防路径穿越：task_id 直接拼接磁盘路径，必须限制字符集
+        raise HTTPException(status_code=400, detail="非法的 task_id 格式")
     if task_id in pipeline_results:
         return pipeline_results[task_id]
     # 尝试从磁盘加载

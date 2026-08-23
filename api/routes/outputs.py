@@ -14,6 +14,8 @@ from typing import Optional, Dict, List
 from datetime import datetime
 from uuid import uuid4
 
+from api.routes.security import is_safe_task_id
+
 router = APIRouter()
 
 # 结果持久化目录（与 parliament 共用 data/results）
@@ -148,6 +150,9 @@ def _load_source_material(source_task_id: Optional[str]) -> Dict:
     material: Dict = {}
     if not source_task_id:
         return material
+    # 防路径穿越/glob 注入：source_task_id 参与磁盘路径与 glob 模式拼接
+    if not is_safe_task_id(source_task_id):
+        return material
 
     prefix = source_task_id[:8] if len(source_task_id) >= 8 else source_task_id
     # 议会结果：data/results/parliament_*.json（必须精确匹配 task_id，
@@ -194,6 +199,9 @@ def _load_output_result(task_id: str) -> Optional[dict]:
     """按 task_id 从内存或磁盘加载成果结果（磁盘用 glob 精确匹配 task_id）"""
     if task_id in outputs_results:
         return outputs_results[task_id]
+    # 防路径穿越/glob 注入：task_id 参与 glob 模式拼接
+    if not is_safe_task_id(task_id):
+        return None
     prefix = task_id[:8] if len(task_id) >= 8 else task_id
     for f in RESULTS_DIR.glob(f"output_*{prefix}*.json"):
         try:

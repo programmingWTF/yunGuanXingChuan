@@ -95,7 +95,7 @@ class LLMClient:
         temperature: float = 0.3,
         json_mode: bool = True,
         enable_search: bool = False,
-        max_tokens: int = 16384,
+        max_tokens: Optional[int] = None,
     ) -> str:
         """
         发送聊天请求，返回文本响应
@@ -107,6 +107,7 @@ class LLMClient:
             temperature: 温度参数
             json_mode: 是否要求 JSON 输出
             enable_search: 是否启用联网搜索（百炼平台原生支持，同一API Key）
+            max_tokens: 输出 token 上限（None 时由服务端默认决定，不显式传参）
 
         Returns:
             模型响应文本
@@ -115,6 +116,15 @@ class LLMClient:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
+
+        # 启用联网搜索
+        # qwen3.8-max-preview 仅支持 Responses API 联网搜索
+        # 其他模型用 Chat Completions API 的 enable_search
+        if enable_search:
+            return self._chat_with_search(
+                system_prompt, user_prompt, model,
+                json_mode=json_mode, temperature=temperature, max_tokens=max_tokens,
+            )
 
         if json_mode:
             # DeepSeek 官方要求：json_object 模式下 prompt 必须包含 "json" 字样，
@@ -126,7 +136,6 @@ class LLMClient:
                 "model": model or self.model,
                 "messages": messages,
                 "temperature": temperature,
-                "max_tokens": max_tokens,
                 "response_format": {"type": "json_object"},
             }
         else:
@@ -134,14 +143,11 @@ class LLMClient:
                 "model": model or self.model,
                 "messages": messages,
                 "temperature": temperature,
-                "max_tokens": max_tokens,
             }
-
-        # 启用联网搜索
-        # qwen3.8-max-preview 仅支持 Responses API 联网搜索
-        # 其他模型用 Chat Completions API 的 enable_search
-        if enable_search:
-            return self._chat_with_search(system_prompt, user_prompt, model, json_mode)
+        # max_tokens=None 表示沿用服务端默认；显式传 None 可能被部分
+        # OpenAI 兼容端点拒绝（max_tokens must be a positive integer）
+        if max_tokens is not None:
+            kwargs["max_tokens"] = max_tokens
 
         for attempt in range(self.max_retries):
             try:
@@ -167,11 +173,15 @@ class LLMClient:
         user_prompt: str,
         model: Optional[str] = None,
         json_mode: bool = False,
+        temperature: float = 0.3,
+        max_tokens: Optional[int] = None,
     ) -> str:
         """
         使用联网搜索调用 LLM
         - 百炼平台 (dashscope): 使用 Responses API + web_search 工具
         - 其他平台 (DeepSeek 等): 回退到普通 Chat Completions（不支持原生搜索）
+
+        注意：temperature/max_tokens 由调用方透传，避免该分支静默丢失参数。
         """
         use_model = model or self.model
 
@@ -184,14 +194,18 @@ class LLMClient:
             if json_mode:
                 input_text += "\n\n[重要] 请严格以 JSON 格式输出，不要包含其他内容。"
 
+            responses_kwargs: Dict[str, Any] = {
+                "model": use_model,
+                "input": input_text,
+                "tools": [{"type": "web_search"}],
+                "max_output_tokens": max_tokens if max_tokens is not None else 16384,
+            }
+            if temperature is not None:
+                responses_kwargs["temperature"] = temperature
+
             for attempt in range(self.max_retries):
                 try:
-                    response = self.client.responses.create(
-                        model=use_model,
-                        input=input_text,
-                        tools=[{"type": "web_search"}],
-                        max_output_tokens=16384,
-                    )
+                    response = self.client.responses.create(**responses_kwargs)
                     content = getattr(response, 'output_text', None)
                     if not content:
                         parts = []
@@ -227,9 +241,10 @@ class LLMClient:
         kwargs: Dict[str, Any] = {
             "model": use_model,
             "messages": messages,
-            "temperature": 0.3,
-            "max_tokens": 16384,
+            "temperature": temperature,
         }
+        if max_tokens is not None:
+            kwargs["max_tokens"] = max_tokens
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
 
@@ -383,7 +398,7 @@ class LLMClient:
             result += '"'
 
         # 移除末尾不完整的部分（如 "key": "val 或 "key":）
-        # 找到最后一个完整的值结束位置
+        # 找到最后一个完整的 , 或 { 或 [ 之后
         import re
         # 尝试截断到最后一个完整的 , 或 { 或 [ 之后
         last_good = max(
@@ -398,12 +413,27 @@ class LLMClient:
                 candidate = candidate.rstrip()[:-1]
             result = candidate
 
-        # 重新计算需要补全的括号
+        # 若截断把某个键的"值"整个截掉（如 {"tail": {"x → 裁剪后遗留
+        # 悬空 "tail":），补全括号会产出 "tail": } 的非法 JSON——
+        # 必须回退掉整个悬空键值对
+        m = re.search(r',\s*"(?:[^"\\]|\\.)*"\s*:\s*$', result)
+        if m:
+            result = result[:m.start()]
+        elif re.fullmatch(r'\{\s*"(?:[^"\\]|\\.)*"\s*:\s*', result):
+            # 对象的第一个键就悬空：整个对象退化为 {}
+            result = '{'
+
+        # 重新计算需要补全的括号（与第一次扫描一致：跳过转义字符，
+        # 否则字符串内的 \" 会被误判为字符串结束，导致补全括号错误）
         stack2 = []
         in_str2 = False
-        for ch in result:
+        j = 0
+        n2 = len(result)
+        while j < n2:
+            ch = result[j]
             if in_str2:
                 if ch == '\\':
+                    j += 2
                     continue
                 elif ch == '"':
                     in_str2 = False
@@ -418,6 +448,7 @@ class LLMClient:
                 elif ch == ']':
                     if stack2 and stack2[-1] == '[':
                         stack2.pop()
+            j += 1
 
         # 补全未闭合的括号
         for bracket in reversed(stack2):

@@ -88,11 +88,12 @@ class RAGChecker:
         )
 
         llm = self.llm_client or get_llm_client()
+        # 注意：chat_json 本身即 JSON 模式（固定 json_mode=True），
+        # 不能传 json_mode 关键字（签名不存在，会 TypeError 导致语义校验静默失效）
         result = llm.chat_json(
             system_prompt="你是事实校验专家。请判断给定断言是否与参考文本一致。输出 JSON。",
             user_prompt=prompt_text,
             temperature=0.1,
-            json_mode=True,
         )
 
         consistent = result.get("consistent", False)
