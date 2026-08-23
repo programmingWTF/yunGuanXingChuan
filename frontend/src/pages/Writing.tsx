@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 云观星传 - ⑥ 学术写作（产出物查看 + 章节级 AI 润色）
  * Notion 式分栏：左目录 / 右正文；每章支持 AI 润色（独立接口，不修改已确认产出物）
  */
@@ -50,7 +50,7 @@ export default function Writing() {
             <StatusBadge status={status} />
             {status !== 'running' && (
               <button onClick={confirmRerun} disabled={running}
-                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
+                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all">
                 {running ? '写作中…' : '重新运行'}
               </button>
             )}
@@ -68,7 +68,7 @@ export default function Writing() {
                 <nav className="space-y-1 self-start sticky top-20">
                   {sections.map((s, i) => (
                     <button key={i} onClick={() => { setActiveSection(i); setPolishResult(null); setPolishError('') }}
-                      className={`w-full text-left text-[12px] px-3 py-2 rounded-lg transition-colors ${activeSection === i ? 'bg-sky-50 text-sky-600 border border-sky-200' : 'text-slate-500 hover:text-slate-600 hover:bg-slate-100'
+                      className={`w-full text-left text-[12px] px-3 py-2 rounded-lg transition-colors ${activeSection === i ? 'bg-indigo-50 text-indigo-600 border border-indigo-200' : 'text-slate-500 hover:text-slate-600 hover:bg-slate-100'
                         }`}>
                       {s.section}
                     </button>
@@ -87,7 +87,7 @@ export default function Writing() {
                           className="input-field !w-52 !bg-slate-50 !rounded-lg !text-[11px] !px-2.5 !py-1.5"
                         />
                         <button onClick={handlePolish} disabled={polishing}
-                          className="text-[11px] px-3 py-1.5 rounded-lg border border-sky-300 bg-sky-50 text-sky-600 hover:bg-sky-100 disabled:opacity-40 transition-all">
+                          className="text-[11px] px-3 py-1.5 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-40 transition-all">
                           {polishing ? '⏳ 润色中…' : '✨ AI 润色'}
                         </button>
                       </div>

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 云观星传 - 联网搜索来源列表（可点击链接）
  *
  * Issue #98：把联网搜索结果（search_sources）渲染为可点击链接，供用户查阅原始出处。
@@ -33,7 +33,7 @@ function SourceRow({ item, index }: { item: SearchSource; index: number }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-[12.5px] font-medium text-sky-700 hover:text-sky-600 hover:underline transition-colors break-words line-clamp-2"
+      className="text-[12.5px] font-medium text-indigo-700 hover:text-indigo-600 hover:underline transition-colors break-words line-clamp-2"
       title={url}
     >
       {title || url}
@@ -45,7 +45,7 @@ function SourceRow({ item, index }: { item: SearchSource; index: number }) {
   )
 
   return (
-    <li className="flex items-start gap-2.5 rounded-xl bg-slate-50/70 border border-slate-100 px-3.5 py-2.5 hover:border-sky-200/80 transition-colors">
+    <li className="flex items-start gap-2.5 rounded-xl bg-slate-50/70 border border-slate-100 px-3.5 py-2.5 hover:border-indigo-200/80 transition-colors">
       <span className="text-[9px] font-mono text-slate-400 mt-1 shrink-0">#{index + 1}</span>
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
@@ -104,7 +104,7 @@ export default function SearchSources({
       {hasMore && (
         <button
           onClick={() => setExpanded(v => !v)}
-          className="mt-2.5 text-[11px] font-medium text-sky-600 hover:text-sky-500 transition-colors"
+          className="mt-2.5 text-[11px] font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
         >
           {expanded ? '收起 △' : `展开剩余 ${list.length - collapseAfter} 条 ▽`}
         </button>

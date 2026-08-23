@@ -1,146 +1,102 @@
 /** @type {import('tailwindcss').Config} */
-// ═══════════════ 云观星传 V3.0 设计系统 — 他山世界学术风 ═══════════════
-// 依据《他山世界-设计风格调研.md》：宋体衬线 + 大留白 + 低饱和青蓝 + 浅色主调
+// ═══════════════ 云观星传 — 国风山水主题（与《代码2》设计稿一致）═══════════════
+// 淡雅水墨配色 / 靛蓝主色 / 无衬线字体栈 / 国风动效
+// 设计令牌定义于 src/index.css :root / .dark，此处仅做 Tailwind v3 映射
 export default {
+  darkMode: ['class'],
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
-        // ── shadcn/ui Design Token 映射（值来自 index.css :root HSL 变量）──
-        border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
+        // ── shadcn/ui 设计令牌映射（值来自 index.css CSS 变量，与设计稿一致）──
+        border: 'var(--border)',
+        input: 'var(--input)',
+        ring: 'var(--ring)',
+        background: 'var(--background)',
+        foreground: 'var(--foreground)',
         primary: {
-          DEFAULT: 'hsl(var(--primary))',
-          foreground: 'hsl(var(--primary-foreground))',
+          DEFAULT: 'var(--primary)',
+          foreground: 'var(--primary-foreground)',
         },
         secondary: {
-          DEFAULT: 'hsl(var(--secondary))',
-          foreground: 'hsl(var(--secondary-foreground))',
+          DEFAULT: 'var(--secondary)',
+          foreground: 'var(--secondary-foreground)',
         },
         destructive: {
-          DEFAULT: 'hsl(var(--destructive))',
-          foreground: 'hsl(var(--destructive-foreground))',
+          DEFAULT: 'var(--destructive)',
+          foreground: 'var(--destructive-foreground)',
         },
         muted: {
-          DEFAULT: 'hsl(var(--muted))',
-          foreground: 'hsl(var(--muted-foreground))',
+          DEFAULT: 'var(--muted)',
+          foreground: 'var(--muted-foreground)',
         },
         accent: {
-          DEFAULT: 'hsl(var(--accent))',
-          foreground: 'hsl(var(--accent-foreground))',
+          DEFAULT: 'var(--accent)',
+          foreground: 'var(--accent-foreground)',
         },
         popover: {
-          DEFAULT: 'hsl(var(--popover))',
-          foreground: 'hsl(var(--popover-foreground))',
+          DEFAULT: 'var(--popover)',
+          foreground: 'var(--popover-foreground)',
         },
         card: {
-          DEFAULT: 'hsl(var(--card))',
-          foreground: 'hsl(var(--card-foreground))',
+          DEFAULT: 'var(--card)',
+          foreground: 'var(--card-foreground)',
         },
         chart: {
-          '1': 'hsl(var(--chart-1))',
-          '2': 'hsl(var(--chart-2))',
-          '3': 'hsl(var(--chart-3))',
-          '4': 'hsl(var(--chart-4))',
-          '5': 'hsl(var(--chart-5))',
+          '1': 'var(--chart-1)',
+          '2': 'var(--chart-2)',
+          '3': 'var(--chart-3)',
+          '4': 'var(--chart-4)',
+          '5': 'var(--chart-5)',
         },
         sidebar: {
-          DEFAULT: 'hsl(var(--sidebar-background))',
-          foreground: 'hsl(var(--sidebar-foreground))',
-          primary: 'hsl(var(--sidebar-primary))',
-          'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-          accent: 'hsl(var(--sidebar-accent))',
-          'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-          border: 'hsl(var(--sidebar-border))',
-          ring: 'hsl(var(--sidebar-ring))',
+          DEFAULT: 'var(--sidebar)',
+          foreground: 'var(--sidebar-foreground)',
+          primary: 'var(--sidebar-primary)',
+          'primary-foreground': 'var(--sidebar-primary-foreground)',
+          accent: 'var(--sidebar-accent)',
+          'accent-foreground': 'var(--sidebar-accent-foreground)',
+          border: 'var(--sidebar-border)',
+          ring: 'var(--sidebar-ring)',
         },
-        // ── 品牌蓝（交互态 / 主 CTA 配套）──
-        brand: {
-          100: '#DBEAFE', 200: '#BFDBFE', 300: '#93C5FD',
-          400: '#60A5FA', 500: '#3B82F6', 600: '#2563EB', 700: '#1D4ED8', 800: '#1E40AF',
-        },
-        // ── 强调天蓝（激活态 / 链接 / 雷达装饰）──
-        accent: {
-          100: '#E0F2FE', 200: '#BAE6FD', 300: '#7DD3FC',
-          400: '#38BDF8', 500: '#0EA5E9', 600: '#0284C7', 700: '#0369A1',
-        },
-        // ── 青绿（数据可视化 / 装饰光晕）──
-        teal: {
-          100: '#CCFBF1', 200: '#99F6E4', 300: '#5EEAD4',
-          400: '#2DD4BF', 500: '#14B8A6', 600: '#0D9488',
-        },
-        // ── 琥珀橙（暖色点缀 / 灵感共创）──
-        amber: {
-          100: '#FEF3C7', 200: '#FDE68A', 300: '#FCD34D',
-          400: '#FBBF24', 500: '#F59E0B', 600: '#D97706',
-        },
-        // ── 状态色（语义）──
-        success: { 400: '#34D399', 500: '#10B981', 600: '#059669' },
-        danger: { 400: '#F87171', 500: '#EF4444', 600: '#DC2626' },
-        // ── 页脚深海军蓝（全站唯一大面积深色）──
-        footer: '#0E2E4F',
-        // 兼容旧深色主题的少量遗留引用（无实际使用）
-        abyss: { 900: '#0F172A', 800: '#1E293B', 700: '#334155' },
+        // ── 旧主题遗留引用（迁移期保留，逐步清理）──
+        footer: '#0f172a',
       },
       fontFamily: {
-        // 中文正文/标题：宋体衬线（他山风核心）
-        serif: ['"Noto Serif SC"', 'Georgia', 'STSong', 'SimSun', 'serif'],
-        display: ['"Noto Serif SC"', 'Georgia', 'STSong', 'SimSun', 'serif'],
-        body: ['"Noto Serif SC"', 'Georgia', 'STSong', 'SimSun', 'serif'],
-        // 无衬线（英文小标签 / 少量场景）
-        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Helvetica Neue', 'Arial', 'sans-serif'],
-        // 等宽（代码 / URL / 数字）
-        mono: ['"MonaspaceRadonFrozen"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+        // 国风山水主字体栈（设计稿原样）
+        sans: ['"PingFang SC"', '"Microsoft YaHei"', '"Hiragino Sans GB"', '"Noto Sans SC"', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+        // 旧衬线类名 → 统一映射到无衬线栈（页面无需逐个改）
+        serif: ['"PingFang SC"', '"Microsoft YaHei"', '"Hiragino Sans GB"', '"Noto Sans SC"', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['"PingFang SC"', '"Microsoft YaHei"', '"Hiragino Sans GB"', '"Noto Sans SC"', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+        body: ['"PingFang SC"', '"Microsoft YaHei"', '"Hiragino Sans GB"', '"Noto Sans SC"', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
       },
       borderRadius: {
-        // 他山标志性大圆角体系
-        card: '1.75rem',        // 28px
-        cardlg: '2rem',         // 32px
-        mid: '1.25rem',         // 20px
-        btn: '1rem',            // 16px
-      },
-      boxShadow: {
-        // 极克制的浅阴影（他山：卡片几乎不用阴影）
-        card: '0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04)',
-        cardh: '0 10px 15px rgba(0,0,0,.08), 0 4px 6px rgba(0,0,0,.05)',
-        btn: '0 1px 2px rgba(0,0,0,.08)',
-      },
-      letterSpacing: {
-        // 他山字距体系
-        tag: '0.22em',   // 英文大写小标签
-        tagwide: '0.28em',
-        tightitle: '-0.04em', // 大标题收紧
-        ctag: '0.08em',  // 中文标签
+        // 设计稿 --radius: 0.625rem 体系
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
+        btn: 'var(--radius)',
       },
       animation: {
-        'rise': 'rise .45s cubic-bezier(.22,1,.36,1) both',
-        'breathe': 'breathe 3.2s ease-in-out infinite',
-        'float': 'floatDrift 5.5s ease-in-out infinite',
-        'sweep': 'cardSweep 2.8s ease-in-out infinite',
-        'shimmer': 'shimmer 2.4s linear infinite',
-        'radar': 'radarSpin 10s linear infinite',
-        'flow': 'flowDash 1.2s linear infinite',
-        'scanline': 'scanline 3s ease-in-out infinite',
+        // ── 国风动画（keyframes 在 index.css）──
+        'cloud-float': 'cloudFloat 8s ease-in-out infinite',
+        'cloud-float-slow': 'cloudFloatSlow 12s ease-in-out infinite',
+        'cloud-float-reverse': 'cloudFloatReverse 10s ease-in-out infinite',
+        'star-twinkle': 'starTwinkle 3s ease-in-out infinite',
+        'star-pulse': 'starPulse 2s ease-in-out infinite',
+        'star-rotate': 'starRotate 20s linear infinite',
+        'constellation-shine': 'constellationShine 4s ease-in-out infinite',
+        'particle-rise': 'particleRise 15s linear infinite',
+        'ink-spread': 'inkSpread 8s ease-out infinite',
+        // ── 旧主题遗留动画（少量引用，迁移期映射到国风动画）──
+        'breathe': 'starTwinkle 3.2s ease-in-out infinite',
+        'float': 'cloudFloatSlow 5.5s ease-in-out infinite',
         // ── shadcn/ui 组件所需动画 ──
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
       },
       keyframes: {
-        rise: { '0%': { opacity: '0', transform: 'translateY(18px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
-        breathe: { '0%,100%': { opacity: '.45', transform: 'scale(1)' }, '50%': { opacity: '.9', transform: 'scale(1.05)' } },
-        floatDrift: { '0%,100%': { transform: 'translateY(0) translateX(0)' }, '50%': { transform: 'translateY(-12px) translateX(6px)' } },
-        // 卡片扫光：105deg 半透明白斜条从左侧扫过（他山 cardSpecularSweep）
-        cardSweep: {
-          '0%': { transform: 'translateX(-120%) skewX(-18deg)' },
-          '60%,100%': { transform: 'translateX(220%) skewX(-18deg)' },
-        },
-        shimmer: { '0%': { backgroundPosition: '-200% 0' }, '100%': { backgroundPosition: '200% 0' } },
-        radarSpin: { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } },
-        flowDash: { to: { strokeDashoffset: '-24' } },
-        scanline: { '0%,100%': { top: '-30%' }, '50%': { top: '100%' } },
         // ── shadcn/ui keyframes ──
         'accordion-down': {
           from: { height: '0' },

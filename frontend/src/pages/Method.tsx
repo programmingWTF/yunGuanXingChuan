@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 云观星传 - ④ 方法推荐（产出物查看页）
  * 展示方法卡片（适配度/类型/范文/操作步骤）
  */
@@ -27,7 +27,7 @@ export default function Method() {
             <StatusBadge status={status} />
             {status !== 'running' && (
               <button onClick={confirmRerun} disabled={running}
-                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
+                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all">
                 {running ? '生成中…' : '重新运行'}
               </button>
             )}
@@ -49,18 +49,18 @@ export default function Method() {
                         {m.method_type === 'quantitative' ? '量化' : m.method_type === 'qualitative' ? '质性' : '混合'}
                       </span>
                     </div>
-                    <ScoreBar label="适配度" value={m.fit_score} color="bg-sky-500" />
+                    <ScoreBar label="适配度" value={m.fit_score} color="bg-indigo-500" />
                   </div>
                   <p className="text-[11px] text-slate-500">{m.rationale}</p>
                   {m.representative_papers?.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {m.representative_papers.map((p, j) => (
-                        <span key={j} className="text-[10px] px-2 py-0.5 rounded bg-sky-50 border border-sky-200 text-sky-600">{typeof p === 'string' ? p : JSON.stringify(p)}</span>
+                        <span key={j} className="text-[10px] px-2 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-600">{typeof p === 'string' ? p : JSON.stringify(p)}</span>
                       ))}
                     </div>
                   )}
                   <button onClick={() => setExpanded(expanded === i ? null : i)}
-                    className="text-[11px] text-sky-600 hover:text-sky-700 transition-colors">
+                    className="text-[11px] text-indigo-600 hover:text-indigo-700 transition-colors">
                     {expanded === i ? '收起操作步骤 ▲' : '展开操作步骤 ▼'}
                   </button>
                   {expanded === i && m.operation_steps?.length > 0 && (

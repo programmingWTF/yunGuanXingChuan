@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 云观星传 - ⑦ 同行评审（产出物查看页）
  * 展示三审稿人评分与一键修改说明
  */
@@ -44,7 +44,7 @@ export default function Review() {
             <StatusBadge status={status} />
             {status !== 'running' && (
               <button onClick={confirmRerun} disabled={running}
-                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
+                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all">
                 {running ? '评审中…' : '重新运行'}
               </button>
             )}
@@ -61,10 +61,10 @@ export default function Review() {
                 <div key={i} className="card p-5 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-slate-700">{r.reviewer_id}</p>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-sky-50 border border-sky-200 text-sky-600">{r.perspective}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-600">{r.perspective}</span>
                   </div>
                   <div className="space-y-1.5">
-                    <ScoreBar label="创新性" value={r.scores?.innovation ?? 0} color="bg-sky-500" />
+                    <ScoreBar label="创新性" value={r.scores?.innovation ?? 0} color="bg-indigo-500" />
                     <ScoreBar label="方法规范" value={r.scores?.methodology ?? 0} />
                     <ScoreBar label="论证逻辑" value={r.scores?.argumentation ?? 0} color="bg-emerald-500" />
                     <ScoreBar label="文献覆盖" value={r.scores?.literature ?? 0} />
@@ -87,7 +87,7 @@ export default function Review() {
             <div className="card p-5 border-emerald-200">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="sec-label !mb-0">📝 一键修改说明</h3>
-                <button onClick={handleCopy} className="text-[11px] px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 transition-all">
+                <button onClick={handleCopy} className="text-[11px] px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 transition-all">
                   {copied ? '已复制 ✓' : '复制'}
                 </button>
               </div>

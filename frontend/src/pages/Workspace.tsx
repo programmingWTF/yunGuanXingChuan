@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 云观星传 - 科研工作台（合并版主页，默认打开）
  *
  * 将「科研首页」与「我的项目」合并为单一入口：
@@ -27,7 +27,7 @@ const STAGE_ICONS: Record<string, string> = {
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   pending: { label: '待开始', cls: 'text-slate-500 border-slate-200' },
   running: { label: '运行中', cls: 'text-amber-600 border-red-200 animate-pulse' },
-  awaiting_review: { label: '待确认', cls: 'text-sky-600 border-sky-300' },
+  awaiting_review: { label: '待确认', cls: 'text-indigo-600 border-indigo-300' },
   completed: { label: '已完成', cls: 'text-emerald-600 border-emerald-300' },
   failed: { label: '失败', cls: 'text-red-600 border-red-300' },
 }
@@ -233,7 +233,7 @@ export default function Workspace() {
                   <li key={i}>
                     {safeUrl ? (
                       <a href={safeUrl} target="_blank" rel="noreferrer"
-                        className="flex items-start gap-2 text-[12px] text-slate-600 hover:text-sky-700 transition-colors leading-snug">
+                        className="flex items-start gap-2 text-[12px] text-slate-600 hover:text-indigo-700 transition-colors leading-snug">
                         <span className="text-[9px] font-mono text-slate-400 mt-0.5 shrink-0">#{i + 1}</span>
                         <span className="flex-1">{t.title}</span>
                       </a>
@@ -259,7 +259,7 @@ export default function Workspace() {
                 <li key={t.id} className="flex items-center gap-2.5 text-[12px] text-slate-600">
                   <span className="text-base shrink-0">{t.icon}</span>
                   <span className="truncate flex-1">{t.title}</span>
-                  <span className="text-[10px] text-sky-600 shrink-0">当前：{t.stageName}</span>
+                  <span className="text-[10px] text-indigo-600 shrink-0">当前：{t.stageName}</span>
                 </li>
               ))}
             </ul>
@@ -295,7 +295,7 @@ export default function Workspace() {
               </button>
             )}
             {generatingAll && (
-              <p className="text-[10px] text-sky-600 mt-2 animate-pulse">AI 正在串行生成 7 个阶段（约 8-12 分钟），进度实时更新，可离开页面</p>
+              <p className="text-[10px] text-indigo-600 mt-2 animate-pulse">AI 正在串行生成 7 个阶段（约 8-12 分钟），进度实时更新，可离开页面</p>
             )}
           </form>
 
@@ -307,7 +307,7 @@ export default function Workspace() {
                 <div className="text-center py-8">
                   <p className="text-[11px] text-slate-400">登录后查看你的项目历史</p>
                   <button onClick={() => navigate('/login')}
-                    className="mt-3 text-[11px] font-medium px-4 py-1.5 rounded-lg bg-sky-600 text-white hover:bg-sky-700 transition-all">
+                    className="mt-3 text-[11px] font-medium px-4 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-all">
                     去登录
                   </button>
                 </div>
@@ -323,14 +323,14 @@ export default function Workspace() {
                   key={p.id}
                   onClick={() => handleSelect(p.id)}
                   className={`group w-full text-left rounded-xl border px-3 py-2.5 transition-all ${selected === p.id || (projects[0]?.id === p.id && selected === null)
-                    ? 'border-sky-300 bg-sky-50'
+                    ? 'border-indigo-300 bg-indigo-50'
                     : 'border-slate-200 bg-slate-50 hover:border-slate-300'
                     }`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[13px] font-medium text-slate-700 truncate">{p.title}</p>
                     <span className="flex items-center gap-1.5 shrink-0">
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded border ${p.status === 'completed' ? 'text-emerald-600 border-emerald-200' : 'text-sky-600 border-sky-200'
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded border ${p.status === 'completed' ? 'text-emerald-600 border-emerald-200' : 'text-indigo-600 border-indigo-200'
                         }`}>
                         {p.status === 'completed' ? '已完成' : '进行中'}
                       </span>
@@ -356,7 +356,7 @@ export default function Workspace() {
                     {Object.keys(p.stages).map(s => {
                       const st = p.stages[s]?.status
                       const on = st === 'completed' || st === 'awaiting_review' || st === 'running'
-                      return <span key={s} className={`w-3 h-1.5 rounded-full ${on ? (st === 'completed' ? 'bg-emerald-500' : 'bg-sky-500') : 'bg-slate-100'}`} />
+                      return <span key={s} className={`w-3 h-1.5 rounded-full ${on ? (st === 'completed' ? 'bg-emerald-500' : 'bg-indigo-500') : 'bg-slate-100'}`} />
                     })}
                   </div>
                 </button>
@@ -385,24 +385,24 @@ export default function Workspace() {
                 <div className="flex gap-2 flex-wrap shrink-0">
                   {detail.status !== 'completed' && (
                     <button onClick={() => setConfirmingAll(true)} disabled={generatingAll}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-sky-300 bg-sky-50 text-sky-600 hover:bg-sky-100 disabled:opacity-40 transition-all">
+                      className="text-xs px-3 py-1.5 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-40 transition-all">
                       {generatingAll ? '⏳ 生成中…' : '🚀 一键生成全部'}
                     </button>
                   )}
                   <button onClick={() => handleExport('md')} disabled={exporting || generatingAll}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
+                    className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all">
                     {exporting ? '导出中…' : '导出 Markdown'}
                   </button>
                   <button onClick={() => handleExport('word')} disabled={exporting || generatingAll}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
+                    className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all">
                     Word
                   </button>
                   <button onClick={() => handleExport('pdf')} disabled={exporting || generatingAll}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
+                    className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all">
                     PDF
                   </button>
                   <button onClick={() => handleExport('json')} disabled={exporting || generatingAll}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
+                    className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all">
                     JSON
                   </button>
                 </div>

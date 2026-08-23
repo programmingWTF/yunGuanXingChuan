@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 云观星传 - ① 选题孵化（产出物查看页）
  * 一键全流程模式下自动生成，本页仅展示 AI 推荐的选题方向与评分
  */
@@ -26,7 +26,7 @@ export default function Inspiration() {
             <StatusBadge status={status} />
             {status !== 'running' && (
               <button onClick={confirmRerun} disabled={running}
-                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
+                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all">
                 {running ? '生成中…' : '重新运行'}
               </button>
             )}
@@ -44,7 +44,7 @@ export default function Inspiration() {
                   <p className="text-sm font-medium text-slate-700">{i + 1}. {d.title}</p>
                   <p className="text-[11px] text-slate-500">{d.summary}</p>
                   <div className="space-y-1.5">
-                    <ScoreBar label="研究价值" value={d.research_value} color="bg-sky-500" />
+                    <ScoreBar label="研究价值" value={d.research_value} color="bg-indigo-500" />
                     <ScoreBar label="覆盖度" value={d.existing_coverage} color="bg-slate-400" />
                     <ScoreBar label="创新潜力" value={d.innovation_potential} color="bg-emerald-500" />
                   </div>

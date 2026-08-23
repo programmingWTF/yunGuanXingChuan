@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 云观星传 - ② 文献综述（产出物查看页）
  * 展示文献归类、综述正文与 Research Gap
  */
@@ -142,7 +142,7 @@ export default function Literature() {
             <StatusBadge status={status} />
             {status !== 'running' && (
               <button onClick={confirmRerun} disabled={running}
-                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
+                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all">
                 {running ? '生成中…' : '重新运行'}
               </button>
             )}
@@ -159,7 +159,7 @@ export default function Literature() {
                 <h3 className="sec-label !mb-2">文献归类</h3>
                 {sections.map((s, i) => (
                   <a key={i} href={`#sec-${i}`}
-                    className="block text-[12px] text-slate-600 hover:text-sky-700 py-1.5 px-2 rounded-lg hover:bg-slate-100 transition-colors">
+                    className="block text-[12px] text-slate-600 hover:text-indigo-700 py-1.5 px-2 rounded-lg hover:bg-slate-100 transition-colors">
                     ▸ {s.theme}
                   </a>
                 ))}
@@ -179,7 +179,7 @@ export default function Literature() {
               <div className="space-y-4">
                 {sections.map((s, i) => (
                   <div key={i} id={`sec-${i}`} className="card p-5">
-                    <h4 className="text-sm font-medium text-sky-600 mb-2">{s.theme}</h4>
+                    <h4 className="text-sm font-medium text-indigo-600 mb-2">{s.theme}</h4>
                     <p className="text-[13px] text-slate-600 leading-relaxed whitespace-pre-wrap">{s.content}</p>
                   </div>
                 ))}

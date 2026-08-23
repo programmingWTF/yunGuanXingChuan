@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 云观星传 V3.0 - 科研流程页面共享 UI 组件（他山世界学术风 · 浅色）
  *
  * 7 个科研流程页面（选题孵化/文献综述/研究设计/方法推荐/数据分析/学术写作/同行评审）
@@ -42,7 +42,7 @@ export function StageLayout({ info, children }: { info: StageInfo; children: Rea
 }
 
 /** 0-100 评分条 */
-export function ScoreBar({ label, value, color = 'bg-sky-500' }: { label: string; value: number; color?: string }) {
+export function ScoreBar({ label, value, color = 'bg-indigo-500' }: { label: string; value: number; color?: string }) {
   return (
     <div className="flex items-center gap-2">
       <span className="text-[11px] text-slate-500 w-20 shrink-0">{label}</span>
@@ -59,7 +59,7 @@ export function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     pending: { label: '待开始', cls: 'text-slate-500 bg-slate-50 border-slate-200' },
     running: { label: '运行中', cls: 'text-amber-600 bg-amber-50 border-amber-200 animate-pulse' },
-    awaiting_review: { label: '待确认', cls: 'text-sky-700 bg-sky-50 border-sky-200' },
+    awaiting_review: { label: '待确认', cls: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
     completed: { label: '已完成', cls: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
     failed: { label: '失败', cls: 'text-red-600 bg-red-50 border-red-200' },
   }
@@ -108,7 +108,7 @@ export function StageActions({
           确认产出，进入下一阶段 →
         </button>
       ) : status === 'completed' ? (
-        <button onClick={handleRunClick} disabled={running} className="text-xs px-3.5 py-2 rounded-btn border border-slate-200 text-slate-600 hover:border-sky-300 hover:text-sky-700 hover:bg-sky-50 disabled:opacity-45 transition-all">
+        <button onClick={handleRunClick} disabled={running} className="text-xs px-3.5 py-2 rounded-btn border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-700 hover:bg-indigo-50 disabled:opacity-45 transition-all">
           重新运行
         </button>
       ) : null}
@@ -143,7 +143,7 @@ export function NoProjectHint() {
       <div className="text-4xl mb-4 opacity-30">🔭</div>
       <p className="text-sm text-slate-500 mb-2">暂无项目上下文</p>
       <p className="text-xs text-slate-400">
-        请先到 <Link to="/" className="text-sky-600 hover:text-sky-700 font-medium underline underline-offset-2">科研工作台</Link> 创建研究项目
+        请先到 <Link to="/" className="text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2">科研工作台</Link> 创建研究项目
       </p>
     </div>
   )
@@ -259,7 +259,7 @@ export interface VerificationReport {
 
 const VERIFY_STATUS_META: Record<string, { label: string; cls: string }> = {
   verified: { label: '✓ 已验证', cls: 'text-emerald-700 border-emerald-200 bg-emerald-50' },
-  partial: { label: '◐ 部分验证', cls: 'text-sky-700 border-sky-200 bg-sky-50' },
+  partial: { label: '◐ 部分验证', cls: 'text-indigo-700 border-indigo-200 bg-indigo-50' },
   unverified: { label: '○ 未验证', cls: 'text-slate-500 border-slate-200 bg-slate-50' },
   conflicting: { label: '⚠ 存在冲突', cls: 'text-red-700 border-red-200 bg-red-50' },
 }

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 云观星传 - 管理控制台（tzb-admin.liguiyu.com 专用，独立容器）
  *
  * 架构模仿 liguiyu-home 的 admin.liguiyu.com：应用层不校验身份，
@@ -10,7 +10,7 @@
  */
 import { useEffect, useState } from 'react'
 import { listAdminProjects, listAdminUsers, setAdminRole, deleteAdminUser, deleteAdminProject, type AdminProject, type AdminUser } from '../api'
-import StarfieldBackground from '../components/StarfieldBackground'
+import { AnimatedBackground, DecorativeClouds } from '../components/AnimatedBackground'
 
 export default function AdminConsole() {
   const [tab, setTab] = useState<'users' | 'projects'>('users')
@@ -64,7 +64,11 @@ export default function AdminConsole() {
 
   return (
     <div className="min-h-screen relative font-body">
-      <StarfieldBackground />
+      {/* 国风山水动态背景 */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <AnimatedBackground />
+        <DecorativeClouds />
+      </div>
       <div className="relative z-10 max-w-[1100px] mx-auto px-4 sm:px-8 py-10">
         {/* 页头 */}
         <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
@@ -77,11 +81,11 @@ export default function AdminConsole() {
           </div>
           <div className="flex gap-2">
             <button onClick={() => setTab('users')}
-              className={`text-xs px-3.5 py-1.5 rounded-lg border transition-all ${tab === 'users' ? 'border-sky-300 bg-sky-50 text-sky-700 font-medium' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+              className={`text-xs px-3.5 py-1.5 rounded-lg border transition-all ${tab === 'users' ? 'border-indigo-300 bg-indigo-50 text-indigo-700 font-medium' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
               用户{users ? `（${users.length}）` : ''}
             </button>
             <button onClick={() => setTab('projects')}
-              className={`text-xs px-3.5 py-1.5 rounded-lg border transition-all ${tab === 'projects' ? 'border-sky-300 bg-sky-50 text-sky-700 font-medium' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+              className={`text-xs px-3.5 py-1.5 rounded-lg border transition-all ${tab === 'projects' ? 'border-indigo-300 bg-indigo-50 text-indigo-700 font-medium' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
               项目{projects ? `（${projects.length}）` : ''}
             </button>
           </div>
@@ -126,7 +130,7 @@ export default function AdminConsole() {
                         </td>
                         <td className="py-2.5 text-right whitespace-nowrap">
                           <button onClick={() => void handleRole(u)} disabled={busyId === u.id}
-                            className="text-[10px] px-2 py-1 rounded-md border border-slate-200 text-slate-500 hover:border-sky-300 hover:text-sky-700 disabled:opacity-40 mr-1.5 transition-all">
+                            className="text-[10px] px-2 py-1 rounded-md border border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-700 disabled:opacity-40 mr-1.5 transition-all">
                             {u.role === 'admin' ? '取消管理员' : '设为管理员'}
                           </button>
                           <button onClick={() => void handleDeleteUser(u)} disabled={busyId === u.id}
@@ -170,7 +174,7 @@ export default function AdminConsole() {
                           )}
                         </td>
                         <td className="py-2.5 pr-4">
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded border ${p.status === 'completed' ? 'text-emerald-600 border-emerald-200' : 'text-sky-600 border-sky-200'}`}>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded border ${p.status === 'completed' ? 'text-emerald-600 border-emerald-200' : 'text-indigo-600 border-indigo-200'}`}>
                             {p.status === 'completed' ? '已完成' : '进行中'}
                           </span>
                         </td>

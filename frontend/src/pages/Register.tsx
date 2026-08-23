@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 云观星传 - 注册页（流程对齐 liguiyu-home）
  *
  * 昵称 + 邮箱 + 密码（确认密码 + 明文切换 + 一致性对号）→ 点「发送验证码」（6 位数字，10 分钟有效，60s 重发冷却）
@@ -8,12 +8,13 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { sendAuthCode, registerUser } from '../api'
 import { apiErrorText } from '../auth'
-import StarfieldBackground from '../components/StarfieldBackground'
+import { AnimatedBackground, DecorativeClouds } from '../components/AnimatedBackground'
+import { Sparkles } from 'lucide-react'
 
 const RESEND_COOLDOWN = 60
 
 const inputCls =
-  'w-full rounded-lg bg-slate-50 border border-slate-200 px-3.5 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100 transition-all'
+  'w-full rounded-xl bg-white/70 backdrop-blur-sm border border-slate-200/60 px-3.5 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all'
 
 /** 密码输入框：右侧明文切换按钮 */
 function PasswordField({
@@ -34,7 +35,7 @@ function PasswordField({
       />
       <button
         type="button" onClick={onToggleShow} tabIndex={-1}
-        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-sky-600 transition-colors select-none"
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors select-none"
         aria-label={show ? '隐藏密码' : '显示密码'}
         title={show ? '隐藏密码' : '显示密码'}
       >
@@ -110,22 +111,32 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen relative font-body flex items-center justify-center px-4 py-10">
-      <StarfieldBackground />
+    <div className="min-h-screen relative flex items-center justify-center px-4 py-10">
+      {/* 国风山水动态背景（设计稿全站背景层） */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <AnimatedBackground />
+        <DecorativeClouds />
+      </div>
       <div className="relative z-10 w-full max-w-sm">
-        {/* 品牌头 */}
-        <div className="text-center mb-7">
-          <h1 className="font-display text-2xl font-bold text-slate-900 tracking-wide">
-            云观 · 星传
-            <span className="ml-2 font-sans text-[10px] font-semibold text-slate-400 tracking-[0.22em] uppercase">AI Scientist</span>
+        {/* 品牌头（设计稿 Logo 方块 + 双行标题） */}
+        <div className="flex flex-col items-center text-center mb-7">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-700 flex items-center justify-center shadow-lg shadow-indigo-200 mb-3">
+            <Sparkles className="w-7 h-7 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
+            云观星传
+            <span className="ml-2 text-[10px] font-semibold text-slate-400 tracking-widest uppercase align-middle">
+              Cloud Star Legacy
+            </span>
           </h1>
           <p className="text-xs text-slate-500 mt-2 leading-relaxed">
             注册账号，开启你的 AI 科研工作台
           </p>
         </div>
 
-        <div className="card p-6">
-          <h2 className="sec-label !mb-4">注册</h2>
+        {/* 毛玻璃卡片（设计稿 bg-white/70 backdrop-blur 范式） */}
+        <div className="p-6 rounded-2xl bg-white/70 backdrop-blur-sm border border-slate-200/50 shadow-sm">
+          <h2 className="text-sm font-semibold text-slate-700 mb-4">注册</h2>
           <form onSubmit={handleSubmit} className="space-y-3.5">
             <div>
               <label className="block text-[11px] font-medium text-slate-500 mb-1.5">昵称</label>
@@ -177,7 +188,7 @@ export default function Register() {
                 />
                 <button
                   type="button" onClick={handleSendCode} disabled={sending || countdown > 0}
-                  className="shrink-0 text-xs px-3.5 rounded-lg border border-sky-300 bg-sky-50 text-sky-600 hover:bg-sky-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all whitespace-nowrap"
+                  className="shrink-0 text-xs px-3.5 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all whitespace-nowrap"
                 >
                   {sending ? '发送中…' : countdown > 0 ? `${countdown}s 后重发` : '发送验证码'}
                 </button>
@@ -187,12 +198,12 @@ export default function Register() {
             {error && <p className="text-[11px] text-red-600">{error}</p>}
             <button type="submit"
               disabled={submitting || !name.trim() || !email.trim() || !password || !code.trim() || pwdMatch === false}
-              className="btn-primary w-full text-xs disabled:opacity-40 disabled:cursor-not-allowed">
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-700 text-white font-medium text-sm shadow-lg shadow-indigo-200/50 hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed">
               {submitting ? '注册中…' : '完成注册'}
             </button>
           </form>
           <p className="text-[11px] text-slate-500 mt-4 text-center">
-            已有账号？<Link to="/login" className="text-sky-600 hover:text-sky-700 font-medium">去登录</Link>
+            已有账号？<Link to="/login" className="text-indigo-600 hover:text-indigo-700 font-medium">去登录</Link>
           </p>
         </div>
 

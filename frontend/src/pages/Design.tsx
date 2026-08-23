@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 云观星传 - ③ 研究设计（产出物查看页）
  * 展示 RQ / H 列表与 AI 质量检验评分
  */
@@ -29,7 +29,7 @@ export default function Design() {
             <StatusBadge status={status} />
             {status !== 'running' && (
               <button onClick={confirmRerun} disabled={running}
-                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
+                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all">
                 {running ? '生成中…' : '重新运行'}
               </button>
             )}
@@ -46,7 +46,7 @@ export default function Design() {
               {questions.map((q, i) => (
                 <div key={i} className="card p-4">
                   <div className="flex items-start gap-3">
-                    <span className="shrink-0 text-xs font-mono px-2 py-1 rounded bg-sky-50 border border-sky-200 text-sky-600">{q.id}</span>
+                    <span className="shrink-0 text-xs font-mono px-2 py-1 rounded bg-indigo-50 border border-indigo-200 text-indigo-600">{q.id}</span>
                     <p className="text-sm text-slate-700 leading-relaxed">{q.text}</p>
                   </div>
                 </div>
@@ -68,7 +68,7 @@ export default function Design() {
                 </>
               )}
               {quality && (
-                <div className="card p-5 border-sky-200">
+                <div className="card p-5 border-indigo-200">
                   <h3 className="sec-label !mb-3">AI 评价 · 问题质量检验</h3>
                   <div className="space-y-2">
                     <ScoreBar label="清晰度" value={quality.clarity} />

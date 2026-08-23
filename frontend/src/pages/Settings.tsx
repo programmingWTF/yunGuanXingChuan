@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 云观星传 - 模型设置页（多租户"自带钥匙"模式）
  *
  * 每次推理使用你自己的 LLM API（平台不提供推理 API）：
@@ -11,7 +11,7 @@ import { getLlmConfig, saveLlmConfig } from '../api'
 import { useAuth, apiErrorText } from '../auth'
 
 const inputCls =
-  'w-full rounded-lg bg-slate-50 border border-slate-200 px-3.5 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100 transition-all'
+  'w-full rounded-lg bg-slate-50 border border-slate-200 px-3.5 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all'
 
 export default function Settings() {
   const { user } = useAuth()
@@ -87,12 +87,12 @@ export default function Settings() {
           <p className="text-[11px] font-medium text-slate-600">🔑 获取 API Key：</p>
           <p className="text-[11px] text-slate-500 leading-relaxed">
             <span className="font-medium text-slate-600">方式一 · 阿里云百炼（推荐，新用户免费额度）：</span>
-            <a href="https://bailian.console.aliyun.com/" target="_blank" rel="noreferrer" className="text-sky-600 hover:underline">bailian.console.aliyun.com</a>
+            <a href="https://bailian.console.aliyun.com/" target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">bailian.console.aliyun.com</a>
             <span className="text-slate-400"> → API-KEY 管理 → 创建 API Key（新用户 90 天内各模型 100 万 Token 免费额度）</span>
           </p>
           <p className="text-[11px] text-slate-500 leading-relaxed">
             <span className="font-medium text-slate-600">方式二 · Token Plan 订阅：</span>
-            <a href="https://bailian.console.aliyun.com/" target="_blank" rel="noreferrer" className="text-sky-600 hover:underline">bailian.console.aliyun.com</a>
+            <a href="https://bailian.console.aliyun.com/" target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">bailian.console.aliyun.com</a>
             <span className="text-slate-400"> → Token Plan → 我的订阅（专属 sk-tp-/sk-sp- Key，Base URL 以页面展示为准）</span>
           </p>
         </div>

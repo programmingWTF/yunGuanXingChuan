@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 云观星传 - 管理后台（admin）
  *
  * 模仿 liguiyu-home 管理后台的定位：查看所有人的使用历史记录 + 每条记录的归属。
@@ -22,7 +22,7 @@ const STAGE_ICONS: Record<string, string> = {
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   pending: { label: '待开始', cls: 'text-slate-500 border-slate-200' },
   running: { label: '运行中', cls: 'text-amber-600 border-red-200 animate-pulse' },
-  awaiting_review: { label: '待确认', cls: 'text-sky-600 border-sky-300' },
+  awaiting_review: { label: '待确认', cls: 'text-indigo-600 border-indigo-300' },
   completed: { label: '已完成', cls: 'text-emerald-600 border-emerald-300' },
   failed: { label: '失败', cls: 'text-red-600 border-red-300' },
 }
@@ -71,11 +71,11 @@ export default function Admin() {
         </div>
         <div className="flex gap-2">
           <button onClick={() => setTab('projects')}
-            className={`text-xs px-3.5 py-1.5 rounded-lg border transition-all ${tab === 'projects' ? 'border-sky-300 bg-sky-50 text-sky-700 font-medium' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+            className={`text-xs px-3.5 py-1.5 rounded-lg border transition-all ${tab === 'projects' ? 'border-indigo-300 bg-indigo-50 text-indigo-700 font-medium' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
             项目记录{projects ? `（${projects.length}）` : ''}
           </button>
           <button onClick={() => setTab('users')}
-            className={`text-xs px-3.5 py-1.5 rounded-lg border transition-all ${tab === 'users' ? 'border-sky-300 bg-sky-50 text-sky-700 font-medium' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+            className={`text-xs px-3.5 py-1.5 rounded-lg border transition-all ${tab === 'users' ? 'border-indigo-300 bg-indigo-50 text-indigo-700 font-medium' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
             用户{users ? `（${users.length}）` : ''}
           </button>
         </div>
@@ -93,10 +93,10 @@ export default function Admin() {
               {projects?.length === 0 && <p className="text-[11px] text-slate-400 py-4 text-center">暂无项目</p>}
               {projects?.map(p => (
                 <button key={p.id} onClick={() => setSelected(p)}
-                  className={`group w-full text-left rounded-xl border px-3 py-2.5 transition-all ${selected?.id === p.id ? 'border-sky-300 bg-sky-50' : 'border-slate-200 bg-slate-50 hover:border-slate-300'}`}>
+                  className={`group w-full text-left rounded-xl border px-3 py-2.5 transition-all ${selected?.id === p.id ? 'border-indigo-300 bg-indigo-50' : 'border-slate-200 bg-slate-50 hover:border-slate-300'}`}>
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[13px] font-medium text-slate-700 truncate">{p.title}</p>
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded border shrink-0 ${p.status === 'completed' ? 'text-emerald-600 border-emerald-200' : 'text-sky-600 border-sky-200'}`}>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded border shrink-0 ${p.status === 'completed' ? 'text-emerald-600 border-emerald-200' : 'text-indigo-600 border-indigo-200'}`}>
                       {p.status === 'completed' ? '已完成' : '进行中'}
                     </span>
                   </div>
@@ -116,7 +116,7 @@ export default function Admin() {
                     {Object.keys(p.stages).map(s => {
                       const st = p.stages[s]?.status
                       const on = st === 'completed' || st === 'awaiting_review' || st === 'running'
-                      return <span key={s} className={`w-3 h-1.5 rounded-full ${on ? (st === 'completed' ? 'bg-emerald-500' : 'bg-sky-500') : 'bg-slate-100'}`} />
+                      return <span key={s} className={`w-3 h-1.5 rounded-full ${on ? (st === 'completed' ? 'bg-emerald-500' : 'bg-indigo-500') : 'bg-slate-100'}`} />
                     })}
                   </div>
                 </button>

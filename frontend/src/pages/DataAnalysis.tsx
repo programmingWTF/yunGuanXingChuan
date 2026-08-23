@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 云观星传 - ⑤ 数据分析（产出物查看 + 素材上传分析）
  * - 无素材：一键模式下由 Agent 做框架性分析（基于检索上下文）
  * - 有素材：上传报道文本/访谈记录/数据表格 → 基于选定研究方法真实执行分析
@@ -31,7 +31,7 @@ function wordStyle(category: string, count: number, maxCount: number) {
   const offsetY = Math.round(u * 20 - 10)
   // 深浅色层级：>0.7 深蓝加粗前景 / >0.4 青绿 / 低 浅灰（远景弱化）
   const cls =
-    w > 0.7 ? 'text-sky-700 font-semibold'
+    w > 0.7 ? 'text-indigo-700 font-semibold'
       : w > 0.4 ? 'text-emerald-600 font-medium'
         : 'text-slate-400'
   const transform = `rotate(${rotate}deg) translateY(${offsetY}px)`
@@ -82,7 +82,7 @@ function SentimentDonut({ sentiment }: { sentiment: SentimentShape }) {
         </div>
         <div className="flex-1 space-y-1">
           <p className="text-[10px] text-slate-500">积极 <span className="font-mono text-emerald-600">{sentiment.positive}</span></p>
-          <p className="text-[10px] text-slate-500">中性 <span className="font-mono text-sky-600">{sentiment.neutral}</span></p>
+          <p className="text-[10px] text-slate-500">中性 <span className="font-mono text-indigo-600">{sentiment.neutral}</span></p>
           <p className="text-[10px] text-slate-500">消极 <span className="font-mono text-amber-600">{sentiment.negative}</span></p>
         </div>
       </div>
@@ -91,7 +91,7 @@ function SentimentDonut({ sentiment }: { sentiment: SentimentShape }) {
   )
 }
 
-function HBar({ label, value, color = 'bg-sky-500' }: { label: string; value: number; color?: string }) {
+function HBar({ label, value, color = 'bg-indigo-500' }: { label: string; value: number; color?: string }) {
   return (
     <div className="flex items-center gap-2">
       <span className="text-[10px] text-slate-500 w-20 shrink-0 truncate">{label}</span>
@@ -167,7 +167,7 @@ export default function DataAnalysis() {
             <StatusBadge status={status} />
             {status !== 'running' && (
               <button onClick={confirmRerun} disabled={running}
-                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
+                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all">
                 {running ? '分析中…' : '重新运行（框架性分析）'}
               </button>
             )}
@@ -179,7 +179,7 @@ export default function DataAnalysis() {
           <StageSources output={rec?.output ?? null} />
 
           {/* ── 素材上传区 ── */}
-          <div className="card p-4 border-sky-200">
+          <div className="card p-4 border-indigo-200">
             <div className="flex items-center justify-between mb-2">
               <h3 className="sec-label !mb-0">📎 分析素材</h3>
               <span className="text-[10px] text-slate-500">已添加 {materials.length} 份 · 上传后基于素材真实执行分析</span>
@@ -194,10 +194,10 @@ export default function DataAnalysis() {
               />
               <div className="flex gap-2 shrink-0">
                 <button onClick={addPasted} disabled={!pasteText.trim()}
-                  className="text-xs px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
+                  className="text-xs px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all">
                   添加文本
                 </button>
-                <label className={`text-xs px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 cursor-pointer transition-all ${reading ? 'opacity-40 pointer-events-none' : ''}`}>
+                <label className={`text-xs px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 cursor-pointer transition-all ${reading ? 'opacity-40 pointer-events-none' : ''}`}>
                   {reading ? '读取中…' : '📄 上传文件'}
                   <input type="file" accept=".txt,.md,.csv,.json" multiple className="hidden" onChange={onFileChange} />
                 </label>
@@ -249,7 +249,7 @@ export default function DataAnalysis() {
                 <h4 className="sec-label !mb-2">类目 / 框架分布</h4>
                 <div className="space-y-2">
                   {codingTable.map((c, i) => (
-                    <HBar key={i} label={c.category} value={Math.round((c.count / maxCount) * 100)} color={i % 2 ? 'bg-emerald-500' : 'bg-sky-500'} />
+                    <HBar key={i} label={c.category} value={Math.round((c.count / maxCount) * 100)} color={i % 2 ? 'bg-emerald-500' : 'bg-indigo-500'} />
                   ))}
                 </div>
               </div>
@@ -258,7 +258,7 @@ export default function DataAnalysis() {
                 <div className="space-y-2">
                   {findings.map((f, i) => (
                     <div key={i} className="flex items-start gap-2">
-                      <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${f.confidence >= 0.7 ? 'bg-emerald-500' : f.confidence >= 0.4 ? 'bg-sky-500' : 'bg-slate-500'}`} />
+                      <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${f.confidence >= 0.7 ? 'bg-emerald-500' : f.confidence >= 0.4 ? 'bg-indigo-500' : 'bg-slate-500'}`} />
                       <p className="text-[11px] text-slate-600 leading-snug">{f.finding}</p>
                     </div>
                   ))}
@@ -275,7 +275,7 @@ export default function DataAnalysis() {
             </div>
           )}
           {output?.interpretation && (
-            <div className="card p-5 border-sky-200">
+            <div className="card p-5 border-indigo-200">
               <h4 className="sec-label !mb-2">初步解读</h4>
               <p className="text-[13px] text-slate-600 leading-relaxed">{output.interpretation}</p>
             </div>
