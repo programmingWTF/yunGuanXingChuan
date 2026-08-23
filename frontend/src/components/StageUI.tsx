@@ -105,12 +105,13 @@ export function StageActions({
     <div className="flex items-center gap-3 flex-wrap">
       {status === 'pending' || status === 'failed' ? (
         <button onClick={handleRunClick} disabled={running || locked}
-          className="btn-primary text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+          className="text-xs px-3.5 py-2 rounded-lg bg-indigo-50/70 border border-indigo-200/70 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900 disabled:opacity-45 disabled:cursor-not-allowed transition-all"
           title={locked ? '请先完成上一阶段并确认' : undefined}>
           {running ? 'AI 生成中…' : locked ? '先完成上一阶段' : runLabel}
         </button>
       ) : status === 'awaiting_review' ? (
-        <button onClick={onApprove} disabled={running} className="btn-primary text-xs disabled:opacity-40">
+        <button onClick={onApprove} disabled={running}
+          className="text-xs px-3.5 py-2 rounded-lg bg-indigo-50/70 border border-indigo-200/70 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900 disabled:opacity-45 transition-all">
           确认产出，进入下一阶段 →
         </button>
       ) : status === 'completed' ? (

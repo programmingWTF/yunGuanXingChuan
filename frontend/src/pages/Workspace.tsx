@@ -65,6 +65,26 @@ export default function Workspace() {
     if (pollRef.current) clearInterval(pollRef.current)
   }, [])
 
+  // 单阶段运行中通用轮询：任一阶段 running 时自动刷新项目状态
+  // （一键全流程由 handleRunAll 自带轮询，此处跳过避免重复）
+  const anyStageRunning = currentProject
+    ? Object.values(currentProject.stages ?? {}).some(st => st?.status === 'running')
+    : false
+  useEffect(() => {
+    if (generatingAll || !currentProject || !anyStageRunning) return
+    const id = currentProject.id
+    const timer = setInterval(async () => {
+      try {
+        const { project: fresh } = await getWorkflowProject(id)
+        setCurrentProject(fresh)
+        setProjects(prev => prev.map(p => (p.id === id ? fresh : p)))
+        const still = Object.values(fresh.stages ?? {}).some(st => st?.status === 'running')
+        if (!still) clearInterval(timer)
+      } catch { /* 网络抖动忽略 */ }
+    }, 2500)
+    return () => clearInterval(timer)
+  }, [currentProject?.id, generatingAll, anyStageRunning])
+
   /** 新建项目并一键生成全部（轮询进度） */
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()

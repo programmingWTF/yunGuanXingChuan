@@ -76,7 +76,7 @@ function SentimentDonut({ sentiment }: { sentiment: SentimentShape }) {
       <h4 className="sec-label !mb-2">😊 情绪分析</h4>
       <div className="flex items-center gap-5">
         <div className="relative w-24 h-24 rounded-full shrink-0" style={{ background: conic }}>
-          <div className="absolute inset-2 rounded-full bg-white flex items-center justify-center">
+          <div className="absolute inset-2 rounded-full bg-white/75 backdrop-blur-sm flex items-center justify-center">
             <span className="text-[11px] font-medium text-slate-700">{dominant}</span>
           </div>
         </div>

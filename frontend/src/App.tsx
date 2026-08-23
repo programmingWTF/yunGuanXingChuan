@@ -201,7 +201,7 @@ function TopNav() {
 
       {/* 移动端菜单（设计稿样式） */}
       {mobileMenuOpen && (
-        <div className="xl:hidden bg-white border-t border-slate-200 shadow-lg">
+        <div className="xl:hidden bg-white/85 backdrop-blur-xl border-t border-slate-200 shadow-lg">
           <div className="w-full px-4 py-4 grid grid-cols-2 gap-1">
             {PIPELINE_NAV.map(item => (
               <NavLink key={item.to} to={item.to} end={item.end ?? false}

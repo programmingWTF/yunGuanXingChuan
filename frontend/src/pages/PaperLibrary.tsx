@@ -198,7 +198,7 @@ export default function PaperLibrary() {
         onDrop={onDrop}
         onClick={() => !uploading && fileInputRef.current?.click()}
         className={`rounded-2xl border-2 border-dashed px-6 py-8 text-center cursor-pointer transition-all ${
-          dragOver ? 'border-indigo-400 bg-indigo-50/60' : 'border-slate-300 bg-white hover:border-indigo-300 hover:bg-slate-50/50'
+          dragOver ? 'border-indigo-400 bg-indigo-50/60' : 'border-slate-300 bg-white/70 backdrop-blur-md hover:border-indigo-300 hover:bg-white/85'
         } ${uploading ? 'pointer-events-none opacity-80' : ''}`}
       >
         <input ref={fileInputRef} type="file" accept={ACCEPT} className="hidden" onChange={onPickFile} />
@@ -224,7 +224,7 @@ export default function PaperLibrary() {
       </div>
 
       {/* 检索测试 */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="rounded-2xl border border-slate-200/70 bg-white/75 backdrop-blur-md p-5">
         <h3 className="text-sm font-semibold text-slate-800 mb-1">🔍 试一下检索你的论文库</h3>
         <p className="text-[11px] text-slate-400 mb-3">输入一个研究方向/关键词，看 AI 能从你库里召回什么。</p>
         <form onSubmit={onSearch} className="flex gap-2">
@@ -260,7 +260,7 @@ export default function PaperLibrary() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* 论文列表 */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="rounded-2xl border border-slate-200/70 bg-white/75 backdrop-blur-md p-5">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-slate-800">📄 我的论文（{papers.length}）</h3>
             <button onClick={() => void loadAll()} className="text-[11px] text-slate-400 hover:text-indigo-600 transition-colors">↻ 刷新</button>
@@ -272,7 +272,7 @@ export default function PaperLibrary() {
               {papers.map((p) => {
                 const st = STATUS_META[p.status] ?? STATUS_META.uploaded
                 return (
-                  <li key={p.id} className="group rounded-lg border border-slate-100 hover:border-slate-200 bg-slate-50/50 hover:bg-white px-3 py-2.5 transition-all">
+                  <li key={p.id} className="group rounded-lg border border-slate-100 hover:border-slate-200 bg-slate-50/50 hover:bg-white/80 px-3 py-2.5 transition-all">
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-xs font-medium text-slate-700 truncate">{p.file_name}</p>
@@ -300,7 +300,7 @@ export default function PaperLibrary() {
         </div>
 
         {/* 风格三件套 */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="rounded-2xl border border-slate-200/70 bg-white/75 backdrop-blur-md p-5">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-slate-800">✍️ 已学习的写作风格</h3>
             {style && (
