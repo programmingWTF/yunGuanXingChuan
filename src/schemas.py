@@ -2,10 +2,11 @@
 云观星传 - 核心数据 Schema（Pydantic）
 所有 Agent 间通信必须使用这些结构化 Schema
 """
-from pydantic import BaseModel, Field, field_validator, BeforeValidator
+from pydantic import BaseModel, Field, field_validator, model_validator, BeforeValidator
 from typing import Dict, List, Optional, Annotated
 from enum import Enum
 import json
+import re
 
 
 def _normalize_str_list(v):
@@ -517,12 +518,53 @@ class LiteratureReference(BaseModel):
             return str(v)
         return v
 
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_plain_reference(cls, data):
+        """LLM 格式漂移容错：整条引用输出为字符串 '《标题》/ 来源 / 年份' 时，
+        自动拆解为结构化对象（实测高发：模型把 references 写成一串字符串而非 dict）"""
+        if not isinstance(data, str):
+            return data
+        text = data.strip()
+        if not text:
+            return {}
+        m = re.match(r'^《([^》]+)》\s*[/／]?\s*(.*)$', text, re.S)
+        if m:
+            title, rest = m.group(1).strip(), m.group(2).strip()
+        else:
+            title, rest = text, ""
+        # 剩余部分拆「来源 / 年份」（来源可能含斜杠），年份优先识别 4 位数字
+        parts = [x.strip() for x in re.split(r'[/／]', rest) if x.strip()]
+        year = next((x for x in parts if re.fullmatch(r'\d{4}', x)), "")
+        parts = [x for x in parts if x != year]
+        source = parts[0] if parts else ""
+        out = {"title": title}
+        if source:
+            out["source"] = source
+        if year:
+            out["year"] = year
+        return out
+
 
 class TheoryRelation(BaseModel):
     """理论关系（②文献综述输出项：理论关系图节点与连线，前端渲染）"""
     source: str = ""   # 理论 A
     relation: str = "" # 关系描述（如：承继自 / 互补 / 对比）
     target: str = ""   # 理论 B
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_plain_relation(cls, data):
+        """LLM 格式漂移容错：输出 'A 承继自 B' / 'A→B' / 'A：承继自 B' 等字符串时拆解"""
+        if not isinstance(data, str):
+            return data
+        text = data.strip()
+        if not text:
+            return {}
+        m = re.match(r'^(.+?)\s*(?:承继自|互补|对比|应用|关联|→|->|：|:)\s*(.+)$', text)
+        if m:
+            return {"source": m.group(1).strip(), "relation": re.search(r'承继自|互补|对比|应用|关联|→|->', text).group(0).replace('->', '→'), "target": m.group(2).strip()}
+        return {"source": text}
 
 
 class LiteratureReview(BaseModel):
