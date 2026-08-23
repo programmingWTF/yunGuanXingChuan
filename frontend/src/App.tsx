@@ -11,6 +11,7 @@ import { BrowserRouter as Router, Routes, Route, NavLink, Navigate, useLocation 
 import { StoreProvider, useStore } from './store'
 import { AuthProvider, useAuth } from './auth'
 import { AnimatedBackground, DecorativeClouds, BigDipperConstellation, Polaris } from './components/AnimatedBackground'
+import HomeHero from './components/HomeHero'
 import Workspace from './pages/Workspace'
 import Inspiration from './pages/Inspiration'
 import Literature from './pages/Literature'
@@ -127,7 +128,7 @@ function TopNav() {
                 className={({ isActive }) => cn(
                   'px-2.5 py-2 rounded-lg text-xs font-medium transition-all duration-200 flex items-center gap-1 whitespace-nowrap',
                   isActive
-                    ? 'bg-indigo-50 text-indigo-700'
+                    ? 'bg-[#eef2f7] text-[#1c315b] shadow-[inset_0_-2px_0_#17294f]'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50',
                 )}>
                 <item.icon className="w-4 h-4" />
@@ -208,7 +209,7 @@ function TopNav() {
                 className={({ isActive }) => cn(
                   'px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2',
                   isActive
-                    ? 'bg-indigo-50 text-indigo-700'
+                    ? 'bg-[#eef2f7] text-[#1c315b] shadow-[inset_0_-2px_0_#17294f]'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50',
                 )}>
                 <item.icon className="w-4 h-4" />
@@ -226,7 +227,7 @@ function TopNav() {
 function PageHeading() {
   const location = useLocation()
   const current = PIPELINE_NAV.find(n => n.to === location.pathname)
-  if (!current) return null
+  if (!current || location.pathname === '/') return null
   const Icon = current.icon
   return (
     <div className="pt-16">
@@ -245,7 +246,7 @@ function PageHeading() {
 /* ── 页脚（设计稿样式：slate-900 深色 + 四栏 + 底部状态条）── */
 function Footer() {
   return (
-    <footer className="relative z-20 mt-auto py-16 px-4 bg-slate-900 text-white">
+    <footer id="footer" className="relative z-20 mt-auto py-16 px-4 bg-slate-900 text-white">
       <div className="max-w-6xl mx-auto">
         <div className="grid lg:grid-cols-4 gap-8 mb-12">
           <div className="lg:col-span-2">
@@ -349,8 +350,8 @@ function AppLayout() {
         <main className="relative z-10 px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto w-full flex-1">
           <div key={location.pathname} className="page-transition">
             <Routes location={location}>
-              {/* 科研工作台（默认页）+ 7 个科研流程页 */}
-              <Route path="/" element={<Workspace />} />
+              {/* 首页：效果图 Hero Landing + 科研工作台（点击「开始分析」锚点滚动到此） */}
+              <Route path="/" element={<><HomeHero /><div id="workspace"><Workspace /></div></>} />
               {/* "我的项目"入口（StageUI 引导链接指向此路由）：复用科研工作台 */}
               <Route path="/projects" element={<Workspace />} />
               <Route path="/inspiration" element={<Inspiration />} />

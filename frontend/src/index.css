@@ -48,6 +48,20 @@
   --sidebar-accent-foreground: #334155;
   --sidebar-border: #e2e8f0;
   --sidebar-ring: #4f46e5;
+
+  /* ── 国风扩展令牌（效果图规范：深靛蓝 / 古典金 / 雾蓝 / 水墨蓝 / 状态绿）── */
+  --ink: #17294f;
+  --ink-2: #1c315b;
+  --ink-3: #2b416d;
+  --gold: #c8b37a;
+  --gold-2: #d3c18f;
+  --gold-3: #b69c61;
+  --mist: #dde7f0;
+  --mist-2: #c8d7e7;
+  --water-ink: #5e7392;
+  --inkwash-1: #405a7d;
+  --success-green: #4da77a;
+  --paper: #f7f9fa;
 }
 
 .dark {
@@ -491,7 +505,7 @@ html {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(251, 191, 36, 0.6) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(200, 179, 122, 0.6) 0%, transparent 70%);
   pointer-events: none;
 }
 

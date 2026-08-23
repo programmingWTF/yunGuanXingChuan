@@ -123,7 +123,7 @@ export default function Register() {
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-700 flex items-center justify-center shadow-lg shadow-indigo-200 mb-3">
             <Sparkles className="w-7 h-7 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
+          <h1 className="text-2xl font-bold text-[#17294F] tracking-tight">
             云观星传
             <span className="ml-2 text-[10px] font-semibold text-slate-400 tracking-widest uppercase align-middle">
               Cloud Star Legacy

@@ -156,9 +156,9 @@ export function AnimatedBackground() {
           }}
         >
           <div
-            className="w-full h-full rounded-full bg-amber-400"
+            className="w-full h-full rounded-full bg-[#C8B37A]"
             style={{
-              boxShadow: `0 0 ${star.size * 2}px rgba(251, 191, 36, 0.5)`,
+              boxShadow: `0 0 ${star.size * 2}px rgba(200, 179, 122, 0.55)`,
             }}
           />
         </div>
@@ -236,7 +236,7 @@ export function BigDipperConstellation() {
           stroke="currentColor"
           strokeWidth="0.5"
           fill="none"
-          className="text-amber-400/50 animate-constellation-shine"
+          className="text-[#C8B37A]/60 animate-constellation-shine"
         />
         {/* 星星 */}
         {stars.map((star, i) => (
@@ -246,7 +246,7 @@ export function BigDipperConstellation() {
               cy={star.cy}
               r="2"
               fill="currentColor"
-              className={`text-amber-400 animate-star-pulse delay-${(i + 1) * 200}`}
+              className={`text-[#C8B37A] animate-star-pulse delay-${(i + 1) * 200}`}
             />
             {/* 光晕 */}
             <circle
@@ -256,7 +256,7 @@ export function BigDipperConstellation() {
               fill="none"
               stroke="currentColor"
               strokeWidth="0.3"
-              className="text-amber-400/30 animate-star-twinkle"
+              className="text-[#C8B37A]/35 animate-star-twinkle"
               style={{ animationDelay: `${i * 0.3}s` }}
             />
           </g>

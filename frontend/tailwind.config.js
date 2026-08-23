@@ -59,6 +59,14 @@ export default {
           border: 'var(--sidebar-border)',
           ring: 'var(--sidebar-ring)',
         },
+        // ── 国风扩展色板（效果图：深靛蓝 ink / 古典金 gold / 雾蓝 mist / 水墨蓝 water-ink / 状态绿 success-green）──
+        ink: { DEFAULT: 'var(--ink)', 2: 'var(--ink-2)', 3: 'var(--ink-3)' },
+        gold: { DEFAULT: 'var(--gold)', 2: 'var(--gold-2)', 3: 'var(--gold-3)' },
+        mist: { DEFAULT: 'var(--mist)', 2: 'var(--mist-2)' },
+        'water-ink': 'var(--water-ink)',
+        'inkwash': { 1: 'var(--inkwash-1)' },
+        'success-green': 'var(--success-green)',
+        paper: 'var(--paper)',
         // ── 旧主题遗留引用（迁移期保留，逐步清理）──
         footer: '#0f172a',
       },
