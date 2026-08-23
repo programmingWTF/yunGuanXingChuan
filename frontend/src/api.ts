@@ -10,6 +10,19 @@ const api = axios.create({
   withCredentials: true, // 会话 Cookie（httpOnly，same-origin）
 })
 
+// 统一错误处理：后端 FastAPI 的 4xx 会带 detail，转成可读 message
+// （如「阶段 3 未解锁：当前进度在第 2 阶段」），避免只看到裸 400
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    const detail = err?.response?.data?.detail
+    if (detail) {
+      err.message = typeof detail === 'string' ? detail : JSON.stringify(detail)
+    }
+    return Promise.reject(err)
+  },
+)
+
 // ============ 类型定义 ============
 
 export interface EvaluationScores {

@@ -104,7 +104,7 @@ function HBar({ label, value, color = 'bg-indigo-500' }: { label: string; value:
 }
 
 export default function DataAnalysis() {
-  const { projectId, status, rec, running, error, exec, confirmRerun, rerunConfirmEl } = useStageExec(5)
+  const { projectId, status, rec, running, error, locked, exec, confirmRerun, rerunConfirmEl } = useStageExec(5)
   const [materials, setMaterials] = useState<Material[]>([])
   const [pasteText, setPasteText] = useState('')
   const [reading, setReading] = useState(false)
@@ -166,10 +166,11 @@ export default function DataAnalysis() {
           <div className="flex items-center gap-3">
             <StatusBadge status={status} />
             {status !== 'running' && (
-              <button onClick={confirmRerun} disabled={running}
-                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all">
-                {running ? '分析中…' : '重新运行（框架性分析）'}
-              </button>
+              <button onClick={confirmRerun} disabled={running || locked}
+                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all"
+                title={locked ? '请先完成上一阶段并确认' : undefined}>
+                  {running ? '分析中…' : status === 'pending' ? '开始生成' : '重新运行（框架性分析）'}
+                </button>
             )}
             {error && <span className="text-[11px] text-red-600">{error}</span>}
           </div>

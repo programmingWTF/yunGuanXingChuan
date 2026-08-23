@@ -18,7 +18,7 @@ interface ReviewerShape {
 }
 
 export default function Review() {
-  const { projectId, status, rec, running, error, confirmRerun, rerunConfirmEl } = useStageExec(7)
+  const { projectId, status, rec, running, error, locked, confirmRerun, rerunConfirmEl } = useStageExec(7)
   const [copied, setCopied] = useState(false)
 
   const output = (rec?.output ?? null) as {
@@ -43,10 +43,11 @@ export default function Review() {
           <div className="flex items-center gap-3">
             <StatusBadge status={status} />
             {status !== 'running' && (
-              <button onClick={confirmRerun} disabled={running}
-                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all">
-                {running ? '评审中…' : '重新运行'}
-              </button>
+              <button onClick={confirmRerun} disabled={running || locked}
+                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all"
+                title={locked ? '请先完成上一阶段并确认' : undefined}>
+                  {running ? '评审中…' : status === 'pending' ? '开始生成' : '重新运行'}
+                </button>
             )}
             {error && <span className="text-[11px] text-red-600">{error}</span>}
           </div>

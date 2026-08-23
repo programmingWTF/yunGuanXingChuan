@@ -160,6 +160,8 @@ export function useStageExec(stage: number) {
   const projectId = currentProject?.id ?? null
   const rec = currentProject?.stages ? currentProject.stages[String(stage)] : null
   const status = rec?.status ?? 'pending'
+  // 未解锁判定：阶段为 pending 且阶段号大于项目当前进度（需先完成并确认上一阶段）
+  const locked = status === 'pending' && stage > (currentProject?.current_stage ?? stage)
 
   const exec = async (inputs: Record<string, unknown>) => {
     if (!projectId) return
@@ -218,7 +220,7 @@ export function useStageExec(stage: number) {
     }
   }
 
-  return { projectId, status, rec, running, error, exec, approve, loadProject, confirmRerun, rerunConfirmEl }
+  return { projectId, status, rec, running, error, locked, exec, approve, loadProject, confirmRerun, rerunConfirmEl }
 }
 
 /** 产出物 JSON 展示 */
