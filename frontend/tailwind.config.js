@@ -71,11 +71,11 @@ export default {
         footer: '#0f172a',
       },
       fontFamily: {
-        // 国风山水主字体栈（设计稿原样）
+        // 正文：PingFang SC 无衬线（易读）
         sans: ['"PingFang SC"', '"Microsoft YaHei"', '"Hiragino Sans GB"', '"Noto Sans SC"', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
-        // 旧衬线类名 → 统一映射到无衬线栈（页面无需逐个改）
-        serif: ['"PingFang SC"', '"Microsoft YaHei"', '"Hiragino Sans GB"', '"Noto Sans SC"', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
-        display: ['"PingFang SC"', '"Microsoft YaHei"', '"Hiragino Sans GB"', '"Noto Sans SC"', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+        // 标题/大字：古风衬线（Noto Serif SC，国风核心）
+        serif: ['"Noto Serif SC"', '"Songti SC"', 'SimSun', 'STSong', 'serif'],
+        display: ['"Noto Serif SC"', '"Songti SC"', 'SimSun', 'STSong', 'serif'],
         body: ['"PingFang SC"', '"Microsoft YaHei"', '"Hiragino Sans GB"', '"Noto Sans SC"', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
       },

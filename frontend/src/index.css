@@ -3,9 +3,46 @@
 @tailwind utilities;
 
 /* ═══════════════ 云观星传 — 国风山水主题设计系统 ═══════════════
- * 设计令牌与《代码2》设计稿完全一致：
- * 淡雅水墨配色 / 靛蓝主色 / 无衬线字体栈 / 亮暗双主题 / 国风动效
+ * 设计令牌对齐《代码2》设计稿 + 效果图：
+ * 淡雅水墨配色 / 靛蓝主色 / 古风衬线 display 字体 / 亮暗双主题 / 国风动效
  */
+
+/* ── 古风衬线字体（标题/大字，国风核心字体）── */
+@font-face {
+  font-family: 'Noto Serif SC';
+  src: url('./assets/fonts/NotoSerifSC-400.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Noto Serif SC';
+  src: url('./assets/fonts/NotoSerifSC-500.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Noto Serif SC';
+  src: url('./assets/fonts/NotoSerifSC-600.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Noto Serif SC';
+  src: url('./assets/fonts/NotoSerifSC-700.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Noto Serif SC';
+  src: url('./assets/fonts/NotoSerifSC-900.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   --radius: 0.625rem;

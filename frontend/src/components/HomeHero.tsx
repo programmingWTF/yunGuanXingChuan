@@ -29,9 +29,6 @@ export default function HomeHero() {
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: "url('/cloud-bg.jpg')" }}
         />
-        {/* 宣纸罩层：让背景融入页面、保证文字可读 */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#f8f9fa]/90 via-[#f8f9fa]/75 to-[#f8f9fa]/95" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#f8f9fa]" />
       </div>
 
       <div className="relative z-10 w-full px-4 sm:px-10 lg:px-16 pt-10 pb-16 sm:pt-14 sm:pb-20">
@@ -45,10 +42,10 @@ export default function HomeHero() {
 
         {/* 主标题 */}
         <div className="mt-8 sm:mt-10 text-center">
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-[#17294F] tracking-[0.12em] leading-tight">
+          <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl font-bold text-[#17294F] tracking-[0.12em] leading-tight">
             云观星传
           </h1>
-          <p className="mt-3 sm:mt-4 text-2xl sm:text-3xl lg:text-4xl font-semibold text-[#1C315B] tracking-wider">
+          <p className="font-display mt-3 sm:mt-4 text-2xl sm:text-3xl lg:text-4xl font-semibold text-[#1C315B] tracking-wider">
             科学话题传播分析系统
           </p>
         </div>
@@ -83,9 +80,9 @@ export default function HomeHero() {
           {KPIS.map((kpi) => (
             <div
               key={kpi.label}
-              className="group rounded-[1.5rem] bg-white/70 backdrop-blur-md border border-slate-200/60 p-5 sm:p-6 shadow-[0_8px_30px_rgba(40,60,100,0.06)] transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(40,60,100,0.10)]"
+              className="group rounded-[1.5rem] bg-white/70 backdrop-blur-md border border-slate-200/60 p-5 sm:p-6 text-center shadow-[0_8px_30px_rgba(40,60,100,0.06)] transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(40,60,100,0.10)]"
             >
-              <div className="w-9 h-9 rounded-xl bg-[#faf6ec] border border-[#E4D9B8]/70 flex items-center justify-center">
+              <div className="w-9 h-9 mx-auto rounded-xl bg-[#faf6ec] border border-[#E4D9B8]/70 flex items-center justify-center">
                 <kpi.icon className="w-[18px] h-[18px] text-[#C8B37A]" strokeWidth={1.5} />
               </div>
               <div className="mt-3.5 text-xl sm:text-2xl font-bold text-[#17294F] tracking-tight">
