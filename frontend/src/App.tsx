@@ -50,7 +50,7 @@ function LiveClock() {
     return () => clearInterval(t)
   }, [])
   return (
-    <span className="font-mono text-xs text-slate-400 tabular-nums tracking-wider hidden xl:inline">
+    <span className="font-mono text-xs text-slate-400 tabular-nums tracking-wider">
       {now.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })}{' '}
       {now.toLocaleTimeString('zh-CN', { hour12: false })}
     </span>
@@ -63,7 +63,7 @@ function BackendDot() {
   const online = backendOnline !== false
   return (
     <div className={cn(
-      'hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border',
+      'hidden 2xl:flex items-center gap-2 px-3 py-1.5 rounded-full border',
       online
         ? 'bg-emerald-50 border-emerald-200'
         : 'bg-red-50 border-red-200',
@@ -121,11 +121,11 @@ function TopNav() {
           </NavLink>
 
           {/* 桌面导航（设计稿样式：rounded-lg pill，激活态 indigo） */}
-          <div className="hidden lg:flex items-center gap-1 min-w-0">
+          <div className="hidden xl:flex items-center gap-1 min-w-0">
             {PIPELINE_NAV.map(item => (
               <NavLink key={item.to} to={item.to} end={item.end ?? false}
                 className={({ isActive }) => cn(
-                  'px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5 whitespace-nowrap',
+                  'px-2.5 py-2 rounded-lg text-xs font-medium transition-all duration-200 flex items-center gap-1 whitespace-nowrap',
                   isActive
                     ? 'bg-indigo-50 text-indigo-700'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50',
@@ -139,13 +139,12 @@ function TopNav() {
           {/* 右侧操作区：状态胶囊 + 时钟 + 用户区 */}
           <div className="flex items-center gap-3 shrink-0">
             <BackendDot />
-            <LiveClock />
             {user ? (
               <div className="flex items-center gap-2.5">
                 {user.role === 'admin' && (
                   <NavLink to="/admin"
                     className={({ isActive }) => cn(
-                      'text-[11px] font-medium px-2.5 py-1.5 rounded-lg border transition-all whitespace-nowrap',
+                      'hidden 2xl:inline-flex text-[11px] font-medium px-2.5 py-1.5 rounded-lg border transition-all whitespace-nowrap',
                       isActive
                         ? 'bg-amber-50 border-amber-300 text-amber-700'
                         : 'border-slate-200 text-slate-500 hover:border-amber-300 hover:text-amber-700',
@@ -185,7 +184,7 @@ function TopNav() {
             )}
             {/* 移动端菜单按钮 */}
             <button
-              className="lg:hidden p-2 rounded-lg hover:bg-slate-100 transition-colors"
+              className="xl:hidden p-2 rounded-lg hover:bg-slate-100 transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="菜单"
             >
@@ -201,7 +200,7 @@ function TopNav() {
 
       {/* 移动端菜单（设计稿样式） */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-white border-t border-slate-200 shadow-lg">
+        <div className="xl:hidden bg-white border-t border-slate-200 shadow-lg">
           <div className="max-w-7xl mx-auto px-4 py-4 grid grid-cols-2 gap-1">
             {PIPELINE_NAV.map(item => (
               <NavLink key={item.to} to={item.to} end={item.end ?? false}
@@ -289,7 +288,10 @@ function Footer() {
           <p className="text-sm text-slate-500">
             © 2026 云观星传 · 挑战杯「揭榜挂帅」科技议题传播分析与表达系统
           </p>
-          <BackendDot />
+          <div className="flex items-center gap-4">
+            <LiveClock />
+            <BackendDot />
+          </div>
         </div>
       </div>
     </footer>
@@ -338,9 +340,9 @@ function AppLayout() {
       </div>
       <TopNav />
       <PageHeading />
-      <div className="relative z-10 flex-1 flex flex-col min-h-screen bg-[#f8f9fa] text-slate-800 overflow-x-hidden">
+      <div className="relative z-10 flex-1 flex flex-col bg-[#f8f9fa] text-slate-800 overflow-x-hidden">
         {/* 星座装饰（设计稿内页装饰：北斗七星 + 北极星） */}
-        <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-x-0 top-48 bottom-0 z-0 overflow-hidden pointer-events-none">
           <BigDipperConstellation />
           <Polaris />
         </div>
