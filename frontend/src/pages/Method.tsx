@@ -3,7 +3,7 @@
  * 展示方法卡片（适配度/类型/范文/操作步骤）
  */
 import { useState } from 'react'
-import { StageLayout, StageSources, ScoreBar, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
+import { StageLayout, StageSources, ScoreBar, StatusBadge, NoProjectHint, useStageExec, StageActions, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
 
 const INFO: StageInfo = {
   stage: 4, icon: '🧪', title: '方法推荐', en: 'RESEARCH METHOD',
@@ -11,7 +11,7 @@ const INFO: StageInfo = {
 }
 
 export default function Method() {
-  const { projectId, status, rec, running, error, locked, confirmRerun, rerunConfirmEl } = useStageExec(4)
+  const { projectId, status, rec, running, error, locked, exec, approve, confirmRerun, rerunConfirmEl } = useStageExec(4)
   const [expanded, setExpanded] = useState<number | null>(null)
 
   const output = (rec?.output ?? null) as {
@@ -25,14 +25,15 @@ export default function Method() {
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <StatusBadge status={status} />
-            {status !== 'running' && (
-              <button onClick={confirmRerun} disabled={running || locked}
-                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all"
-                title={locked ? '请先完成上一阶段并确认' : undefined}>
-                  {running ? '生成中…' : status === 'pending' ? '开始生成' : '重新运行'}
-                </button>
-            )}
-            {error && <span className="text-[11px] text-red-600">{error}</span>}
+            <StageActions
+            stage={4}
+            status={status}
+            onRun={() => void exec({})}
+            onApprove={approve}
+            running={running}
+            error={error}
+            runLabel="开始推荐"
+          />
           </div>
 
           {/* RAG + KG 双校验报告（产出物后置校验） */}

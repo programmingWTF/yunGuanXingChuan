@@ -3,7 +3,7 @@
  * 展示三审稿人评分与一键修改说明
  */
 import { useState } from 'react'
-import { StageLayout, StageSources, ScoreBar, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
+import { StageLayout, StageSources, ScoreBar, StatusBadge, NoProjectHint, useStageExec, StageActions, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
 
 const INFO: StageInfo = {
   stage: 7, icon: '👨‍⚖️', title: '同行评审', en: 'PEER REVIEW',
@@ -18,7 +18,7 @@ interface ReviewerShape {
 }
 
 export default function Review() {
-  const { projectId, status, rec, running, error, locked, confirmRerun, rerunConfirmEl } = useStageExec(7)
+  const { projectId, status, rec, running, error, locked, exec, approve, confirmRerun, rerunConfirmEl } = useStageExec(7)
   const [copied, setCopied] = useState(false)
 
   const output = (rec?.output ?? null) as {
@@ -42,14 +42,15 @@ export default function Review() {
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <StatusBadge status={status} />
-            {status !== 'running' && (
-              <button onClick={confirmRerun} disabled={running || locked}
-                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all"
-                title={locked ? '请先完成上一阶段并确认' : undefined}>
-                  {running ? '评审中…' : status === 'pending' ? '开始生成' : '重新运行'}
-                </button>
-            )}
-            {error && <span className="text-[11px] text-red-600">{error}</span>}
+            <StageActions
+            stage={7}
+            status={status}
+            onRun={() => void exec({})}
+            onApprove={approve}
+            running={running}
+            error={error}
+            runLabel="开始评审"
+          />
           </div>
 
           {/* RAG + KG 双校验报告（产出物后置校验） */}

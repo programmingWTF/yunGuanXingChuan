@@ -67,10 +67,11 @@ export function StatusBadge({ status }: { status: string }) {
   return <span className={`text-[10px] shrink-0 px-2.5 py-1 rounded-full border font-medium ${m.cls}`}>{m.label}</span>
 }
 
-/** 运行/确认操作区 */
+/** 运行/确认操作区（阶段页统一操作：首跑 / 确认产出 / 重新运行） */
 export function StageActions({
-  status, onRun, onApprove, running, error, runLabel = '开始本阶段',
+  stage, status, onRun, onApprove, running, error, runLabel = '开始本阶段',
 }: {
+  stage: number
   status: string
   onRun: () => void
   onApprove: () => void
@@ -82,8 +83,12 @@ export function StageActions({
   const [confirming, setConfirming] = useState(false)
   const { user } = useAuth()
   const navigate = useNavigate()
+  const { currentProject } = useStore()
+  // 未解锁判定：pending 且阶段号大于项目当前进度（需先完成并确认上一阶段）
+  const locked = status === 'pending' && stage > (currentProject?.current_stage ?? stage)
   const isRerun = status === 'completed'
   const handleRunClick = () => {
+    if (locked) return // 未解锁阶段不允许发起运行
     if (isRerun) setConfirming(true) // 先确认再执行，避免误触清空旧产出物
     else onRun()
   }
@@ -99,16 +104,17 @@ export function StageActions({
   return (
     <div className="flex items-center gap-3 flex-wrap">
       {status === 'pending' || status === 'failed' ? (
-        <button onClick={handleRunClick} disabled={running}
-          className="btn-primary text-xs disabled:opacity-45 disabled:cursor-not-allowed">
-          {running ? 'AI 生成中…' : runLabel}
+        <button onClick={handleRunClick} disabled={running || locked}
+          className="btn-primary text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+          title={locked ? '请先完成上一阶段并确认' : undefined}>
+          {running ? 'AI 生成中…' : locked ? '先完成上一阶段' : runLabel}
         </button>
       ) : status === 'awaiting_review' ? (
-        <button onClick={onApprove} className="btn-primary text-xs">
+        <button onClick={onApprove} disabled={running} className="btn-primary text-xs disabled:opacity-40">
           确认产出，进入下一阶段 →
         </button>
       ) : status === 'completed' ? (
-        <button onClick={handleRunClick} disabled={running} className="text-xs px-3.5 py-2 rounded-btn border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-700 hover:bg-indigo-50 disabled:opacity-45 transition-all">
+        <button onClick={handleRunClick} disabled={running} className="text-xs px-3.5 py-2 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-700 hover:bg-indigo-50 disabled:opacity-45 transition-all">
           重新运行
         </button>
       ) : null}

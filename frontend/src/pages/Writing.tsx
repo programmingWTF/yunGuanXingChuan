@@ -3,7 +3,7 @@
  * Notion 式分栏：左目录 / 右正文；每章支持 AI 润色（独立接口，不修改已确认产出物）
  */
 import { useState } from 'react'
-import { StageLayout, StageSources, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
+import { StageLayout, StageSources, StatusBadge, NoProjectHint, useStageExec, StageActions, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
 import { polishWorkflowSection } from '../api'
 
 const INFO: StageInfo = {
@@ -12,7 +12,7 @@ const INFO: StageInfo = {
 }
 
 export default function Writing() {
-  const { projectId, status, rec, running, error, locked, confirmRerun, rerunConfirmEl } = useStageExec(6)
+  const { projectId, status, rec, running, error, locked, exec, approve, confirmRerun, rerunConfirmEl } = useStageExec(6)
   const [activeSection, setActiveSection] = useState(0)
   const [instruction, setInstruction] = useState('')
   const [polishing, setPolishing] = useState(false)
@@ -48,14 +48,15 @@ export default function Writing() {
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <StatusBadge status={status} />
-            {status !== 'running' && (
-              <button onClick={confirmRerun} disabled={running || locked}
-                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all"
-                title={locked ? '请先完成上一阶段并确认' : undefined}>
-                  {running ? '写作中…' : status === 'pending' ? '开始生成' : '重新运行'}
-                </button>
-            )}
-            {error && <span className="text-[11px] text-red-600">{error}</span>}
+            <StageActions
+            stage={6}
+            status={status}
+            onRun={() => void exec({})}
+            onApprove={approve}
+            running={running}
+            error={error}
+            runLabel="开始写作"
+          />
           </div>
 
           {/* RAG + KG 双校验报告（产出物后置校验） */}

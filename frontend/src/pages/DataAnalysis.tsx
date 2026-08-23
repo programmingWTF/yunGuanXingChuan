@@ -5,7 +5,7 @@
  * 展示：词云（类目权重）/ 类目分布 / 研究发现 / 传播路径证据 / 初步解读
  */
 import { useState } from 'react'
-import { StageLayout, StageSources, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
+import { StageLayout, StageSources, StatusBadge, NoProjectHint, useStageExec, StageActions, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
 
 const INFO: StageInfo = {
   stage: 5, icon: '📊', title: '数据分析', en: 'DATA ANALYSIS',
@@ -104,7 +104,7 @@ function HBar({ label, value, color = 'bg-indigo-500' }: { label: string; value:
 }
 
 export default function DataAnalysis() {
-  const { projectId, status, rec, running, error, locked, exec, confirmRerun, rerunConfirmEl } = useStageExec(5)
+  const { projectId, status, rec, running, error, locked, exec, approve, confirmRerun, rerunConfirmEl } = useStageExec(5)
   const [materials, setMaterials] = useState<Material[]>([])
   const [pasteText, setPasteText] = useState('')
   const [reading, setReading] = useState(false)
@@ -165,14 +165,15 @@ export default function DataAnalysis() {
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <StatusBadge status={status} />
-            {status !== 'running' && (
-              <button onClick={confirmRerun} disabled={running || locked}
-                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all"
-                title={locked ? '请先完成上一阶段并确认' : undefined}>
-                  {running ? '分析中…' : status === 'pending' ? '开始生成' : '重新运行（框架性分析）'}
-                </button>
-            )}
-            {error && <span className="text-[11px] text-red-600">{error}</span>}
+            <StageActions
+            stage={5}
+            status={status}
+            onRun={() => void exec({})}
+            onApprove={approve}
+            running={running}
+            error={error}
+            runLabel="开始分析"
+          />
           </div>
 
           {/* RAG + KG 双校验报告（产出物后置校验） */}

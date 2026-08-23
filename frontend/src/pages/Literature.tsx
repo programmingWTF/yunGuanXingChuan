@@ -2,7 +2,7 @@
  * 云观星传 - ② 文献综述（产出物查看页）
  * 展示文献归类、综述正文与 Research Gap
  */
-import { StageLayout, StageSources, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
+import { StageLayout, StageSources, StatusBadge, NoProjectHint, useStageExec, StageActions, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
 
 const INFO: StageInfo = {
   stage: 2, icon: '📚', title: '文献综述', en: 'LITERATURE REVIEW',
@@ -123,7 +123,7 @@ function TheoryRelationGraph({ relations }: { relations: TheoryRelation[] }) {
 }
 
 export default function Literature() {
-  const { projectId, status, rec, running, error, locked, confirmRerun, rerunConfirmEl } = useStageExec(2)
+  const { projectId, status, rec, running, error, locked, exec, approve, confirmRerun, rerunConfirmEl } = useStageExec(2)
 
   const output = (rec?.output ?? null) as {
     sections?: { theme: string; content: string }[]
@@ -140,14 +140,15 @@ export default function Literature() {
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <StatusBadge status={status} />
-            {status !== 'running' && (
-              <button onClick={confirmRerun} disabled={running || locked}
-                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-40 transition-all"
-                title={locked ? '请先完成上一阶段并确认' : undefined}>
-                  {running ? '生成中…' : status === 'pending' ? '开始生成' : '重新运行'}
-                </button>
-            )}
-            {error && <span className="text-[11px] text-red-600">{error}</span>}
+            <StageActions
+            stage={2}
+            status={status}
+            onRun={() => void exec({})}
+            onApprove={approve}
+            running={running}
+            error={error}
+            runLabel="开始综述"
+          />
           </div>
 
           {/* RAG + KG 双校验报告（产出物后置校验） */}
