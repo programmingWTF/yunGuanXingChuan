@@ -22,16 +22,8 @@ const KPIS = [
 
 export default function HomeHero() {
   return (
-    <section className="relative overflow-hidden">
-      {/* 水墨山水星象背景（效果图背景层） */}
-      <div className="absolute inset-0 z-0">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url('/cloud-bg.jpg')" }}
-        />
-      </div>
-
-      <div className="relative z-10 w-full px-4 sm:px-10 lg:px-16 pt-10 pb-16 sm:pt-14 sm:pb-20">
+    <section className="relative">
+      <div className="w-full px-4 sm:px-10 lg:px-16 pt-10 pb-16 sm:pt-14 sm:pb-20">
         {/* Eyebrow：产品定位标签 */}
         <div className="flex justify-center">
           <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#eef2f7]/80 border border-slate-200/60 text-xs sm:text-[13px] text-[#5E7392] tracking-wide shadow-sm">

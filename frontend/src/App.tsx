@@ -341,7 +341,7 @@ function AppLayout() {
       </div>
       <TopNav />
       <PageHeading />
-      <div className="relative z-10 flex-1 flex flex-col bg-[#f8f9fa] text-slate-800 overflow-x-hidden">
+      <div className="relative z-10 flex-1 flex flex-col text-slate-800 overflow-x-hidden">
         {/* 星座装饰（设计稿内页装饰：北斗七星 + 北极星） */}
         <div className="absolute inset-x-0 top-48 bottom-0 z-0 overflow-hidden pointer-events-none">
           <BigDipperConstellation />

@@ -142,6 +142,12 @@
   }
 
   body {
+    /* 全站最底层：水墨山水星象原图全屏固定（不随滚动，页面内容浮于其上） */
+    background-image: url('/cloud-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
     background-color: var(--background);
     color: var(--foreground);
     font-family: var(--font-sans);
