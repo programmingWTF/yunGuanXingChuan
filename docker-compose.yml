@@ -14,7 +14,7 @@ services:
       #   bridge 网络直连境外 TLS 握手超时；mihomo 为 host 网络，监听 127.0.0.1:7890）
       - HTTP_PROXY=http://172.17.0.1:7890
       - HTTPS_PROXY=http://172.17.0.1:7890
-      - NO_PROXY=localhost,127.0.0.1,172.17.0.1,192.168.0.150
+      - NO_PROXY=localhost,127.0.0.1,172.17.0.1,192.168.0.150,.aliyuncs.com,.myqcloud.com
     extra_hosts:
       - 'host.docker.internal:host-gateway'
 
@@ -37,6 +37,6 @@ services:
       - ADMIN_MODE=true
       - HTTP_PROXY=http://172.17.0.1:7890
       - HTTPS_PROXY=http://172.17.0.1:7890
-      - NO_PROXY=localhost,127.0.0.1,172.17.0.1,192.168.0.150
+      - NO_PROXY=localhost,127.0.0.1,172.17.0.1,192.168.0.150,.aliyuncs.com,.myqcloud.com
     extra_hosts:
       - 'host.docker.internal:host-gateway'
