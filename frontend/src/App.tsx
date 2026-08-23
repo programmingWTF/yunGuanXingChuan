@@ -104,7 +104,7 @@ function TopNav() {
           : 'bg-transparent',
       )}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-4">
           {/* Logo：渐变方块 + 双行标题（设计稿原样） */}
           <NavLink to="/" className="flex items-center gap-3 shrink-0">
@@ -202,7 +202,7 @@ function TopNav() {
       {/* 移动端菜单（设计稿样式） */}
       {mobileMenuOpen && (
         <div className="xl:hidden bg-white border-t border-slate-200 shadow-lg">
-          <div className="max-w-7xl mx-auto px-4 py-4 grid grid-cols-2 gap-1">
+          <div className="w-full px-4 py-4 grid grid-cols-2 gap-1">
             {PIPELINE_NAV.map(item => (
               <NavLink key={item.to} to={item.to} end={item.end ?? false}
                 onClick={() => setMobileMenuOpen(false)}
@@ -232,7 +232,7 @@ function PageHeading() {
   return (
     <div className="pt-16">
       <div className="bg-white/70 backdrop-blur-sm border-b border-slate-200/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center gap-3">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-3.5 flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-100 to-blue-100 flex items-center justify-center">
             <Icon className="w-4 h-4 text-indigo-600" />
           </div>
@@ -247,7 +247,7 @@ function PageHeading() {
 function Footer() {
   return (
     <footer id="footer" className="relative z-20 mt-auto py-16 px-4 bg-slate-900 text-white">
-      <div className="max-w-6xl mx-auto">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-4 gap-8 mb-12">
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-4">
@@ -347,7 +347,7 @@ function AppLayout() {
           <BigDipperConstellation />
           <Polaris />
         </div>
-        <main className="relative z-10 px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto w-full flex-1">
+        <main className="relative z-10 px-4 sm:px-6 lg:px-8 py-8 w-full flex-1">
           <div key={location.pathname} className="page-transition">
             <Routes location={location}>
               {/* 首页：效果图 Hero Landing + 科研工作台（点击「开始分析」锚点滚动到此） */}
