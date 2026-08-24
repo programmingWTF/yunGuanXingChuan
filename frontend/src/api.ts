@@ -10,6 +10,19 @@ const api = axios.create({
   withCredentials: true, // 会话 Cookie（httpOnly，same-origin）
 })
 
+// 论文上传直连入口：upload3.liguiyu.com:10443（灰云 DNS-only → 公网 IP:10443 → NPM → 云观星传后端），
+// 不走 CF 代理（绕开 100MB/100s 限制）。跨域上传无法带 Cookie，改用 Authorization: Bearer <token>。
+const UPLOAD_BASE = 'https://upload3.liguiyu.com:10443'
+
+// 跨域上传用的会话 token（内存态；登录 / me 探测时由后端下发，刷新后由 getMe 重新获取）
+let authToken: string | null = null
+export function setAuthToken(t: string | null) {
+  authToken = t
+}
+export function getAuthToken(): string | null {
+  return authToken
+}
+
 // 统一错误处理：后端 FastAPI 的 4xx 会带 detail，转成可读 message
 // （如「阶段 3 未解锁：当前进度在第 2 阶段」），避免只看到裸 400
 api.interceptors.response.use(
@@ -605,10 +618,10 @@ export async function registerUser(name: string, email: string, password: string
   return res.data as { success: boolean; message: string; user?: AuthUser }
 }
 
-/** 登录：邮箱 + 密码（会话 httpOnly Cookie） */
+/** 登录：邮箱 + 密码（会话 httpOnly Cookie；同时返回 token 供跨域直传鉴权） */
 export async function loginUser(email: string, password: string) {
   const res = await api.post('/auth/login', { email, password })
-  return res.data as { success: boolean; user: AuthUser }
+  return res.data as { success: boolean; user: AuthUser; token?: string }
 }
 
 export async function logoutUser() {
@@ -616,10 +629,10 @@ export async function logoutUser() {
   return res.data as { success: boolean }
 }
 
-/** 当前登录用户（未登录 401） */
+/** 当前登录用户（未登录 401）；me 会附带重新下发的 token（跨域上传用） */
 export async function getMe() {
   const res = await api.get('/auth/me')
-  return res.data as { user: AuthUser & { created_at: number; llm_configured: boolean } }
+  return res.data as { user: AuthUser & { created_at: number; llm_configured: boolean }; token?: string }
 }
 
 // ============ 用户模型配置（多租户自带钥匙）============
@@ -734,25 +747,31 @@ export interface LibrarySearchResult {
 }
 
 export interface LibraryHealth {
-  r2_configured: boolean
+  storage: 'local'
   supported_extensions: string[]
 }
 
-/** 获取 R2 配置状态 */
+/** 获取存储模式状态 */
 export async function getLibraryHealth() {
   const res = await api.get('/library/health')
   return res.data as LibraryHealth
 }
 
-/** ① 签发上传 URL（后端建记录，返回 presigned PUT URL 与 paper_id） */
-export async function createLibraryUpload(fileName: string, contentType: string) {
-  const res = await api.post('/library/upload-url', { file_name: fileName, content_type: contentType })
-  return res.data as { upload_url: string; file_key: string; paper_id: number; expires_in: number }
-}
-
-/** ② 确认上传完成，触发后端解析/嵌入/风格提取 */
-export async function confirmLibraryUpload(paperId: number) {
-  const res = await api.post('/library/confirm', { paper_id: paperId })
+/** 上传论文：multipart 直传 upload3 入口 → 后端落盘解析（单步完成，含进度回调） */
+export async function uploadLibraryPaper(file: File, onProgress?: (pct: number) => void) {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await axios.post(`${UPLOAD_BASE}/api/library/upload`, form, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+      ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}),
+    },
+    withCredentials: false,
+    onUploadProgress: (e) => {
+      if (e.total) onProgress?.(Math.round((e.loaded / e.total) * 100))
+    },
+    timeout: 600000, // 大文件 + 后端解析，10 分钟
+  })
   return res.data as { paper_id: number; status: string; chunk_count: number; style: LibraryStyle }
 }
 

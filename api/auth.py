@@ -298,8 +298,12 @@ def clear_session_cookie(response: Response) -> None:
 
 
 def get_current_user(request: Request) -> Optional[dict]:
-    """从 Cookie 解析会话；无效/过期返回 None（不抛错，由路由决定 401）。"""
+    """从会话解析用户：优先 httpOnly Cookie；跨域直传（upload3）时支持 Authorization: Bearer <token>。"""
     token = request.cookies.get(SESSION_COOKIE)
+    if not token:
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.lower().startswith("bearer "):
+            token = auth_header[7:].strip()
     if not token:
         return None
     try:

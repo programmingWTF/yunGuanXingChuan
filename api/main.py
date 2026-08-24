@@ -31,10 +31,11 @@ app = FastAPI(
 # 初始化用户表（幂等）
 init_auth_db()
 
-# CORS 配置（允许前端跨域访问）
+# CORS 配置：允许 *.liguiyu.com 任意端口跨域（upload3.liguiyu.com:10443 论文直传需带凭据）
+# 注意：allow_credentials=True 时不能用 allow_origins=["*"]，改用正则匹配桂鱼域名
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origin_regex=r"https?://([a-z0-9-]+\.)*liguiyu\.com(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

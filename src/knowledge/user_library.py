@@ -2,7 +2,7 @@
 云观星传 - 用户论文库（个人科研知识库）
 
 功能：
-- R2 presigned URL 签发（前端直传，绕开 CF Tunnel 100MB/100s 限制）
+- 论文上传（multipart → 本地存储 data/user_libraries/{user_id}/files/，按用户隔离）
 - 论文解析（PDF/DOCX/MD/TXT → 纯文本）
 - 用户级向量库（按 user_id 物理隔离，FAISS 索引 + SQLite 元数据）
 - 风格三件套：术语表 / 结构模板 / few-shot 示例
@@ -61,7 +61,7 @@ def init_db() -> None:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id TEXT NOT NULL,
                 title TEXT NOT NULL,
-                file_key TEXT NOT NULL,          -- R2 对象键（如 {user_id}/xxx.pdf）
+                file_key TEXT NOT NULL,          -- 本地文件相对键（{user_id}/files/xxx.pdf）
                 file_name TEXT NOT NULL,          -- 原始文件名
                 file_ext TEXT NOT NULL,
                 status TEXT NOT NULL DEFAULT 'uploaded',  -- uploaded → processing → ready / error
@@ -79,84 +79,41 @@ def init_db() -> None:
         conn.close()
 
 
-def get_r2_config() -> Dict[str, str]:
-    """从环境变量读取 R2 配置（.env）。未配置时返回空 dict（接口会返回 503）。"""
-    import os
-    cfg = {
-        "account_id": os.environ.get("R2_ACCOUNT_ID", ""),
-        "access_key_id": os.environ.get("R2_ACCESS_KEY_ID", ""),
-        "secret_access_key": os.environ.get("R2_SECRET_ACCESS_KEY", ""),
-        "bucket": os.environ.get("R2_BUCKET", ""),
-        "endpoint": os.environ.get("R2_ENDPOINT", ""),
-    }
-    if all(cfg.values()):
-        return cfg
-    return {}
-
-
-def r2_configured() -> bool:
-    return bool(get_r2_config())
-
-
-def _get_s3_client():
-    """惰性创建 boto3 S3 client（R2 兼容端点）"""
-    import boto3
-    from botocore.config import Config
-    cfg = get_r2_config()
-    if not cfg:
-        raise RuntimeError("R2 未配置（缺少 R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY/R2_BUCKET/R2_ENDPOINT）")
-    return boto3.client(
-        "s3",
-        endpoint_url=cfg["endpoint"],
-        aws_access_key_id=cfg["access_key_id"],
-        aws_secret_access_key=cfg["secret_access_key"],
-        config=Config(signature_version="s3v4", connect_timeout=10, read_timeout=60),
-        region_name="auto",
-    )
-
-
-def _s3() -> "boto3.client":
-    return _get_s3_client()
-
-
 # ──────────────────────────────────────────────────────────────────
-# R2 对象操作
+# 本地文件操作（替代原 R2 直传：上传走 upload3 直连入口，文件落盘本地）
 # ──────────────────────────────────────────────────────────────────
 
 def file_key_for(user_id: str, file_name: str) -> str:
-    """生成 R2 对象键：{user_id}/{uuid}_{sanitized_name}"""
+    """生成本地文件相对键：{user_id}/files/{uuid}_{sanitized_name}（相对 USER_LIBRARY_ROOT）"""
     import uuid
     safe = re.sub(r"[^\w.\-]", "_", file_name)
-    return f"{user_id}/{uuid.uuid4().hex[:12]}_{safe}"
+    return f"{user_id}/files/{uuid.uuid4().hex[:12]}_{safe}"
 
 
-def create_presigned_put_url(file_key: str, content_type: str, expires_in: int = 3600) -> str:
-    """签发 presigned PUT URL（前端直传 R2 用）"""
-    cfg = get_r2_config()
-    if not cfg:
-        raise RuntimeError("R2 未配置")
-    return _s3().generate_presigned_url(
-        "put_object",
-        Params={"Bucket": cfg["bucket"], "Key": file_key, "ContentType": content_type},
-        ExpiresIn=expires_in,
-    )
+def save_upload(file_key: str, data: bytes) -> Path:
+    """保存上传文件到本地（file_key 相对 USER_LIBRARY_ROOT）"""
+    dest = USER_LIBRARY_ROOT / file_key
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(data)
+    return dest
 
 
-def fetch_object(file_key: str) -> bytes:
-    """从 R2 拉取对象内容（后端解析用）"""
-    cfg = get_r2_config()
-    if not cfg:
-        raise RuntimeError("R2 未配置")
-    obj = _s3().get_object(Bucket=cfg["bucket"], Key=file_key)
-    return obj["Body"].read()
+def read_upload(file_key: str) -> bytes:
+    """读取本地文件内容（不存在返回空 bytes）"""
+    p = USER_LIBRARY_ROOT / file_key
+    if not p.exists():
+        return b""
+    return p.read_bytes()
 
 
-def delete_object(file_key: str) -> None:
-    """删除 R2 对象"""
-    cfg = get_r2_config()
-    if not cfg:
-        return
-    _s3().delete_object(Bucket=cfg["bucket"], Key=file_key)
+def delete_upload(file_key: str) -> None:
+    """删除本地文件（不存在时静默）"""
+    p = USER_LIBRARY_ROOT / file_key
+    try:
+        if p.exists():
+            p.unlink()
+    except OSError:
+        logger.warning("删除上传文件失败: %s", file_key)
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -427,7 +384,7 @@ def merge_style_json(styles: List[Dict]) -> Dict:
 # ──────────────────────────────────────────────────────────────────
 
 class UserLibrary:
-    """用户论文库门面：SQLite + R2 + 向量 + 风格"""
+    """用户论文库门面：SQLite + 本地文件 + 向量 + 风格"""
 
     def __init__(self, user_id: str):
         self.user_id = user_id
@@ -493,11 +450,11 @@ class UserLibrary:
             conn.close()
 
     def delete_paper(self, paper_id: int) -> bool:
-        """删除论文：元数据 + R2 对象 + 向量块"""
+        """删除论文：元数据 + 本地文件 + 向量块"""
         paper = self.get_paper(paper_id)
         if not paper:
             return False
-        delete_object(paper["file_key"])  # R2 尽力删除（未配置时忽略）
+        delete_upload(paper["file_key"])
         self.vector_store.remove_paper(paper_id)
         conn = _connect()
         try:
@@ -509,13 +466,15 @@ class UserLibrary:
 
     # -- 处理流程：uploaded → processing → ready/error --
     def process_paper(self, paper_id: int) -> Dict:
-        """拉取 R2 → 解析 → 分块嵌入 → 风格提取。返回处理结果。"""
+        """读取本地文件 → 解析 → 分块嵌入 → 风格提取。返回处理结果。"""
         paper = self.get_paper(paper_id)
         if not paper:
             return {"ok": False, "error": "论文不存在"}
         try:
             self.update_status(paper_id, "processing")
-            content = fetch_object(paper["file_key"])
+            content = read_upload(paper["file_key"])
+            if not content:
+                raise ValueError("文件内容为空或已丢失")
             text = parse_document(content, paper["file_ext"])
             if not text.strip():
                 raise ValueError("解析结果为空（可能是扫描版 PDF 或空文件）")

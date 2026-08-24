@@ -1,20 +1,19 @@
 """
 云观星传 - 个人论文库 API 测试
 
-覆盖 /api/library/*：
-- 鉴权（未登录 401）
-- health（R2 配置状态）
-- upload-url（扩展名校验 / R2 未配置 503 / 正常签发）
-- confirm（404 / 409 重复 / 成功处理并置 ready）
+覆盖 /api/library/*（本地直传方案，替代原 R2 presigned 链路）：
+- 鉴权（未登录 401 / Bearer token 跨域鉴权）
+- health（storage=local）
+- upload（multipart：扩展名校验 / 空文件 / 超限 / 成功处理置 ready / 失败置 error）
 - list / get / delete / search / style
+- 用户隔离（文件与记录严格按 user_id）
 
-不依赖真实 R2 与 LLM：monkeypatch R2 操作与向量存储。
+不依赖真实 LLM 与向量嵌入：monkeypatch 解析与向量存储。
 """
 import json
 import sys
 import secrets as _secrets
 from pathlib import Path
-from unittest.mock import MagicMock
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -33,35 +32,12 @@ def _isolate_data(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def r2_configured(monkeypatch):
-    """让 R2 处于已配置状态（mock 真实凭据检查与 S3 调用）"""
+def local_storage(monkeypatch):
+    """本地存储链路：mock 解析（不依赖真实 PDF/DOCX 解析与外部服务）"""
     import src.knowledge.user_library as ul
-    monkeypatch.setattr(ul, "get_r2_config", lambda: {
-        "account_id": "test-account",
-        "access_key_id": "test-ak",
-        "secret_access_key": "test-sk",
-        "bucket": "test-bucket",
-        "endpoint": "https://test.r2.cloudflarestorage.com",
-    })
-    monkeypatch.setattr(ul, "create_presigned_put_url", lambda *a, **kw: "https://presigned.test/upload?token=fake")
-    monkeypatch.setattr(ul, "fetch_object", lambda key: ("这是测试论文内容" * 50).encode("utf-8"))
-    monkeypatch.setattr(ul, "delete_object", lambda key: None)
     # API 测试不依赖真实 PDF/DOCX 解析（解析细节由单元测试覆盖），
     # 统一 mock 为可索引、可提取风格的纯文本
     monkeypatch.setattr(ul, "parse_document", lambda content, ext: ("深度学习模型在医学影像诊断中展现出优异性能。" * 30))
-    # api/routes/library.py 用 `from src.knowledge.user_library import create_presigned_put_url`
-    # 模块级绑定 —— 若 api.main 已被其他测试文件 import，路由绑定的是真实函数，
-    # 单独 patch ul 模块无效。这里同步 patch 路由模块里绑定的名字，保证全量运行稳定。
-    import api.routes.library as lib_routes
-    monkeypatch.setattr(lib_routes, "create_presigned_put_url", lambda *a, **kw: "https://presigned.test/upload?token=fake")
-    return ul
-
-
-@pytest.fixture
-def r2_not_configured(monkeypatch):
-    """R2 未配置状态"""
-    import src.knowledge.user_library as ul
-    monkeypatch.setattr(ul, "get_r2_config", lambda: {})
     return ul
 
 
@@ -98,101 +74,103 @@ def _fake_vector(monkeypatch, add_result=5, search_results=None):
     )
 
 
+def _upload(client, name="a.pdf", content=b"fake pdf bytes", content_type="application/pdf"):
+    return client.post("/api/library/upload", files={"file": (name, content, content_type)})
+
+
 class TestLibraryAuth:
-    def test_requires_login(self, r2_configured):
+    def test_requires_login(self, local_storage):
         client = TestClient(__import__("api.main", fromlist=["app"]).app)
-        r = client.get("/api/library")
+        assert client.get("/api/library").status_code == 401
+        r = _upload(client)
         assert r.status_code == 401
-        r2 = client.post("/api/library/upload-url", json={"file_name": "a.pdf"})
-        assert r2.status_code == 401
+
+    def test_bearer_token_auth(self, local_storage, auth_client):
+        """跨域直传（upload3）：无 Cookie，仅 Authorization: Bearer <token> 也能上传"""
+        client, user = auth_client
+        token = issue_token(user["id"])
+        bare = TestClient(__import__("api.main", fromlist=["app"]).app)
+        bare.headers["Authorization"] = f"Bearer {token}"
+        r = _upload(bare)
+        # 文件保存/处理会走真实链路，这里只验证鉴权通过（能进入业务逻辑：400/200 而非 401）
+        assert r.status_code in (200, 400, 422)
 
 
 class TestLibraryHealth:
-    def test_health_configured(self, r2_configured, auth_client):
+    def test_health_local(self, local_storage, auth_client):
         client, _ = auth_client
         r = client.get("/api/library/health")
         assert r.status_code == 200
-        assert r.json()["r2_configured"] is True
+        assert r.json()["storage"] == "local"
         assert ".pdf" in r.json()["supported_extensions"]
 
-    def test_health_not_configured(self, r2_not_configured, auth_client):
-        client, _ = auth_client
-        r = client.get("/api/library/health")
-        assert r.status_code == 200
-        assert r.json()["r2_configured"] is False
 
-
-class TestUploadUrl:
-    def test_upload_url_success(self, r2_configured, auth_client):
-        client, _ = auth_client
-        r = client.post("/api/library/upload-url", json={
-            "file_name": "我的论文.pdf", "content_type": "application/pdf",
-        })
-        assert r.status_code == 200
-        data = r.json()
-        assert data["upload_url"].startswith("https://presigned.test/")
-        assert data["paper_id"] > 0
-        assert data["file_key"].startswith("_") or "/" in data["file_key"]  # {user_id}/... 或含分隔符
-
-    def test_upload_url_rejects_zip(self, r2_configured, auth_client):
-        client, _ = auth_client
-        r = client.post("/api/library/upload-url", json={"file_name": "archive.zip"})
-        assert r.status_code == 400
-        assert "不支持的文件类型" in r.json()["detail"]
-
-    def test_upload_url_rejects_no_ext(self, r2_configured, auth_client):
-        client, _ = auth_client
-        r = client.post("/api/library/upload-url", json={"file_name": "README"})
-        assert r.status_code == 400
-
-    def test_upload_url_accepts_all_supported(self, r2_configured, auth_client):
-        client, _ = auth_client
-        for name in ["a.pdf", "b.docx", "c.md", "d.txt"]:
-            r = client.post("/api/library/upload-url", json={"file_name": name})
-            assert r.status_code == 200, f"{name} 应被接受"
-
-    def test_upload_url_r2_not_configured(self, r2_not_configured, auth_client):
-        client, _ = auth_client
-        r = client.post("/api/library/upload-url", json={"file_name": "a.pdf"})
-        assert r.status_code == 503
-        assert "R2" in r.json()["detail"]
-
-
-class TestConfirmUpload:
-    def test_confirm_success(self, r2_configured, auth_client, monkeypatch):
+class TestUpload:
+    def test_upload_success(self, local_storage, auth_client, monkeypatch):
         _fake_vector(monkeypatch)
         client, _ = auth_client
-        # 先建一条
-        r = client.post("/api/library/upload-url", json={"file_name": "a.pdf"})
-        pid = r.json()["paper_id"]
-        # 确认
-        r2 = client.post("/api/library/confirm", json={"paper_id": pid})
-        assert r2.status_code == 200
-        data = r2.json()
+        r = _upload(client, "我的论文.pdf")
+        assert r.status_code == 200, r.text
+        data = r.json()
         assert data["status"] == "ready"
         assert data["chunk_count"] == 5
+        assert data["paper_id"] > 0
         # 列表里应有 ready 状态
         lst = client.get("/api/library").json()
         assert len(lst) == 1
         assert lst[0]["status"] == "ready"
 
-    def test_confirm_missing_paper(self, r2_configured, auth_client):
+    def test_upload_rejects_zip(self, local_storage, auth_client):
         client, _ = auth_client
-        r = client.post("/api/library/confirm", json={"paper_id": 999})
-        assert r.status_code == 404
+        r = _upload(client, "archive.zip")
+        assert r.status_code == 400
+        assert "不支持的文件类型" in r.json()["detail"]
 
-    def test_confirm_already_ready_conflict(self, r2_configured, auth_client, monkeypatch):
+    def test_upload_rejects_no_ext(self, local_storage, auth_client):
+        client, _ = auth_client
+        r = _upload(client, "README")
+        assert r.status_code == 400
+
+    def test_upload_accepts_all_supported(self, local_storage, auth_client, monkeypatch):
         _fake_vector(monkeypatch)
         client, _ = auth_client
-        r = client.post("/api/library/upload-url", json={"file_name": "a.pdf"})
-        pid = r.json()["paper_id"]
-        assert client.post("/api/library/confirm", json={"paper_id": pid}).status_code == 200
-        # 重复 confirm → 409（已 ready）
-        r2 = client.post("/api/library/confirm", json={"paper_id": pid})
-        assert r2.status_code == 409
+        for name, ct in [("a.pdf", "application/pdf"), ("b.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"), ("c.md", "text/markdown"), ("d.txt", "text/plain")]:
+            r = _upload(client, name, content=b"x" * 100, content_type=ct)
+            assert r.status_code == 200, f"{name} 应被接受: {r.text}"
 
-    def test_confirm_user_isolation(self, r2_configured, monkeypatch):
-        """用户 B 不能 confirm 用户 A 的论文"""
+    def test_upload_empty_file(self, local_storage, auth_client):
+        client, _ = auth_client
+        r = _upload(client, "empty.pdf", content=b"")
+        assert r.status_code == 400
+        assert "文件内容为空" in r.json()["detail"]
+
+    def test_upload_too_large(self, local_storage, auth_client, monkeypatch):
+        _fake_vector(monkeypatch)
+        client, _ = auth_client
+        from api.routes import library as lib_routes
+        # 缩小上限便于测试
+        monkeypatch.setattr(lib_routes, "MAX_UPLOAD_BYTES", 1024)
+        r = _upload(client, "big.pdf", content=b"x" * 2048)
+        assert r.status_code == 413
+
+    def test_upload_process_failure_keeps_error_record(self, local_storage, auth_client, monkeypatch):
+        """解析失败 → 记录保留且状态为 error（前端可展示原因）"""
+        import src.knowledge.user_library as ul
+        def _bad_parse(content, ext):
+            raise ValueError("解析失败: 扫描版 PDF")
+        monkeypatch.setattr(ul, "parse_document", _bad_parse)
+        client, _ = auth_client
+        r = _upload(client, "scan.pdf")
+        assert r.status_code == 422
+        assert "解析失败" in r.json()["detail"]
+        lst = client.get("/api/library").json()
+        assert len(lst) == 1
+        assert lst[0]["status"] == "error"
+        assert "解析失败" in lst[0]["error_msg"]
+
+    def test_upload_user_isolation(self, local_storage, monkeypatch):
+        """用户 B 不能看到/操作用户 A 的论文（文件与记录隔离）"""
+        _fake_vector(monkeypatch)
         from api.main import app
         email_a = f"ta{_secrets.token_hex(6)}@test.local"
         email_b = f"tb{_secrets.token_hex(6)}@test.local"
@@ -202,46 +180,55 @@ class TestConfirmUpload:
         ca = TestClient(app)
         ca.cookies.set(SESSION_COOKIE, issue_token(user_a["id"]))
         with ca:
-            r = ca.post("/api/library/upload-url", json={"file_name": "a.pdf"})
+            r = _upload(ca, "a.pdf")
             pid = r.json()["paper_id"]
 
         cb = TestClient(app)
-        # B 登录
         cb.post("/api/auth/login", json={"email": email_b, "password": "Test@123456"})
         with cb:
             assert cb.get(f"/api/library/{pid}").status_code == 404
-            assert cb.post("/api/library/confirm", json={"paper_id": pid}).status_code == 404
             assert cb.delete(f"/api/library/{pid}").status_code == 404
+
+        # A 的文件只存在于 A 的目录下
+        import src.knowledge.user_library as ul
+        files = list((ul.USER_LIBRARY_ROOT / user_a["id"] / "files").rglob("*"))
+        assert len(files) == 1
+        assert not (ul.USER_LIBRARY_ROOT / email_b).exists()
 
 
 class TestListGetDelete:
-    def test_list_empty(self, r2_configured, auth_client):
+    def test_list_empty(self, local_storage, auth_client):
         client, _ = auth_client
         assert client.get("/api/library").json() == []
 
-    def test_get_detail(self, r2_configured, auth_client):
+    def test_get_detail(self, local_storage, auth_client):
         client, _ = auth_client
-        pid = client.post("/api/library/upload-url", json={"file_name": "a.pdf"}).json()["paper_id"]
+        pid = _upload(client).json()["paper_id"]
         r = client.get(f"/api/library/{pid}")
         assert r.status_code == 200
         assert r.json()["title"] == "a"
-        assert r.json()["status"] == "uploaded"
+        assert r.json()["file_name"] == "a.pdf"
 
-    def test_get_missing(self, r2_configured, auth_client):
+    def test_get_missing(self, local_storage, auth_client):
         client, _ = auth_client
         assert client.get("/api/library/999").status_code == 404
 
-    def test_delete(self, r2_configured, auth_client, monkeypatch):
+    def test_delete(self, local_storage, auth_client, monkeypatch):
         _fake_vector(monkeypatch)
-        client, _ = auth_client
-        pid = client.post("/api/library/upload-url", json={"file_name": "a.pdf"}).json()["paper_id"]
+        client, user = auth_client
+        pid = _upload(client).json()["paper_id"]
+        import src.knowledge.user_library as ul
+        files_before = list((ul.USER_LIBRARY_ROOT / user["id"] / "files").rglob("*"))
+        assert len(files_before) == 1
         assert client.delete(f"/api/library/{pid}").json()["ok"] is True
         assert client.get("/api/library").json() == []
+        # 本地文件同步删除
+        assert list((ul.USER_LIBRARY_ROOT / user["id"] / "files").rglob("*")) == []
         assert client.delete(f"/api/library/{pid}").status_code == 404
 
 
 class TestSearchAndStyle:
-    def test_search(self, r2_configured, auth_client, monkeypatch):
+    def test_search(self, local_storage, auth_client, monkeypatch):
         _fake_vector(monkeypatch, search_results=[{
             "text": "命中内容", "score": 0.9, "metadata": {"paper_id": 1},
         }])
@@ -251,19 +238,18 @@ class TestSearchAndStyle:
         assert len(r.json()["results"]) == 1
         assert r.json()["results"][0]["score"] == 0.9
 
-    def test_search_requires_query(self, r2_configured, auth_client):
+    def test_search_requires_query(self, local_storage, auth_client):
         client, _ = auth_client
         assert client.post("/api/library/search", json={"query": ""}).status_code == 422
 
-    def test_style_empty_404(self, r2_configured, auth_client):
+    def test_style_empty_404(self, local_storage, auth_client):
         client, _ = auth_client
         assert client.get("/api/library/style").status_code == 404
 
-    def test_style_after_upload(self, r2_configured, auth_client, monkeypatch):
+    def test_style_after_upload(self, local_storage, auth_client, monkeypatch):
         _fake_vector(monkeypatch)
         client, _ = auth_client
-        pid = client.post("/api/library/upload-url", json={"file_name": "a.pdf"}).json()["paper_id"]
-        client.post("/api/library/confirm", json={"paper_id": pid})
+        _upload(client)
         r = client.get("/api/library/style")
         assert r.status_code == 200
         body = r.json()
