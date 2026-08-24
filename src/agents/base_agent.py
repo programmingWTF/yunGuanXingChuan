@@ -18,16 +18,6 @@ from src.llm_client import LLMClient, get_llm_client
 
 logger = logging.getLogger(__name__)
 
-# ── 全局内容来源约束（自动追加到所有 Agent 的 system prompt）──
-# 桂鱼 2026-08-24 定：内容必须出自本地数据库；联网搜索内容需标注来源且不得来自南航官网
-_GLOBAL_SOURCE_CONSTRAINTS = """
-## 内容来源硬性约束（最高优先级，必须遵守）
-1. 所有内容必须出自本地数据库/知识库（knowledge_hits、知识图谱、本地语料），本地资料优先；
-2. 联网搜索内容（search_context）仅作补充，引用时必须明确标注「（联网搜索）」字样；
-3. 严禁引用或复制南京航空航天大学官网（nuaa.edu.cn 及其子域）的任何内容；
-4. 未在给定资料（本地知识库或联网搜索结果）中出现的事实，不得凭空编造。
-"""
-
 
 class BaseAgent(ABC):
     """
@@ -80,21 +70,21 @@ class BaseAgent(ABC):
         return self._system_prompt
 
     def _load_prompt(self) -> str:
-        """从 config/prompts/ 加载 system prompt（末尾自动追加全局内容来源约束）"""
+        """从 config/prompts/ 加载 system prompt"""
         if not self.prompt_file:
             return self._get_default_prompt()
 
         prompt_path = PROMPTS_DIR / self.prompt_file
         if prompt_path.exists():
             with open(prompt_path, "r", encoding="utf-8") as f:
-                return f.read().strip() + "\n\n" + _GLOBAL_SOURCE_CONSTRAINTS
+                return f.read().strip()
         else:
             logger.warning(f"Prompt 文件不存在: {prompt_path}，使用默认 prompt")
             return self._get_default_prompt()
 
     def _get_default_prompt(self) -> str:
-        """默认 system prompt（子类应覆盖）；同样追加全局内容来源约束"""
-        return "你是一个专业的 AI 助手。请严格按照 JSON 格式输出结果。\n\n" + _GLOBAL_SOURCE_CONSTRAINTS
+        """默认 system prompt（子类应覆盖）"""
+        return "你是一个专业的 AI 助手。请严格按照 JSON 格式输出结果。"
 
     def run(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
