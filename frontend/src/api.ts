@@ -12,7 +12,27 @@ const api = axios.create({
 
 // 论文上传直连入口：upload3.liguiyu.com:10443（灰云 DNS-only → 公网 IP:10443 → NPM → 云观星传后端），
 // 不走 CF 代理（绕开 100MB/100s 限制）。跨域上传无法带 Cookie，改用 Authorization: Bearer <token>。
+// 探测失败自动回退同域（tzb.liguiyu.com，CF 代理路径），保证功能始终可用（对齐团日资料 FAST_BASE 模式）。
 const UPLOAD_BASE = 'https://upload3.liguiyu.com:10443'
+
+// 直连入口探测缓存：'' = 回退同域，非空 = 直连
+let uploadBaseCache: string | null = null
+let uploadBaseProbe: Promise<string> | null = null
+async function resolveUploadBase(): Promise<string> {
+  if (uploadBaseCache !== null) return uploadBaseCache
+  if (!uploadBaseProbe) {
+    uploadBaseProbe = (async () => {
+      try {
+        await axios.get(`${UPLOAD_BASE}/api/library/health`, { timeout: 5000 })
+        uploadBaseCache = UPLOAD_BASE
+      } catch {
+        uploadBaseCache = '' // upload3 未就绪 → 同域上传
+      }
+      return uploadBaseCache
+    })()
+  }
+  return uploadBaseProbe
+}
 
 // 跨域上传用的会话 token（内存态；登录 / me 探测时由后端下发，刷新后由 getMe 重新获取）
 let authToken: string | null = null
@@ -757,16 +777,20 @@ export async function getLibraryHealth() {
   return res.data as LibraryHealth
 }
 
-/** 上传论文：multipart 直传 upload3 入口 → 后端落盘解析（单步完成，含进度回调） */
+/** 上传论文：multipart 直传（upload3 直连入口，探测失败回退同域）→ 后端落盘解析（单步完成，含进度回调） */
 export async function uploadLibraryPaper(file: File, onProgress?: (pct: number) => void) {
   const form = new FormData()
   form.append('file', file)
-  const res = await axios.post(`${UPLOAD_BASE}/api/library/upload`, form, {
+  const base = await resolveUploadBase()
+  const cross = base !== ''
+  const url = cross ? `${base}/api/library/upload` : '/api/library/upload'
+  const client = cross ? axios : api
+  const res = await client.post(url, form, {
     headers: {
       'Content-Type': 'multipart/form-data',
-      ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}),
+      ...(cross && getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}),
     },
-    withCredentials: false,
+    withCredentials: !cross,
     onUploadProgress: (e) => {
       if (e.total) onProgress?.(Math.round((e.loaded / e.total) * 100))
     },
