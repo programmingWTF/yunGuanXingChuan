@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 class RAGChecker:
     """RAG 校验器：通过向量检索验证事实断言"""
 
-    def __init__(self, similarity_threshold: float = 0.6, llm_client=None):
+    def __init__(self, similarity_threshold: float = 0.45, llm_client=None):
         """
         Args:
-            similarity_threshold: 相似度阈值，高于此值认为找到支持证据
+            similarity_threshold: 相似度阈值，高于此值认为找到支持证据（默认 0.45，中文短文本检索适配）
             llm_client: 多租户模式下当前用户的 LLM 客户端（None 用全局默认）
         """
         self.similarity_threshold = similarity_threshold

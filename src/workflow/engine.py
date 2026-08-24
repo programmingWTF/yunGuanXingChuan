@@ -493,8 +493,17 @@ class WorkflowEngine:
         """LLM 输出字段类型漂移保护：只接受 list，否则返回空列表"""
         return value if isinstance(value, list) else []
 
+    _SUBJECTIVE_PATTERNS = (
+        "具有重要意义", "建议", "应该", "可以", "值得", "需要", "有望",
+        "可能", "或许", "似乎", "认为", "主张", "推荐", "倾向",
+        "较好", "较差", "优势", "劣势", "优点", "缺点",
+    )
+
     def _extract_claims(self, stage: int, output: Dict[str, Any]) -> List[str]:
         """按阶段从产出物中抽取关键事实断言（每条 ≤80 字，最多 3 条）
+
+        过滤策略：跳过纯主观/推断性断言（如"具有重要意义"），保留含实体、
+        数据、时间等可验证事实的断言，提升校验命中率。
 
         注意：LLM 输出字段偶发为 dict/str（格式漂移），全部经 _as_list 保护，
         校验逻辑绝不因畸形输出抛异常而拖垮阶段主流程。
@@ -503,16 +512,31 @@ class WorkflowEngine:
             return []
         claims: List[str] = []
 
+        def _is_verifiable(text: str) -> bool:
+            if not text or len(text) <= 8:
+                return False
+            import re
+            has_number = bool(re.search(r'\d', text))
+            has_entity_indicator = bool(re.search(
+                r'号|号探测器|卫星|火箭|飞船|站|计划|任务|机构|组织|中心|局|部|院|所|公司|年|月|日',
+                text,
+            ))
+            subjective_count = sum(1 for p in self._SUBJECTIVE_PATTERNS if p in text)
+            is_mostly_subjective = subjective_count >= 2 and not has_number and not has_entity_indicator
+            if is_mostly_subjective:
+                return False
+            return True
+
         def add(c: Any) -> None:
             text = str(c).strip()
-            if text and len(text) > 8 and text not in claims:
+            if _is_verifiable(text) and text not in claims:
                 claims.append(text[:80])
 
         if stage == WorkflowStage.INSPIRATION:
             for d in self._as_list(output.get("directions"))[:3]:
                 if isinstance(d, dict):
-                    add(d.get("title"))
                     add(d.get("summary"))
+                    add(d.get("title"))
         elif stage == WorkflowStage.LITERATURE:
             gap = output.get("research_gap") or {}
             if isinstance(gap, dict):
@@ -527,18 +551,20 @@ class WorkflowEngine:
         elif stage == WorkflowStage.METHOD:
             for m in self._as_list(output.get("methods"))[:3]:
                 if isinstance(m, dict):
-                    add(m.get("name"))
                     add(m.get("rationale"))
+                    add(m.get("name"))
         elif stage == WorkflowStage.DATA_ANALYSIS:
             for f in self._as_list(output.get("findings"))[:3]:
                 if isinstance(f, dict):
                     add(f.get("finding"))
+                    add(f.get("evidence"))
         elif stage == WorkflowStage.WRITING:
             for s in self._as_list(output.get("sections"))[:3]:
                 if isinstance(s, dict):
                     content = str(s.get("content") or "")
                     if content:
-                        add(content.split("。")[0] or content[:80])
+                        first_sentence = content.split("。")[0]
+                        add(first_sentence or content[:80])
         elif stage == WorkflowStage.REVIEW:
             for r in self._as_list(output.get("reviewers"))[:3]:
                 if isinstance(r, dict):
@@ -547,20 +573,56 @@ class WorkflowEngine:
         return claims[:3]
 
     def _extract_entities(self, output: Dict[str, Any], topic: str) -> List[str]:
-        """从产出物中收集实体候选（结构化关键词 + 主题），供 KG 校验"""
+        """从产出物中收集实体候选（结构化关键词 + 主题 + 多字段），供 KG 校验
+
+        扩展覆盖：除 directions.keywords / research_questions 外，
+        还从 methods.name、findings、sections 等字段提取实体，
+        保证各阶段（尤其是 WRITING / DATA_ANALYSIS / REVIEW）均有实体参与 KG 校验。
+        """
         entities: List[str] = []
         if topic:
             entities.append(str(topic)[:30])
         if not isinstance(output, dict):
-            return entities[:4]
+            return [e for e in entities if e][:6]
         for d in self._as_list(output.get("directions"))[:3]:
             if isinstance(d, dict):
                 for kw in self._as_list(d.get("keywords"))[:3]:
                     entities.append(str(kw)[:30])
+                title = str(d.get("title") or "")[:30]
+                if title:
+                    entities.append(title)
         for rq in self._as_list(output.get("research_questions"))[:3]:
             if isinstance(rq, dict):
-                entities.append(str(rq.get("id") or rq.get("text"))[:30])
-        return [e for e in entities if e][:4]
+                text = str(rq.get("text") or "")[:30]
+                if text:
+                    entities.append(text)
+        for m in self._as_list(output.get("methods"))[:3]:
+            if isinstance(m, dict):
+                name = str(m.get("name") or "")[:30]
+                if name:
+                    entities.append(name)
+        for f in self._as_list(output.get("findings"))[:3]:
+            if isinstance(f, dict):
+                finding = str(f.get("finding") or "")[:30]
+                if finding:
+                    entities.append(finding)
+        for s in self._as_list(output.get("sections"))[:3]:
+            if isinstance(s, dict):
+                section_name = str(s.get("section") or "")[:30]
+                if section_name:
+                    entities.append(section_name)
+        for r in self._as_list(output.get("reviewers"))[:2]:
+            if isinstance(r, dict):
+                rid = str(r.get("reviewer_id") or "")[:30]
+                if rid:
+                    entities.append(rid)
+        seen = set()
+        unique = []
+        for e in entities:
+            if e and e not in seen:
+                seen.add(e)
+                unique.append(e)
+        return unique[:6]
 
     @staticmethod
     def _attach_search_sources(output: Dict[str, Any], search_context: List[Any]) -> None:

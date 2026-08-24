@@ -176,3 +176,231 @@ class TestVerificationResult:
         assert result.rag_evidence is None
         assert result.kg_match is None
         assert result.cross_source_agreement is None
+
+
+class TestFourWayVoteAdaptive:
+    """四路投票自适应判定表测试"""
+
+    @staticmethod
+    def _mock_heavy_deps():
+        for mod_name, mock_mod in [
+            ('faiss', MagicMock()),
+            ('openai', MagicMock()),
+            ('openai.OpenAI', MagicMock()),
+            ('httpx', MagicMock()),
+        ]:
+            if mod_name not in sys.modules:
+                sys.modules[mod_name] = mock_mod
+        for mod_name in list(sys.modules):
+            if any(mod_name.startswith(p) for p in [
+                'src.knowledge.vector_store', 'src.verification.rag_checker',
+                'src.verification.external_validator', 'src.verification.cross_validator',
+                'src.llm_client', 'src.search',
+            ]):
+                del sys.modules[mod_name]
+
+    @staticmethod
+    def _cleanup_deps():
+        for mod_name in ('faiss', 'httpx', 'openai', 'openai.OpenAI'):
+            if mod_name in sys.modules:
+                del sys.modules[mod_name]
+        for mod_name in list(sys.modules):
+            if any(mod_name.startswith(p) for p in [
+                'src.knowledge.vector_store', 'src.verification.rag_checker',
+                'src.verification.external_validator', 'src.verification.cross_validator',
+                'src.llm_client', 'src.search',
+            ]):
+                del sys.modules[mod_name]
+
+    def test_three_voters_rag_plus_external_verified(self):
+        """3 路模式（KG 无实体）：RAG supported + External partial → ≥2 支持 → VERIFIED"""
+        self._mock_heavy_deps()
+        import src.verification.cross_validator as cv_module
+
+        with patch.object(cv_module, 'RAGChecker') as MockRAG, \
+             patch.object(cv_module, 'get_external_validator') as MockGetExt:
+            mock_rag = MockRAG.return_value
+            mock_rag.verify_claim.return_value = {
+                "status": "supported", "confidence": 0.8, "evidence": "RAG证据",
+            }
+            mock_ext = MockGetExt.return_value
+            mock_ext.validate.return_value = {
+                "status": "partial", "confidence": 0.6, "evidence": "外部证据",
+            }
+            validator = cv_module.CrossValidator()
+            result = validator.cross_validate_claim("嫦娥六号实现月背采样", entities=None)
+            assert result.status == VerificationStatus.VERIFIED
+        self._cleanup_deps()
+
+    def test_three_voters_only_rag_partial(self):
+        """3 路模式：仅 RAG supported（1 支持）→ PARTIALLY_VERIFIED"""
+        self._mock_heavy_deps()
+        import src.verification.cross_validator as cv_module
+
+        with patch.object(cv_module, 'RAGChecker') as MockRAG, \
+             patch.object(cv_module, 'get_external_validator') as MockGetExt:
+            mock_rag = MockRAG.return_value
+            mock_rag.verify_claim.return_value = {
+                "status": "supported", "confidence": 0.75, "evidence": "RAG证据",
+            }
+            mock_ext = MockGetExt.return_value
+            mock_ext.validate.return_value = {
+                "status": "unverified", "confidence": 0.1, "evidence": "",
+            }
+            validator = cv_module.CrossValidator()
+            result = validator.cross_validate_claim("某事实断言", entities=None)
+            assert result.status == VerificationStatus.PARTIALLY_VERIFIED
+        self._cleanup_deps()
+
+    def test_four_voters_rag_kg_external_verified(self):
+        """4 路模式（KG 有实体）：RAG + KG + External 均 partial → ≥3 支持 → VERIFIED"""
+        self._mock_heavy_deps()
+        import src.verification.cross_validator as cv_module
+
+        with patch.object(cv_module, 'RAGChecker') as MockRAG, \
+             patch.object(cv_module, 'KGChecker') as MockKG, \
+             patch.object(cv_module, 'get_external_validator') as MockGetExt:
+            mock_rag = MockRAG.return_value
+            mock_rag.verify_claim.return_value = {
+                "status": "supported", "confidence": 0.8, "evidence": "RAG证据",
+            }
+            mock_kg = MockKG.return_value
+            mock_kg.get_related_context.return_value = [
+                {"entity": "嫦娥六号", "relation": "launched_by", "direction": "outgoing", "depth": 1, "confidence": 0.9},
+            ]
+            mock_kg.verify_triple.return_value = {
+                "status": "verified", "confidence": 0.9, "source": "kg", "message": "匹配",
+            }
+            mock_ext = MockGetExt.return_value
+            mock_ext.validate.return_value = {
+                "status": "partial", "confidence": 0.6, "evidence": "外部证据",
+            }
+            validator = cv_module.CrossValidator()
+            result = validator.cross_validate_claim("嫦娥六号由长征五号发射", entities=["嫦娥六号"])
+            assert result.status == VerificationStatus.VERIFIED
+        self._cleanup_deps()
+
+    def test_four_voters_two_support_partial(self):
+        """4 路模式：2 支持 → PARTIALLY_VERIFIED（不是 VERIFIED）"""
+        self._mock_heavy_deps()
+        import src.verification.cross_validator as cv_module
+
+        with patch.object(cv_module, 'RAGChecker') as MockRAG, \
+             patch.object(cv_module, 'KGChecker') as MockKG, \
+             patch.object(cv_module, 'get_external_validator') as MockGetExt:
+            mock_rag = MockRAG.return_value
+            mock_rag.verify_claim.return_value = {
+                "status": "supported", "confidence": 0.8, "evidence": "RAG证据",
+            }
+            mock_kg = MockKG.return_value
+            mock_kg.get_related_context.return_value = [
+                {"entity": "嫦娥六号", "relation": "launched_by", "direction": "outgoing", "depth": 1, "confidence": 0.9},
+            ]
+            mock_kg.verify_triple.return_value = {
+                "status": "unverified", "confidence": 0.1, "source": "", "message": "不匹配",
+            }
+            mock_ext = MockGetExt.return_value
+            mock_ext.validate.return_value = {
+                "status": "partial", "confidence": 0.5, "evidence": "外部证据",
+            }
+            validator = cv_module.CrossValidator()
+            result = validator.cross_validate_claim("某断言", entities=["嫦娥六号"])
+            assert result.status == VerificationStatus.PARTIALLY_VERIFIED
+        self._cleanup_deps()
+
+    def test_all_unverified(self):
+        """全部 unverified → UNVERIFIED"""
+        self._mock_heavy_deps()
+        import src.verification.cross_validator as cv_module
+
+        with patch.object(cv_module, 'RAGChecker') as MockRAG, \
+             patch.object(cv_module, 'get_external_validator') as MockGetExt:
+            mock_rag = MockRAG.return_value
+            mock_rag.verify_claim.return_value = {
+                "status": "unverified", "confidence": 0.1, "evidence": "",
+            }
+            mock_ext = MockGetExt.return_value
+            mock_ext.validate.return_value = {
+                "status": "unverified", "confidence": 0.05, "evidence": "",
+            }
+            validator = cv_module.CrossValidator()
+            result = validator.cross_validate_claim("完全不可验证的断言", entities=None)
+            assert result.status == VerificationStatus.UNVERIFIED
+        self._cleanup_deps()
+
+    def test_conflicting_signals(self):
+        """支持 + 冲突各 ≥1 → CONFLICTING"""
+        self._mock_heavy_deps()
+        import src.verification.cross_validator as cv_module
+
+        with patch.object(cv_module, 'RAGChecker') as MockRAG, \
+             patch.object(cv_module, 'get_external_validator') as MockGetExt:
+            mock_rag = MockRAG.return_value
+            mock_rag.verify_claim.return_value = {
+                "status": "supported", "confidence": 0.8, "evidence": "RAG支持",
+            }
+            mock_ext = MockGetExt.return_value
+            mock_ext.validate.return_value = {
+                "status": "conflicting", "confidence": 0.6, "evidence": "外部冲突",
+            }
+            validator = cv_module.CrossValidator()
+            result = validator.cross_validate_claim("有争议的断言", entities=None)
+            assert result.status == VerificationStatus.CONFLICTING
+        self._cleanup_deps()
+
+
+class TestExtractClaimsAndEntities:
+    """断言提取与实体提取测试"""
+
+    def test_subjective_claims_filtered(self):
+        """主观性断言应被过滤"""
+        from src.workflow.engine import WorkflowEngine
+        engine = WorkflowEngine.__new__(WorkflowEngine)
+        from src.workflow.stages import WorkflowStage
+        output = {
+            "directions": [
+                {"title": "具有重要意义", "summary": "该方向具有重要的理论和实践意义"},
+                {"title": "嫦娥六号月背采样返回技术", "summary": "嫦娥六号于2024年实现人类首次月球背面采样返回"},
+            ]
+        }
+        claims = engine._extract_claims(WorkflowStage.INSPIRATION, output)
+        assert all("具有重要意义" not in c for c in claims)
+        assert any("嫦娥六号" in c for c in claims)
+
+    def test_entities_from_methods(self):
+        """方法阶段产出物应能提取实体"""
+        from src.workflow.engine import WorkflowEngine
+        engine = WorkflowEngine.__new__(WorkflowEngine)
+        output = {
+            "methods": [
+                {"name": "内容分析法", "rationale": "适用于传播框架研究"},
+            ]
+        }
+        entities = engine._extract_entities(output, "嫦娥六号")
+        assert "嫦娥六号" in entities
+        assert "内容分析法" in entities
+
+    def test_entities_from_findings(self):
+        """数据分析阶段产出物应能提取实体"""
+        from src.workflow.engine import WorkflowEngine
+        engine = WorkflowEngine.__new__(WorkflowEngine)
+        output = {
+            "findings": [
+                {"finding": "嫦娥六号采样返回成功", "evidence": "官方公告"},
+            ]
+        }
+        entities = engine._extract_entities(output, "嫦娥六号")
+        assert "嫦娥六号" in entities
+        assert any("嫦娥六号" in e or "采样" in e for e in entities)
+
+    def test_entities_dedup(self):
+        """实体去重"""
+        from src.workflow.engine import WorkflowEngine
+        engine = WorkflowEngine.__new__(WorkflowEngine)
+        output = {
+            "directions": [
+                {"keywords": ["嫦娥六号", "嫦娥六号"]},
+            ]
+        }
+        entities = engine._extract_entities(output, "嫦娥六号")
+        assert entities.count("嫦娥六号") == 1

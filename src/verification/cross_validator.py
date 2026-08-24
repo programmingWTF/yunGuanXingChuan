@@ -54,16 +54,37 @@ class CrossValidator:
         kg_status = "unverified"
         kg_match = ""
         kg_confidence = 0.0
+        kg_participated = False
 
         if entities:
             try:
+                kg_participated = True
+                best_kg_status = "unverified"
+                best_kg_conf = 0.0
+                best_kg_match = ""
                 for entity in entities:
                     related = self.kg_checker.get_related_context(entity, depth=1)
                     if related:
-                        kg_status = "partial"
-                        kg_match = f"找到相关实体: {entity}"
-                        kg_confidence = 0.5
-                        break
+                        for rel_item in related[:3]:
+                            predicate = rel_item.get("relation", "")
+                            target = rel_item.get("entity", "")
+                            if predicate and target:
+                                triple_result = self.kg_checker.verify_triple(
+                                    entity, predicate, target
+                                )
+                                t_status = triple_result.get("status", "unverified")
+                                t_conf = triple_result.get("confidence", 0.0)
+                                if t_status in ("verified", "partial") and t_conf > best_kg_conf:
+                                    best_kg_status = t_status
+                                    best_kg_conf = t_conf
+                                    best_kg_match = f"{entity} -[{predicate}]-> {target}"
+                        if best_kg_status == "unverified" and related:
+                            best_kg_status = "partial"
+                            best_kg_conf = 0.3
+                            best_kg_match = f"找到相关实体: {entity}"
+                kg_status = best_kg_status
+                kg_confidence = best_kg_conf
+                kg_match = best_kg_match
             except Exception as e:
                 logger.debug(f"[交叉验证] KG 校验异常（已降级）: {e}")
 
@@ -79,11 +100,12 @@ class CrossValidator:
         except Exception as e:
             logger.debug(f"[交叉验证] 外部校验器异常（已降级）: {e}")
 
-        # 四路投票判定
+        # 四路投票判定（kg_participated 标记 KG 路是否参与投票）
         final_status, final_confidence = self._four_way_vote(
             rag_status, rag_confidence,
             kg_status, kg_confidence,
             ext_status, ext_confidence,
+            kg_participated=kg_participated,
         )
 
         # 组装 notes
@@ -114,38 +136,32 @@ class CrossValidator:
         kg_confidence: float,
         ext_status: str,
         ext_confidence: float,
+        kg_participated: bool = True,
     ) -> tuple:
         """
         四路投票判定（RAG + KG + Wikidata + Wikipedia）
 
-        判定表：
-        | 支持数 | 最终判定 |
-        |---------|----------|
-        | ≥3 支持 | VERIFIED |
-        | 2 支持 | PARTIALLY_VERIFIED |
-        | 仅 1 支持 | UNVERIFIED |
-        | 支持+反对各 ≥1 | CONFLICTING |
+        自适应判定表（按实际参与路数调整阈值）：
+        - 4 路参与（KG 有实体）：≥3 支持 → VERIFIED，2 支持 → PARTIALLY
+        - 3 路参与（KG 无实体）：≥2 支持 → VERIFIED，1 支持 → PARTIALLY
+        - 冲突判定：支持+反对各 ≥1 → CONFLICTING
 
         Returns:
             (status, confidence) 元组
         """
-        # 统计支持/反对
-        support_signals = []  # (source, confidence)
+        support_signals = []
         conflict_signals = []
 
-        # RAG
         if rag_status == "supported":
             support_signals.append(("rag", rag_confidence))
         elif rag_status == "conflicting":
             conflict_signals.append(("rag", rag_confidence))
 
-        # KG
         if kg_status in ["verified", "partial"]:
             support_signals.append(("kg", kg_confidence))
         elif kg_status == "conflicting":
             conflict_signals.append(("kg", kg_confidence))
 
-        # External (Wikidata + Wikipedia 综合)
         if ext_status in ["verified", "partial"]:
             support_signals.append(("external", ext_confidence))
         elif ext_status == "conflicting":
@@ -154,24 +170,33 @@ class CrossValidator:
         num_support = len(support_signals)
         num_conflict = len(conflict_signals)
 
+        # 计算实际参与投票的路数（RAG 始终参与，External 始终参与，KG 视 kg_participated）
+        active_voters = 2 + (1 if kg_participated else 0)
+
         # 冲突判定：支持+反对各 ≥1
         if num_support >= 1 and num_conflict >= 1:
             return VerificationStatus.CONFLICTING, 0.3
 
+        # 自适应阈值
+        if active_voters >= 4:
+            verified_threshold = 3
+            partial_threshold = 2
+        else:
+            verified_threshold = 2
+            partial_threshold = 1
+
         # 按支持数判定
-        if num_support >= 3:
+        if num_support >= verified_threshold:
             avg_conf = sum(c for _, c in support_signals) / num_support
             return VerificationStatus.VERIFIED, min(0.95, avg_conf + 0.1)
-        elif num_support == 2:
-            avg_conf = sum(c for _, c in support_signals) / 2
+        elif num_support >= partial_threshold:
+            avg_conf = sum(c for _, c in support_signals) / num_support
             return VerificationStatus.PARTIALLY_VERIFIED, min(0.8, avg_conf)
-        elif num_support == 1:
-            # 仅 1 路支持 → 证据不足，按判定表判定为 UNVERIFIED
-            _, conf = support_signals[0]
-            return VerificationStatus.UNVERIFIED, conf * 0.5
         else:
-            # 无支持
             max_conf = max(rag_confidence, kg_confidence, ext_confidence)
+            if num_support > 0:
+                _, conf = support_signals[0]
+                return VerificationStatus.UNVERIFIED, conf * 0.5
             return VerificationStatus.UNVERIFIED, max_conf * 0.3
 
     def _determine_status(

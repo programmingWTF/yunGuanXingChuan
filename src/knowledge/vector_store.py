@@ -208,13 +208,13 @@ class VectorStore:
 
         return results
 
-    def verify_claim(self, claim: str, threshold: float = 0.6) -> Dict:
+    def verify_claim(self, claim: str, threshold: float = 0.45) -> Dict:
         """
         校验事实断言
 
         Args:
             claim: 待校验的事实断言
-            threshold: 相似度阈值
+            threshold: 相似度阈值（默认 0.45，中文短文本适配）
 
         Returns:
             校验结果字典
@@ -238,7 +238,7 @@ class VectorStore:
                 "source": top_result["metadata"].get("source", ""),
                 "message": "找到支持性证据",
             }
-        elif top_result["score"] >= threshold * 0.7:
+        elif top_result["score"] >= threshold * 0.65:
             return {
                 "status": "partial",
                 "confidence": top_result["score"],

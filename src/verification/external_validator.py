@@ -59,12 +59,14 @@ class ExternalValidator:
     - 查询结果缓存 10 分钟
     """
 
-    def __init__(self, timeout: float = 5.0):
+    def __init__(self, timeout: float = 10.0, max_retries: int = 1):
         """
         Args:
-            timeout: 外部 API 请求超时（秒）
+            timeout: 外部 API 请求超时（秒），默认 10s（代理出境外需更长）
+            max_retries: 超时重试次数（默认 1 次，共 2 次尝试）
         """
         self.timeout = timeout
+        self.max_retries = max_retries
         self.client = httpx.Client(
             timeout=timeout,
             headers={"User-Agent": USER_AGENT},
@@ -286,13 +288,11 @@ class ExternalValidator:
         return matched
 
     def _query_wikidata_relations(self, entity_name: str) -> List[Dict]:
-        """查询实体在 Wikidata 上的关系"""
-        # 先搜索获取 QID
+        """查询实体在 Wikidata 上的关系（含超时重试）"""
         qid = self._search_entity_qid(entity_name)
         if not qid:
             return []
 
-        # SPARQL 查询关系
         sparql_query = f"""
         SELECT ?predicateLabel ?objectLabel WHERE {{
           wd:{qid} ?p ?object .
@@ -301,16 +301,23 @@ class ExternalValidator:
         }}
         LIMIT 30
         """
-        try:
-            resp = self.client.get(
-                SPARQL_ENDPOINT,
-                params={"query": sparql_query, "format": "json"},
-                headers={"User-Agent": USER_AGENT},
-            )
-            resp.raise_for_status()
-            data = resp.json()
-        except Exception as e:
-            logger.debug(f"[ExternalValidator] Wikidata 查询失败: {e}")
+        data = None
+        for attempt in range(1 + self.max_retries):
+            try:
+                resp = self.client.get(
+                    SPARQL_ENDPOINT,
+                    params={"query": sparql_query, "format": "json"},
+                    headers={"User-Agent": USER_AGENT},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                break
+            except Exception as e:
+                if attempt < self.max_retries:
+                    logger.debug(f"[ExternalValidator] Wikidata 查询失败（第{attempt+1}次，重试）: {e}")
+                else:
+                    logger.debug(f"[ExternalValidator] Wikidata 查询失败（已耗尽重试）: {e}")
+        if data is None:
             return []
 
         relations = []
@@ -326,7 +333,7 @@ class ExternalValidator:
         return relations
 
     def _search_entity_qid(self, name: str) -> str:
-        """搜索实体获取 Wikidata QID"""
+        """搜索实体获取 Wikidata QID（含超时重试）"""
         cache_key = f"qid:{name}"
         cached = _cache_get(cache_key)
         if cached is not None:
@@ -341,15 +348,20 @@ class ExternalValidator:
             "limit": 3,
             "type": "item",
         }
-        try:
-            resp = self.client.get(WIKIDATA_API, params=params)
-            resp.raise_for_status()
-            data = resp.json()
-            results = data.get("search", [])
-            qid = results[0]["id"] if results else ""
-        except Exception as e:
-            logger.debug(f"[ExternalValidator] 搜索实体 '{name}' 失败: {e}")
-            qid = ""
+        qid = ""
+        for attempt in range(1 + self.max_retries):
+            try:
+                resp = self.client.get(WIKIDATA_API, params=params)
+                resp.raise_for_status()
+                data = resp.json()
+                results = data.get("search", [])
+                qid = results[0]["id"] if results else ""
+                break
+            except Exception as e:
+                if attempt < self.max_retries:
+                    logger.debug(f"[ExternalValidator] 搜索实体 '{name}' 失败（第{attempt+1}次，重试）: {e}")
+                else:
+                    logger.debug(f"[ExternalValidator] 搜索实体 '{name}' 失败（已耗尽重试）: {e}")
 
         _cache_set(cache_key, {"qid": qid})
         return qid
@@ -386,10 +398,9 @@ class ExternalValidator:
         return 0.0
 
     def _search_wikipedia(self, query: str, lang: str = "zh") -> List[str]:
-        """搜索 Wikipedia 获取相关段落"""
+        """搜索 Wikipedia 获取相关段落（含超时重试）"""
         api_url = WIKIPEDIA_API_ZH if lang == "zh" else WIKIPEDIA_API_EN
 
-        # 先搜索获取页面标题
         params = {
             "action": "query",
             "list": "search",
@@ -397,12 +408,19 @@ class ExternalValidator:
             "srlimit": 3,
             "format": "json",
         }
-        try:
-            resp = self.client.get(api_url, params=params)
-            resp.raise_for_status()
-            data = resp.json()
-        except Exception as e:
-            logger.debug(f"[ExternalValidator] Wikipedia 搜索失败: {e}")
+        data = None
+        for attempt in range(1 + self.max_retries):
+            try:
+                resp = self.client.get(api_url, params=params)
+                resp.raise_for_status()
+                data = resp.json()
+                break
+            except Exception as e:
+                if attempt < self.max_retries:
+                    logger.debug(f"[ExternalValidator] Wikipedia 搜索失败（第{attempt+1}次，重试）: {e}")
+                else:
+                    logger.debug(f"[ExternalValidator] Wikipedia 搜索失败（已耗尽重试）: {e}")
+        if data is None:
             return []
 
         titles = [r["title"] for r in data.get("query", {}).get("search", [])]
@@ -419,7 +437,7 @@ class ExternalValidator:
         return paragraphs
 
     def _get_wikipedia_extract(self, title: str, lang: str = "zh") -> str:
-        """获取 Wikipedia 页面的摘要段落"""
+        """获取 Wikipedia 页面的摘要段落（含超时重试）"""
         api_url = WIKIPEDIA_API_ZH if lang == "zh" else WIKIPEDIA_API_EN
         params = {
             "action": "query",
@@ -429,17 +447,22 @@ class ExternalValidator:
             "explaintext": True,
             "format": "json",
         }
-        try:
-            resp = self.client.get(api_url, params=params)
-            resp.raise_for_status()
-            data = resp.json()
-            pages = data.get("query", {}).get("pages", {})
-            for page in pages.values():
-                extract = page.get("extract", "")
-                if extract:
-                    return extract[:1000]  # 限制长度
-        except Exception as e:
-            logger.debug(f"[ExternalValidator] Wikipedia 获取摘要失败: {e}")
+        for attempt in range(1 + self.max_retries):
+            try:
+                resp = self.client.get(api_url, params=params)
+                resp.raise_for_status()
+                data = resp.json()
+                pages = data.get("query", {}).get("pages", {})
+                for page in pages.values():
+                    extract = page.get("extract", "")
+                    if extract:
+                        return extract[:1000]
+                return ""
+            except Exception as e:
+                if attempt < self.max_retries:
+                    logger.debug(f"[ExternalValidator] Wikipedia 获取摘要失败（第{attempt+1}次，重试）: {e}")
+                else:
+                    logger.debug(f"[ExternalValidator] Wikipedia 获取摘要失败（已耗尽重试）: {e}")
         return ""
 
     def _text_similarity(self, text_a: str, text_b: str) -> float:
