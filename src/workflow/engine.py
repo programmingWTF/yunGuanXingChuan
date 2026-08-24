@@ -506,6 +506,13 @@ class WorkflowEngine:
         def add(c: Any) -> None:
             text = str(c).strip()
             if text and len(text) > 8 and text not in claims:
+                subjective_patterns = [
+                    "具有重要意义", "具有重要", "值得关注", "具有广阔",
+                    "不可或缺", "至关重要", "举足轻重", "很有价值",
+                    "具有深远", "具有重大", "具有突出",
+                ]
+                if any(p in text for p in subjective_patterns):
+                    return
                 claims.append(text[:80])
 
         if stage == WorkflowStage.INSPIRATION:

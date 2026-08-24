@@ -1,6 +1,10 @@
 """
 云观星传 - 交叉验证模块
 结合 RAG、KG、Wikidata、Wikipedia 四路校验结果进行综合判定
+
+Issue #116 修复：
+- Bug 1: 投票判定改为按实际参与路数自适应（不再固定 >=3 才 VERIFIED）
+- Bug 2: KG 路仅凭实体存在不再计为 partial 支持，改为 entity_found（参与但不支持）
 """
 import logging
 from typing import List, Dict, Optional
@@ -29,13 +33,17 @@ class CrossValidator:
         """
         对单条断言进行四路交叉验证
 
-        判定表（四路投票）：
-        | 支持数 | 最终判定 |
-        |---------|----------|
-        | ≥3 支持 | VERIFIED |
-        | 2 支持 | PARTIALLY_VERIFIED |
-        | 仅 1 支持 | UNVERIFIED |
-        | 支持+反对各 ≥1 | CONFLICTING |
+        自适应判定表（按实际参与路数动态调整阈值，Issue #116 修复）：
+        | 参与路数 | 全部支持 | 多数支持(>=半) | 少数支持 | 无支持 |
+        |----------|----------|---------------|----------|--------|
+        | 3        | VERIFIED | PARTIAL       | UNVERIFIED | UNVERIFIED |
+        | 2        | VERIFIED | PARTIAL       | -        | UNVERIFIED |
+        | 1        | PARTIAL  | -             | -        | UNVERIFIED |
+        | 0        | UNVERIFIED | -           | -        | UNVERIFIED |
+
+        冲突：支持+反对各 >=1 -> CONFLICTING
+
+        KG entity_found：实体在图中存在但断言未验证 -> 计为参与但不计为支持
 
         Args:
             claim: 待验证的断言
@@ -51,6 +59,8 @@ class CrossValidator:
         rag_evidence = rag_result.get("evidence", "")
 
         # 路径 2: KG 校验（如果有相关实体）
+        # Bug fix (#116): 仅凭实体存在不等于断言被验证
+        # entity_found = 实体在图中存在但断言未验证 -> 计为参与但不计为支持
         kg_status = "unverified"
         kg_match = ""
         kg_confidence = 0.0
@@ -60,9 +70,9 @@ class CrossValidator:
                 for entity in entities:
                     related = self.kg_checker.get_related_context(entity, depth=1)
                     if related:
-                        kg_status = "partial"
+                        kg_status = "entity_found"
                         kg_match = f"找到相关实体: {entity}"
-                        kg_confidence = 0.5
+                        kg_confidence = 0.3
                         break
             except Exception as e:
                 logger.debug(f"[交叉验证] KG 校验异常（已降级）: {e}")
@@ -116,15 +126,15 @@ class CrossValidator:
         ext_confidence: float,
     ) -> tuple:
         """
-        四路投票判定（RAG + KG + Wikidata + Wikipedia）
+        自适应投票判定（RAG + KG + Wikidata + Wikipedia）
 
-        判定表：
-        | 支持数 | 最终判定 |
-        |---------|----------|
-        | ≥3 支持 | VERIFIED |
-        | 2 支持 | PARTIALLY_VERIFIED |
-        | 仅 1 支持 | UNVERIFIED |
-        | 支持+反对各 ≥1 | CONFLICTING |
+        按实际参与路数动态调整阈值（Issue #116 修复）：
+        - 参与路数 = 给出非 unverified 结果的校验路数
+        - entity_found 计为参与但不计为支持
+        - 全部参与路支持且 >=2 路 -> VERIFIED
+        - 多数(>=半)参与路支持 -> PARTIALLY_VERIFIED
+        - 少数支持 -> UNVERIFIED
+        - 支持+反对各 >=1 -> CONFLICTING
 
         Returns:
             (status, confidence) 元组
@@ -139,7 +149,7 @@ class CrossValidator:
         elif rag_status == "conflicting":
             conflict_signals.append(("rag", rag_confidence))
 
-        # KG
+        # KG: verified/partial 计为支持; entity_found 仅参与不支持; conflicting 计为反对
         if kg_status in ["verified", "partial"]:
             support_signals.append(("kg", kg_confidence))
         elif kg_status == "conflicting":
@@ -154,25 +164,41 @@ class CrossValidator:
         num_support = len(support_signals)
         num_conflict = len(conflict_signals)
 
-        # 冲突判定：支持+反对各 ≥1
+        # 统计实际参与路数（非 unverified 的路；entity_found 计为参与）
+        participating = 0
+        if rag_status != "unverified":
+            participating += 1
+        if kg_status not in ("unverified",):
+            participating += 1
+        if ext_status != "unverified":
+            participating += 1
+
+        # 冲突判定：支持+反对各 >=1
         if num_support >= 1 and num_conflict >= 1:
             return VerificationStatus.CONFLICTING, 0.3
 
-        # 按支持数判定
-        if num_support >= 3:
-            avg_conf = sum(c for _, c in support_signals) / num_support
-            return VerificationStatus.VERIFIED, min(0.95, avg_conf + 0.1)
-        elif num_support == 2:
-            avg_conf = sum(c for _, c in support_signals) / 2
-            return VerificationStatus.PARTIALLY_VERIFIED, min(0.8, avg_conf)
-        elif num_support == 1:
-            # 仅 1 路支持 → 证据不足，按判定表判定为 UNVERIFIED
-            _, conf = support_signals[0]
-            return VerificationStatus.UNVERIFIED, conf * 0.5
-        else:
-            # 无支持
+        # 无支持
+        if num_support == 0:
             max_conf = max(rag_confidence, kg_confidence, ext_confidence)
             return VerificationStatus.UNVERIFIED, max_conf * 0.3
+
+        # 全部参与路都支持
+        if num_support == participating:
+            if participating >= 2:
+                avg_conf = sum(c for _, c in support_signals) / num_support
+                return VerificationStatus.VERIFIED, min(0.95, avg_conf + 0.1)
+            else:
+                _, conf = support_signals[0]
+                return VerificationStatus.PARTIALLY_VERIFIED, min(0.7, conf * 0.8)
+
+        # 多数支持（>=半数参与路支持）-> PARTIALLY_VERIFIED
+        if num_support >= (participating + 1) // 2:
+            avg_conf = sum(c for _, c in support_signals) / num_support
+            return VerificationStatus.PARTIALLY_VERIFIED, min(0.8, avg_conf)
+
+        # 少数支持 -> UNVERIFIED
+        _, conf = support_signals[0]
+        return VerificationStatus.UNVERIFIED, conf * 0.5
 
     def _determine_status(
         self,
