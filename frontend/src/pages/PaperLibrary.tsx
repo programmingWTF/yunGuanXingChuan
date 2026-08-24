@@ -4,17 +4,15 @@
  * 用户上传自己的论文（PDF/DOCX/MD/TXT），系统解析后存入用户级向量库，
  * 并在学术写作阶段自动学习其风格（风格三件套）。
  *
- * 上传链路（R2 直传，绕开 CF Tunnel 100MB/100s 限制）：
- *   1. POST /library/upload-url → 后端签发 presigned PUT URL + 建记录
- *   2. 浏览器直接 PUT 文件到 R2（不经过后端，带进度条）
- *   3. POST /library/confirm → 后端拉取解析/嵌入/风格提取
+ * 上传链路（本地直传，upload3.liguiyu.com:10443 直连入口，不走 CF 代理）：
+ *   POST /library/upload（multipart）→ 后端落盘 → 解析/嵌入/风格提取（单步完成）
  */
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
-import axios from 'axios'
 import { useAuth } from '../auth'
 import {
-  confirmLibraryUpload, createLibraryUpload, deleteLibraryPaper,
-  getLibraryHealth, getLibraryStyle, listLibraryPapers, searchLibrary,
+  deleteLibraryPaper,
+  getLibraryHealth, getLibraryStyle, listLibraryPapers,
+  searchLibrary, uploadLibraryPaper,
   type LibraryPaper, type LibrarySearchResult, type LibraryStyle,
 } from '../api'
 
@@ -34,7 +32,7 @@ function fmtTime(iso: string) {
 
 export default function PaperLibrary() {
   const { user } = useAuth()
-  const [health, setHealth] = useState<{ r2_configured: boolean; supported_extensions: string[] } | null>(null)
+  const [health, setHealth] = useState<{ storage: string; supported_extensions: string[] } | null>(null)
   const [papers, setPapers] = useState<LibraryPaper[]>([])
   const [style, setStyle] = useState<LibraryStyle | null>(null)
   const [searchResults, setSearchResults] = useState<LibrarySearchResult[] | null>(null)
@@ -67,7 +65,7 @@ export default function PaperLibrary() {
     if (user) void loadAll()
   }, [user, loadAll])
 
-  // ── 上传流程 ──
+  // ── 上传流程（单步：multipart 直传 upload3 入口，后端同步解析）──
   const startUpload = async (file: File) => {
     setError(null); setNotice(null)
     const ext = '.' + (file.name.split('.').pop() || '').toLowerCase()
@@ -79,20 +77,10 @@ export default function PaperLibrary() {
     setUploading(true)
     setProgress(1)
     try {
-      // ① 签发 presigned PUT URL
-      const { upload_url, paper_id } = await createLibraryUpload(file.name, file.type || 'application/octet-stream')
-      setProgress(5)
-      // ② 浏览器直传 R2（整文件 PUT，presigned URL 指向 r2.cloudflarestorage.com，不走 CF 代理）
-      await axios.put(upload_url, file, {
-        headers: { 'Content-Type': file.type || 'application/octet-stream' },
-        onUploadProgress: (e) => {
-          if (e.total) setProgress(5 + Math.round(((e.loaded / e.total) * 90)))
-        },
-        timeout: 300000, // 大文件 5 分钟
+      // 直传后端（upload3 直连入口），进度条覆盖上传阶段；后端解析期间保持 99%
+      const res = await uploadLibraryPaper(file, (pct) => {
+        setProgress(Math.min(pct, 99))
       })
-      setProgress(96)
-      // ③ 确认 → 后端解析/嵌入/风格提取
-      const res = await confirmLibraryUpload(paper_id)
       setProgress(100)
       if (res.status === 'ready') {
         setNotice(`「${file.name}」已入库（${res.chunk_count} 个片段），风格已提取`)
@@ -122,7 +110,7 @@ export default function PaperLibrary() {
   }
 
   const onDelete = async (id: number, name: string) => {
-    if (!window.confirm(`确定删除「${name}」？将同时移除向量索引与 R2 文件。`)) return
+    if (!window.confirm(`确定删除「${name}」？将同时移除本地文件与向量索引。`)) return
     try {
       await deleteLibraryPaper(id)
       setNotice(`已删除「${name}」`)
@@ -172,8 +160,8 @@ export default function PaperLibrary() {
         <p className="text-xs text-slate-500 mt-1.5 leading-relaxed max-w-3xl">
           上传你自己的论文/报告，系统解析后建立<strong className="text-slate-700">个人专属向量库</strong>，
           并提取你的<strong className="text-slate-700">学术写作风格</strong>（术语 / 结构 / 句式）。学术写作阶段会自动参考你的风格与既有研究。
-          {health && !health.r2_configured && (
-            <span className="ml-2 text-amber-600 font-medium">⚠ 存储未配置（R2），上传暂不可用</span>
+          {health && health.storage === 'local' && (
+            <span className="ml-2 text-emerald-600 font-medium">✓ 本地直连存储（upload3 入口）</span>
           )}
         </p>
       </div>
@@ -206,7 +194,7 @@ export default function PaperLibrary() {
           <>
             <p className="text-3xl mb-2">📄</p>
             <p className="text-sm font-medium text-slate-700">点击选择或拖拽论文文件到此处</p>
-            <p className="text-[11px] text-slate-400 mt-1.5">支持 PDF / DOCX / MD / TXT（单文件建议 ≤ 50MB，直传 R2 不走隧道）</p>
+            <p className="text-[11px] text-slate-400 mt-1.5">支持 PDF / DOCX / MD / TXT（单文件 ≤ 50MB，直连 upload3 不走 CF）</p>
           </>
         ) : (
           <>
@@ -217,7 +205,7 @@ export default function PaperLibrary() {
               <div className="h-full bg-indigo-500 transition-all duration-200" style={{ width: `${progress}%` }} />
             </div>
             <p className="text-[11px] text-slate-400 mt-2">
-              {progress < 95 ? '直传 Cloudflare R2…' : '后端解析 & 向量化…'}
+              {progress < 99 ? '直连上传中…' : '后端解析 & 向量化…'}
             </p>
           </>
         )}

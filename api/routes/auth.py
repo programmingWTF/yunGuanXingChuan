@@ -138,6 +138,8 @@ def login(req: LoginRequest, response: Response):
     return {
         "success": True,
         "user": {"id": user["id"], "email": user["email"], "name": user["name"], "role": user["role"]},
+        # 供跨域直传（upload3.liguiyu.com:10443）鉴权用：前端带 Authorization: Bearer <token>
+        "token": token,
     }
 
 
@@ -162,5 +164,7 @@ def me(request: Request):
             "role": user["role"],
             "created_at": user["created_at"],
             "llm_configured": user_llm_configured(user["id"]),
-        }
+        },
+        # 刷新页面后前端内存 token 丢失：me 重新下发一份供跨域上传使用
+        "token": issue_token(user["id"]),
     }

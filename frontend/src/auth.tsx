@@ -6,7 +6,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import axios from 'axios'
-import { getMe, loginUser, logoutUser, type AuthUser } from './api'
+import { getMe, loginUser, logoutUser, setAuthToken, type AuthUser } from './api'
 
 interface AuthContextValue {
   /** 当前登录用户（null = 未登录） */
@@ -26,20 +26,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false
     getMe()
-      .then(({ user: u }) => { if (!cancelled) setUser(u) })
+      .then(({ user: u, token }) => {
+        if (!cancelled) setUser(u)
+        if (token) setAuthToken(token) // 刷新后重新拿跨域上传 token
+      })
       .catch(() => { /* 401 = 未登录，保持 null */ })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])
 
   const login = useCallback(async (email: string, password: string) => {
-    const { user: u } = await loginUser(email, password)
+    const { user: u, token } = await loginUser(email, password)
     setUser(u)
+    if (token) setAuthToken(token)
   }, [])
 
   const logout = useCallback(async () => {
     try { await logoutUser() } catch { /* 忽略 */ }
     setUser(null)
+    setAuthToken(null)
   }, [])
 
   return (

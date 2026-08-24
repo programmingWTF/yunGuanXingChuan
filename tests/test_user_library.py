@@ -199,14 +199,13 @@ class TestUserLibrary:
         lib = UserLibrary("u1")
         assert lib.delete_paper(999) is False
 
-    def test_process_paper_no_r2(self, tmp_path, monkeypatch):
-        """未配置 R2 时 process_paper 应失败并置 error 状态（不崩溃）"""
+    def test_process_paper_missing_file(self, tmp_path, monkeypatch):
+        """本地文件不存在时 process_paper 应失败并置 error 状态（不崩溃）"""
         import src.knowledge.user_library as ul
         monkeypatch.setattr(ul, "USER_LIBRARY_ROOT", tmp_path / "ul")
         monkeypatch.setattr(ul, "LIBRARY_DB_PATH", tmp_path / "lib.db")
-        monkeypatch.setattr(ul, "get_r2_config", lambda: {})  # R2 未配置
         lib = UserLibrary("u1")
-        pid = lib.create_paper("t", "k", "t.pdf", ".pdf")
+        pid = lib.create_paper("t", "u1/files/not_exist.pdf", "t.pdf", ".pdf")
         result = lib.process_paper(pid)
         assert result["ok"] is False
         assert lib.get_paper(pid)["status"] == "error"
