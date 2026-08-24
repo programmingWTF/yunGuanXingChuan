@@ -1,8 +1,8 @@
-/**
+﻿/**
  * 云观星传 - ② 文献综述（产出物查看页）
  * 展示文献归类、综述正文与 Research Gap
  */
-import { StageLayout, StageSources, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
+import { StageLayout, StageSources, StatusBadge, NoProjectHint, useStageExec, StageActions, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
 
 const INFO: StageInfo = {
   stage: 2, icon: '📚', title: '文献综述', en: 'LITERATURE REVIEW',
@@ -123,7 +123,7 @@ function TheoryRelationGraph({ relations }: { relations: TheoryRelation[] }) {
 }
 
 export default function Literature() {
-  const { projectId, status, rec, running, error, confirmRerun, rerunConfirmEl } = useStageExec(2)
+  const { projectId, status, rec, running, error, locked, exec, approve, confirmRerun, rerunConfirmEl } = useStageExec(2)
 
   const output = (rec?.output ?? null) as {
     sections?: { theme: string; content: string }[]
@@ -140,13 +140,15 @@ export default function Literature() {
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <StatusBadge status={status} />
-            {status !== 'running' && (
-              <button onClick={confirmRerun} disabled={running}
-                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
-                {running ? '生成中…' : '重新运行'}
-              </button>
-            )}
-            {error && <span className="text-[11px] text-red-600">{error}</span>}
+            <StageActions
+            stage={2}
+            status={status}
+            onRun={() => void exec({})}
+            onApprove={approve}
+            running={running}
+            error={error}
+            runLabel="开始综述"
+          />
           </div>
 
           {/* RAG + KG 双校验报告（产出物后置校验） */}
@@ -159,7 +161,7 @@ export default function Literature() {
                 <h3 className="sec-label !mb-2">文献归类</h3>
                 {sections.map((s, i) => (
                   <a key={i} href={`#sec-${i}`}
-                    className="block text-[12px] text-slate-600 hover:text-sky-700 py-1.5 px-2 rounded-lg hover:bg-slate-100 transition-colors">
+                    className="block text-[12px] text-slate-600 hover:text-indigo-700 py-1.5 px-2 rounded-lg hover:bg-slate-100 transition-colors">
                     ▸ {s.theme}
                   </a>
                 ))}
@@ -179,7 +181,7 @@ export default function Literature() {
               <div className="space-y-4">
                 {sections.map((s, i) => (
                   <div key={i} id={`sec-${i}`} className="card p-5">
-                    <h4 className="text-sm font-medium text-sky-600 mb-2">{s.theme}</h4>
+                    <h4 className="text-sm font-medium text-indigo-600 mb-2">{s.theme}</h4>
                     <p className="text-[13px] text-slate-600 leading-relaxed whitespace-pre-wrap">{s.content}</p>
                   </div>
                 ))}

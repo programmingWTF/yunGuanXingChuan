@@ -2,12 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ═══════════════ 云观星传 V3.0 设计系统 — 他山世界学术风 ═══════════════
- * 依据《他山世界-设计风格调研.md》复刻：
- * 宋体衬线 + 大留白 + 低饱和青蓝 + 细网格线 + 光晕 + 扫光微动效
+/* ═══════════════ 云观星传 — 国风山水主题设计系统 ═══════════════
+ * 设计令牌对齐《代码2》设计稿 + 效果图：
+ * 淡雅水墨配色 / 靛蓝主色 / 古风衬线 display 字体 / 亮暗双主题 / 国风动效
  */
 
-/* ── 字体（来自 liguiyu-home/app/fonts，本项目 assets/fonts 持有副本）── */
+/* ── 古风衬线字体（标题/大字，国风核心字体）── */
 @font-face {
   font-family: 'Noto Serif SC';
   src: url('./assets/fonts/NotoSerifSC-400.ttf') format('truetype');
@@ -15,7 +15,6 @@
   font-style: normal;
   font-display: swap;
 }
-
 @font-face {
   font-family: 'Noto Serif SC';
   src: url('./assets/fonts/NotoSerifSC-500.ttf') format('truetype');
@@ -23,7 +22,6 @@
   font-style: normal;
   font-display: swap;
 }
-
 @font-face {
   font-family: 'Noto Serif SC';
   src: url('./assets/fonts/NotoSerifSC-600.ttf') format('truetype');
@@ -31,7 +29,6 @@
   font-style: normal;
   font-display: swap;
 }
-
 @font-face {
   font-family: 'Noto Serif SC';
   src: url('./assets/fonts/NotoSerifSC-700.ttf') format('truetype');
@@ -39,7 +36,6 @@
   font-style: normal;
   font-display: swap;
 }
-
 @font-face {
   font-family: 'Noto Serif SC';
   src: url('./assets/fonts/NotoSerifSC-900.ttf') format('truetype');
@@ -48,157 +44,715 @@
   font-display: swap;
 }
 
-@font-face {
-  font-family: 'MonaspaceRadonFrozen';
-  src: url('./assets/fonts/MonaspaceRadonFrozen-Regular.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'MonaspaceRadonFrozen';
-  src: url('./assets/fonts/MonaspaceRadonFrozen-Italic.ttf') format('truetype');
-  font-weight: 400;
-  font-style: italic;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'MonaspaceRadonFrozen';
-  src: url('./assets/fonts/MonaspaceRadonFrozen-Bold.ttf') format('truetype');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'MonaspaceRadonFrozen';
-  src: url('./assets/fonts/MonaspaceRadonFrozen-BoldItalic.ttf') format('truetype');
-  font-weight: 700;
-  font-style: italic;
-  font-display: swap;
-}
-
-/* ── 设计 token（他山 4.1 全表，85% 根字号小字路线）── */
 :root {
-  --app-root-font-size: 85%;
-  /* 品牌色 */
-  --brand-primary: #3B82F6;
-  --brand-dark: #1E40AF;
-  --brand-light: #DBEAFE;
-  --accent-primary: #0EA5E9;
-  --color-secondary: #0EA5E9;
-  /* 中性色板 */
-  --bg-page: #F8FAFC;
-  --bg-container: #FFFFFF;
-  --bg-secondary: #F1F5F9;
-  --bg-hover: #F1F5F9;
-  --bg-selected: #E0F2FE;
-  --bg-footer: #0E2E4F;
-  /* 文字色 */
-  --text-primary: #1E293B;
-  --text-secondary: #475569;
-  --text-tertiary: #94A3B8;
-  --text-inverse: #FFFFFF;
-  /* 边框 */
-  --border-default: #E2E8F0;
-  --border-hover: #CBD5E1;
-  --border-active: #0EA5E9;
-  --border-focus: #3B82F6;
-  /* 语义色 */
-  --accent-success: #10B981;
-  --accent-warning: #F59E0B;
-  --accent-error: #EF4444;
-  --accent-info: #3B82F6;
-  /* 圆角（偏大的胶囊圆角体系） */
-  --radius-md: 20px;
-  --radius-lg: 28px;
-  --radius-xl: 32px;
-  --radius-full: 9999px;
-  /* 阴影（极克制） */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .05);
-  --shadow-md: 0 1px 3px rgba(0, 0, 0, .1), 0 1px 2px rgba(0, 0, 0, .06);
-  --shadow-lg: 0 4px 6px rgba(0, 0, 0, .07), 0 2px 4px rgba(0, 0, 0, .06);
+  --radius: 0.625rem;
+  --font-sans: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Noto Sans SC", ui-sans-serif, system-ui, -apple-system, sans-serif;
 
-  /* ── shadcn/ui 组件库 Design Token（映射到上方他山配色）── */
-  --background: 210 40% 98%;          /* #F8FAFC 页面底 */
-  --foreground: 215 28% 17%;          /* #1E293B 正文 */
-  --card: 0 0% 100%;                   /* #FFFFFF 卡片底 */
-  --card-foreground: 215 28% 17%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 215 28% 17%;
-  --primary: 217 91% 60%;             /* #3B82F6 品牌蓝 */
-  --primary-foreground: 0 0% 100%;
-  --secondary: 210 40% 96%;           /* #F1F5F9 */
-  --secondary-foreground: 215 28% 17%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 20% 45%;    /* #475569 次要文字 */
-  --accent: 199 97% 88%;              /* #E0F2FE 选中底 */
-  --accent-foreground: 199 89% 40%;   /* #0EA5E9 强调天蓝 */
-  --destructive: 0 84% 60%;           /* #EF4444 错误 */
-  --destructive-foreground: 0 0% 100%;
-  --border: 214 32% 91%;              /* #E2E8F0 */
-  --input: 214 32% 91%;
-  --ring: 217 91% 60%;                /* #3B82F6 焦点环 */
-  --radius: 1rem;                     /* 组件基础圆角 16px（呼应 --radius-md 20px）*/
-  --chart-1: 217 91% 60%;
-  --chart-2: 199 89% 48%;
-  --chart-3: 158 64% 52%;
-  --chart-4: 38 92% 50%;
-  --chart-5: 262 83% 58%;
-  --sidebar-background: 210 40% 98%;
-  --sidebar-foreground: 215 28% 17%;
-  --sidebar-primary: 217 91% 60%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 199 97% 88%;
-  --sidebar-accent-foreground: 199 89% 40%;
-  --sidebar-border: 214 32% 91%;
-  --sidebar-ring: 217 91% 60%;
+  /* 国风山水配色 - 淡雅水墨 */
+  --background: #f8f9fa;
+  --foreground: #1e293b;
+  --card: #ffffff;
+  --card-foreground: #1e293b;
+  --popover: #ffffff;
+  --popover-foreground: #1e293b;
+  --primary: #4f46e5;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #334155;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #f1f5f9;
+  --accent-foreground: #334155;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #4f46e5;
+
+  /* 图表颜色 - 国风色调 */
+  --chart-1: #4f46e5;
+  --chart-2: #0ea5e9;
+  --chart-3: #10b981;
+  --chart-4: #f59e0b;
+  --chart-5: #ec4899;
+
+  /* 侧边栏 */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1e293b;
+  --sidebar-primary: #4f46e5;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f1f5f9;
+  --sidebar-accent-foreground: #334155;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #4f46e5;
+
+  /* ── 国风扩展令牌（效果图规范：深靛蓝 / 古典金 / 雾蓝 / 水墨蓝 / 状态绿）── */
+  --ink: #17294f;
+  --ink-2: #1c315b;
+  --ink-3: #2b416d;
+  --gold: #c8b37a;
+  --gold-2: #d3c18f;
+  --gold-3: #b69c61;
+  --mist: #dde7f0;
+  --mist-2: #c8d7e7;
+  --water-ink: #5e7392;
+  --inkwash-1: #405a7d;
+  --success-green: #4da77a;
+  --paper: #f7f9fa;
 }
 
-* {
-  box-sizing: border-box;
+.dark {
+  --background: #0f172a;
+  --foreground: #f8fafc;
+  --card: #1e293b;
+  --card-foreground: #f8fafc;
+  --popover: #1e293b;
+  --popover-foreground: #f8fafc;
+  --primary: #818cf8;
+  --primary-foreground: #0f172a;
+  --secondary: #334155;
+  --secondary-foreground: #f8fafc;
+  --muted: #334155;
+  --muted-foreground: #94a3b8;
+  --accent: #334155;
+  --accent-foreground: #f8fafc;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #334155;
+  --input: #334155;
+  --ring: #818cf8;
+  --chart-1: #818cf8;
+  --chart-2: #38bdf8;
+  --chart-3: #34d399;
+  --chart-4: #fbbf24;
+  --chart-5: #f472b6;
+  --sidebar: #1e293b;
+  --sidebar-foreground: #f8fafc;
+  --sidebar-primary: #818cf8;
+  --sidebar-primary-foreground: #0f172a;
+  --sidebar-accent: #334155;
+  --sidebar-accent-foreground: #f8fafc;
+  --sidebar-border: #334155;
+  --sidebar-ring: #818cf8;
 }
 
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    /* 全站最底层：水墨山水星象原图全屏固定（不随滚动，页面内容浮于其上） */
+    background-image: url('/cloud-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+  }
+}
+
+/* 国风山水自定义样式 */
+@layer utilities {
+  /* 竖排文字 */
+  .writing-vertical {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+  }
+
+  /* 水墨渐变背景 */
+  .bg-ink-wash {
+    background: linear-gradient(
+      135deg,
+      rgba(248, 249, 250, 0.95) 0%,
+      rgba(241, 245, 249, 0.9) 50%,
+      rgba(226, 232, 240, 0.85) 100%
+    );
+  }
+
+  /* 山水纹理 */
+  .bg-mountain-texture {
+    background-image: 
+      radial-gradient(ellipse at 20% 80%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
+  }
+
+  /* 星点装饰 */
+  .stars-decoration {
+    background-image: 
+      radial-gradient(2px 2px at 20px 30px, rgba(251, 191, 36, 0.4), transparent),
+      radial-gradient(2px 2px at 40px 70px, rgba(251, 191, 36, 0.3), transparent),
+      radial-gradient(1px 1px at 90px 40px, rgba(251, 191, 36, 0.5), transparent),
+      radial-gradient(2px 2px at 130px 80px, rgba(251, 191, 36, 0.3), transparent),
+      radial-gradient(1px 1px at 160px 20px, rgba(251, 191, 36, 0.4), transparent);
+    background-repeat: repeat;
+    background-size: 200px 100px;
+  }
+
+  /* 卡片悬浮效果 */
+  .card-hover-lift {
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+  }
+  .card-hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.1);
+  }
+
+  /* 国风边框 */
+  .border-chinese {
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    position: relative;
+  }
+  .border-chinese::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border: 1px solid transparent;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), transparent, rgba(59, 130, 246, 0.1)) border-box;
+    -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  /* 淡入动画 */
+  .fade-in-up {
+    animation: fadeInUp 0.6s ease-out forwards;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* 脉冲光晕 */
+  .pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 40px rgba(99, 102, 241, 0.5);
+    }
+  }
+
+  /* 墨迹扩散效果 */
+  .ink-spread {
+    position: relative;
+    overflow: hidden;
+  }
+  .ink-spread::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(99, 102, 241, 0.1) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .ink-spread:hover::after {
+    opacity: 1;
+  }
+
+  /* 滚动条样式 */
+  .scrollbar-chinese::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-chinese::-webkit-scrollbar-track {
+    background: rgba(226, 232, 240, 0.5);
+    border-radius: 3px;
+  }
+  .scrollbar-chinese::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.5);
+    border-radius: 3px;
+  }
+  .scrollbar-chinese::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.5);
+  }
+
+  /* 文字渐变 */
+  .text-gradient-chinese {
+    background: linear-gradient(135deg, #1e293b 0%, #4f46e5 50%, #1e293b 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* 玻璃态效果 */
+  .glass-chinese {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  /* 按钮悬浮光效 */
+  .btn-glow {
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-glow::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+    border-radius: 50%;
+  }
+  .btn-glow:hover::before {
+    width: 300%;
+    height: 300%;
+  }
+}
+
+/* 响应式字体大小调整 */
+@media (max-width: 640px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+/* 平滑滚动 */
 html {
-  font-size: var(--app-root-font-size);
+  scroll-behavior: smooth;
 }
 
-body {
-  margin: 0;
-  font-family: 'Noto Serif SC', Georgia, STSong, SimSun, serif;
-  background: var(--bg-page);
-  color: var(--text-secondary);
-  min-height: 100vh;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-  /* 他山背景技法：细网格线铺底（透明度 ≤0.06，只制造质感） */
-  background-image:
-    repeating-linear-gradient(90deg, transparent 0 72px, rgba(148, 163, 184, .06) 72px 73px),
-    repeating-linear-gradient(0deg, transparent 0 72px, rgba(148, 163, 184, .05) 72px 73px);
+/* ========== 国风动画效果 ========== */
+/* 云纹飘动动画 */
+@keyframes cloudFloat {
+  0% {
+    transform: translateX(0) translateY(0);
+  }
+  25% {
+    transform: translateX(10px) translateY(-5px);
+  }
+  50% {
+    transform: translateX(20px) translateY(0);
+  }
+  75% {
+    transform: translateX(10px) translateY(5px);
+  }
+  100% {
+    transform: translateX(0) translateY(0);
+  }
 }
 
-/* ── 滚动条 ── */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+@keyframes cloudFloatSlow {
+  0% {
+    transform: translateX(0) translateY(0);
+  }
+  50% {
+    transform: translateX(30px) translateY(-10px);
+  }
+  100% {
+    transform: translateX(0) translateY(0);
+  }
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+@keyframes cloudFloatReverse {
+  0% {
+    transform: translateX(0) translateY(0);
+  }
+  50% {
+    transform: translateX(-25px) translateY(8px);
+  }
+  100% {
+    transform: translateX(0) translateY(0);
+  }
 }
 
-::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-  border-radius: 99px;
+/* 星星闪烁动画 */
+@keyframes starTwinkle {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+@keyframes starPulse {
+  0%, 100% {
+    opacity: 0.4;
+    filter: drop-shadow(0 0 2px rgba(251, 191, 36, 0.5));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.8));
+  }
 }
 
-/* ── 隐藏滚动条但保留滚动能力（导航横向滚动区 / 移动端等）── */
+/* 星光旋转 */
+@keyframes starRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 北斗七星连线闪烁 */
+@keyframes constellationShine {
+  0%, 100% {
+    stroke-opacity: 0.3;
+  }
+  50% {
+    stroke-opacity: 0.8;
+  }
+}
+
+/* 粒子上升 */
+@keyframes particleRise {
+  0% {
+    transform: translateY(100vh) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  90% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-100px) translateX(20px);
+    opacity: 0;
+  }
+}
+
+/* 水墨晕染 */
+@keyframes inkSpread {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.1;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* 骨架屏流光 */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* 应用动画的类 */
+.animate-cloud-float {
+  animation: cloudFloat 8s ease-in-out infinite;
+}
+
+.animate-cloud-float-slow {
+  animation: cloudFloatSlow 12s ease-in-out infinite;
+}
+
+.animate-cloud-float-reverse {
+  animation: cloudFloatReverse 10s ease-in-out infinite;
+}
+
+.animate-star-twinkle {
+  animation: starTwinkle 3s ease-in-out infinite;
+}
+
+.animate-star-pulse {
+  animation: starPulse 2s ease-in-out infinite;
+}
+
+.animate-star-rotate {
+  animation: starRotate 20s linear infinite;
+}
+
+.animate-constellation-shine {
+  animation: constellationShine 4s ease-in-out infinite;
+}
+
+.animate-particle-rise {
+  animation: particleRise 15s linear infinite;
+}
+
+.animate-ink-spread {
+  animation: inkSpread 8s ease-out infinite;
+}
+
+/* 延迟类 */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-500 { animation-delay: 500ms; }
+.delay-700 { animation-delay: 700ms; }
+.delay-1000 { animation-delay: 1000ms; }
+.delay-1500 { animation-delay: 1500ms; }
+.delay-2000 { animation-delay: 2000ms; }
+.delay-3000 { animation-delay: 3000ms; }
+.delay-4000 { animation-delay: 4000ms; }
+.delay-5000 { animation-delay: 5000ms; }
+
+/* 云纹装饰 */
+.cloud-pattern {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.15;
+}
+
+.cloud-pattern svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* 星星装饰 */
+.star-decoration {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* 动态背景层 */
+.animated-background {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+/* 浮动粒子 */
+.floating-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(200, 179, 122, 0.6) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* 星座连线动画 */
+.constellation-line {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: drawLine 3s ease-out forwards;
+}
+
+@keyframes drawLine {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* 光晕扩散 */
+.glow-expand {
+  animation: glowExpand 3s ease-out infinite;
+}
+
+@keyframes glowExpand {
+  0% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 20px rgba(99, 102, 241, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+  }
+}
+
+/* 选中文字样式 */
+::selection {
+  background: rgba(99, 102, 241, 0.2);
+  color: #1e293b;
+}
+
+/* 焦点样式 */
+:focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.5);
+  outline-offset: 2px;
+}
+
+/* 禁用状态 */
+:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ═══════════════ 组件层（设计稿卡片/按钮/输入框规范）═══════════════ */
+@layer components {
+  /* 面板/卡片：白底 + 1px 边框 + rounded-2xl + 浅阴影（设计稿内页卡片） */
+  .panel,
+  .card,
+  .glass-card {
+    position: relative;
+    /* 玻璃拟态：半透明 + 背景模糊，保留国风山水背景可见，同时保证文字可读 */
+    background: rgba(255, 255, 255, 0.72);
+    -webkit-backdrop-filter: blur(14px) saturate(1.08);
+    backdrop-filter: blur(14px) saturate(1.08);
+    border: 1px solid rgba(226, 232, 240, 0.75);
+    border-radius: 1rem;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    overflow: hidden;
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+  }
+
+  .panel:hover,
+  .card:hover {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+
+  /* 关键卡片：悬浮上提 + 大阴影（设计稿 card-hover-lift） */
+  .card-sweep {
+    position: relative;
+    background: rgba(255, 255, 255, 0.72);
+    -webkit-backdrop-filter: blur(14px) saturate(1.08);
+    backdrop-filter: blur(14px) saturate(1.08);
+    border: 1px solid rgba(226, 232, 240, 0.75);
+    border-radius: 1rem;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    overflow: hidden;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+  }
+
+  .card-sweep:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.1);
+  }
+
+  /* 区块英文小标签：大写 + 宽字距（设计稿小字注解风格） */
+  .sec-label {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+
+  /* 主按钮：靛蓝渐变（设计稿 CTA：from-indigo-600 to-blue-700） */
+  .btn-primary {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: #ffffff;
+    min-height: 2.75rem;
+    background: linear-gradient(to right, #4f46e5, #1d4ed8);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease, filter 0.3s ease;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.08);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    transform: scale(0.98);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* 次级按钮：白底细边框，hover 靛蓝（设计稿次级动作） */
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.7);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    color: #475569;
+    transition: all 0.3s;
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    border-color: #a5b4fc;
+    background: #eef2ff;
+    color: #4338ca;
+  }
+
+  .btn-ghost:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* 输入框：白底细边框，聚焦靛蓝（设计稿 :focus-visible） */
+  .input-field {
+    width: 100%;
+    border-radius: 0.5rem;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    color: #334155;
+    background: rgba(255, 255, 255, 0.68);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    transition: all 0.3s;
+  }
+
+  .input-field:focus {
+    outline: none;
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+  }
+
+  .input-field:disabled {
+    opacity: 0.5;
+  }
+
+  /* 骨架屏 */
+  .skeleton {
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+    border-radius: 0.5rem;
+  }
+}
+
+/* 路由切换过渡（设计稿 fadeInUp 节奏） */
+.page-transition {
+  animation: fadeInUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* 隐藏滚动条（横向滚动导航） */
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -206,347 +760,4 @@ body {
 
 .no-scrollbar::-webkit-scrollbar {
   display: none;
-}
-
-/* ── 选区 ── */
-::selection {
-  background: rgba(14, 165, 233, .18);
-  color: #1E293B;
-}
-
-@layer components {
-
-  /* ═══ 面板/卡片：白底 + 1px 边框 + 大圆角 + 极浅阴影 + 右上光晕 + 扫光 ═══ */
-  .panel {
-    position: relative;
-    background: var(--bg-container);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
-    overflow: hidden;
-    transition: border-color .3s ease, box-shadow .3s ease, transform .3s ease;
-  }
-
-  .panel:hover {
-    border-color: var(--border-hover);
-    box-shadow: var(--shadow-md);
-  }
-
-  /* 卡片右上角径向光晕（青绿低透明，他山装饰技法） */
-  .panel-beam::before {
-    content: '';
-    position: absolute;
-    top: -60px;
-    right: -60px;
-    width: 220px;
-    height: 220px;
-    background: radial-gradient(circle at 50% 50%, rgba(64, 174, 176, .10), transparent 62%);
-    pointer-events: none;
-  }
-
-  /* 卡片扫光：hover 时 105deg 半透明白斜条扫过（他山 cardSpecularSweep，克制）
-   * 起始位置 -150% 确保非悬停时完全隐藏不出边（issue #56 修复） */
-  .panel-sweep::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 38%;
-    background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .22) 46%, transparent 72%);
-    transform: translateX(-150%) skewX(-18deg);
-    transition: transform .9s cubic-bezier(.22, 1, .36, 1);
-    pointer-events: none;
-  }
-
-  .panel-sweep:hover::after {
-    transform: translateX(300%) skewX(-18deg);
-  }
-
-  /* 旧卡片兼容：默认克制（白底 + 右上光晕），不带 hover 扫光；
-   * 需要扫光点睛的关键/主视觉卡片请显式加 .card-sweep（issue #62 收敛） */
-  .card {
-    @apply panel panel-beam;
-  }
-
-  .glass-card {
-    @apply panel panel-beam;
-  }
-
-  /* 关键/主视觉卡片专用：白底 + 右上光晕 + hover 扫光（只给需要点睛的卡片启用） */
-  .card-sweep {
-    @apply panel panel-beam panel-sweep;
-  }
-
-  /* ═══ 区块标题：英文大写小标签 + 中文主标题 ═══
-   * 英文：12px / 600 / 字距 0.22em / #94A3B8（他山 5.2/5.3） */
-  .sec-label {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--text-tertiary);
-  }
-
-  /* ═══ 主按钮：深蓝灰渐变（他山 8.2），hover 微缩 ═══ */
-  .btn-primary {
-    @apply relative inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-btn font-medium text-sm text-white overflow-hidden;
-    min-height: 3rem;
-    background: linear-gradient(135deg, #314158 0%, #3D5574 100%);
-    box-shadow: var(--shadow-sm);
-    transition: transform .3s cubic-bezier(.22, 1, .36, 1), box-shadow .3s ease;
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    transform: scale(.98);
-    box-shadow: var(--shadow-md);
-  }
-
-  .btn-primary:active:not(:disabled) {
-    transform: scale(.97);
-  }
-
-  .btn-primary:disabled {
-    opacity: .45;
-    cursor: not-allowed;
-  }
-
-  .btn-primary::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 32%;
-    background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .14) 46%, transparent 72%);
-    transform: translateX(-150%) skewX(-18deg);
-    transition: transform .7s ease;
-  }
-
-  .btn-primary:hover:not(:disabled)::after {
-    transform: translateX(280%) skewX(-18deg);
-  }
-
-  /* ═══ 次级按钮：白底细边框（他山：边框区分而非阴影）═══ */
-  .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-btn text-sm font-medium transition-all duration-300;
-    background: var(--bg-container);
-    border: 1px solid var(--border-default);
-    color: var(--text-secondary);
-  }
-
-  .btn-ghost:hover:not(:disabled) {
-    border-color: var(--border-hover);
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-  }
-
-  .btn-ghost:disabled {
-    opacity: .45;
-    cursor: not-allowed;
-  }
-
-  /* ═══ 导航链接（顶部导航/侧栏通用）：衬线、hover 加深、激活浅蓝底 ═══ */
-  .nav-link {
-    @apply relative flex items-center gap-2.5 px-4 py-2 rounded-mid text-sm transition-all duration-300;
-    font-family: 'Noto Serif SC', Georgia, STSong, serif;
-    color: var(--text-secondary);
-  }
-
-  .nav-link:hover {
-    color: var(--text-primary);
-    background: var(--bg-hover);
-  }
-
-  .nav-link.active {
-    color: #0369A1;
-    background: var(--bg-selected);
-  }
-
-  /* ═══ 输入框：白底细边框，聚焦品牌蓝 ═══ */
-  .input-field {
-    @apply w-full rounded-mid px-4 py-2.5 text-sm text-slate-700 transition-all duration-300;
-    font-family: 'Noto Serif SC', Georgia, STSong, serif;
-    background: var(--bg-container);
-    border: 1px solid var(--border-default);
-  }
-
-  .input-field:focus {
-    outline: none;
-    border-color: var(--border-focus);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, .12);
-  }
-
-  .input-field:disabled {
-    opacity: .5;
-  }
-
-  /* ═══ 统计数字：大号 tabular-nums 衬线数字（他山 8.5）═══ */
-  .stat-num {
-    font-family: 'Noto Serif SC', Georgia, serif;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    font-variant-numeric: tabular-nums;
-    color: var(--text-primary);
-  }
-
-  /* ═══ 徽章/标签：胶囊（他山 8.6）═══ */
-  .chip {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    border: 1px solid var(--border-default);
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
-  }
-
-  /* ═══ 分隔线 ═══ */
-  .divider-glow {
-    height: 1px;
-    background: var(--border-default);
-  }
-
-  /* ═══ 骨架屏微光 ═══ */
-  .skeleton {
-    background: linear-gradient(90deg, rgba(226, 232, 240, .5) 25%, rgba(203, 213, 225, .7) 50%, rgba(226, 232, 240, .5) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 2.4s linear infinite;
-    border-radius: 10px;
-  }
-}
-
-/* ── 页面切换：上浮 + 淡入（他山 9.2：300-500ms ease-out）── */
-@keyframes pageIn {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.page-transition {
-  animation: pageIn .45s cubic-bezier(.22, 1, .36, 1) forwards;
-}
-
-/* ── 通用淡入 ── */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-6px) scale(.99);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.animate-fade-in {
-  animation: fadeIn .25s cubic-bezier(.22, 1, .36, 1) forwards;
-}
-
-/* ── 页脚顶部渐变过渡（浅页背景 → 深海军蓝，替代旧版 absolute 浮层）── */
-.bg-footer {
-  position: relative;
-}
-
-.bg-footer::before {
-  content: '';
-  display: block;
-  height: 80px;
-  background: linear-gradient(180deg, var(--bg-page) 0%, #0E2E4F 100%);
-  pointer-events: none;
-}
-
-/* ── 呼吸光晕（装饰）── */
-@keyframes breathe {
-
-  0%,
-  100% {
-    opacity: .4;
-    transform: scale(1);
-  }
-
-  50% {
-    opacity: .9;
-    transform: scale(1.05);
-  }
-}
-
-.animate-breathe {
-  animation: breathe 3.2s ease-in-out infinite;
-}
-
-/* ── 雷达扫描环（浅色版）── */
-@keyframes radarSpin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.radar-ring {
-  border: 1px solid rgba(14, 165, 233, .25);
-  border-radius: 50%;
-  position: absolute;
-  animation: breathe 4s ease-in-out infinite;
-}
-
-/* ── 进度流动（连线）── */
-@keyframes flowDash {
-  to {
-    stroke-dashoffset: -24;
-  }
-}
-
-.flow-line {
-  stroke-dasharray: 6 6;
-  animation: flowDash 1.2s linear infinite;
-}
-
-/* ── 扫描线 ── */
-@keyframes scanline {
-
-  0%,
-  100% {
-    top: -30%;
-  }
-
-  50% {
-    top: 100%;
-  }
-}
-
-.animate-scanline {
-  animation: scanline 3s ease-in-out infinite;
-}
-
-/* ── 无障碍降级：动效关闭 ═══ */
-@media (prefers-reduced-motion: reduce) {
-
-  *,
-  *::before,
-  *::after {
-    animation-duration: .01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: .01ms !important;
-  }
-}
-
-/* ── shadcn/ui base 层：绑定 Design Token，统一组件外观 ── */
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  a {
-    @apply no-underline;
-  }
 }

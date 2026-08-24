@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 云观星传 - Research Pipeline 科研进度时间轴
  *
  * 首页核心组件：9 个科研流程节点（研究灵感 → 选题 → 文献 → Gap → RQ → 方法 → 数据 → 写作 → 评审），
@@ -67,7 +67,7 @@ export default function ResearchPipeline({ stages, currentStage = 1, compact = f
           const circleCls = [
             'relative w-10 h-10 rounded-full flex items-center justify-center text-base border transition-all',
             state === 'done' && 'bg-emerald-50 border-emerald-300 text-emerald-600',
-            state === 'active' && 'bg-sky-50 border-sky-300 text-sky-600 shadow-[0_0_0_3px_rgba(14,165,233,.08)]',
+            state === 'active' && 'bg-indigo-50 border-indigo-300 text-indigo-600 shadow-[0_0_0_3px_rgba(14,165,233,.08)]',
             state === 'running' && 'bg-amber-50 border-amber-300 text-amber-600 animate-pulse',
             state === 'locked' && 'bg-slate-50 border-slate-200 text-slate-400',
           ].join(' ')
@@ -102,7 +102,7 @@ export default function ResearchPipeline({ stages, currentStage = 1, compact = f
       {/* 图例 */}
       <div className="flex items-center justify-center gap-5 mt-4 text-[10px] text-slate-500">
         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" /> 已完成</span>
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-sky-400" /> 当前阶段</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-indigo-400" /> 当前阶段</span>
         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-300" /> 未解锁</span>
       </div>
     </div>

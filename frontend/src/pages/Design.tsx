@@ -1,8 +1,8 @@
-/**
+﻿/**
  * 云观星传 - ③ 研究设计（产出物查看页）
  * 展示 RQ / H 列表与 AI 质量检验评分
  */
-import { StageLayout, StageSources, ScoreBar, StatusBadge, NoProjectHint, useStageExec, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
+import { StageLayout, StageSources, ScoreBar, StatusBadge, NoProjectHint, useStageExec, StageActions, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
 
 const INFO: StageInfo = {
   stage: 3, icon: '🎯', title: '研究设计', en: 'RESEARCH DESIGN',
@@ -10,7 +10,7 @@ const INFO: StageInfo = {
 }
 
 export default function Design() {
-  const { projectId, status, rec, running, error, confirmRerun, rerunConfirmEl } = useStageExec(3)
+  const { projectId, status, rec, running, error, locked, exec, approve, confirmRerun, rerunConfirmEl } = useStageExec(3)
 
   const output = (rec?.output ?? null) as {
     research_questions?: { id: string; text: string }[]
@@ -27,13 +27,15 @@ export default function Design() {
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <StatusBadge status={status} />
-            {status !== 'running' && (
-              <button onClick={confirmRerun} disabled={running}
-                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-700 disabled:opacity-40 transition-all">
-                {running ? '生成中…' : '重新运行'}
-              </button>
-            )}
-            {error && <span className="text-[11px] text-red-600">{error}</span>}
+            <StageActions
+            stage={3}
+            status={status}
+            onRun={() => void exec({})}
+            onApprove={approve}
+            running={running}
+            error={error}
+            runLabel="开始设计"
+          />
           </div>
 
           {/* RAG + KG 双校验报告（产出物后置校验） */}
@@ -46,7 +48,7 @@ export default function Design() {
               {questions.map((q, i) => (
                 <div key={i} className="card p-4">
                   <div className="flex items-start gap-3">
-                    <span className="shrink-0 text-xs font-mono px-2 py-1 rounded bg-sky-50 border border-sky-200 text-sky-600">{q.id}</span>
+                    <span className="shrink-0 text-xs font-mono px-2 py-1 rounded bg-indigo-50 border border-indigo-200 text-indigo-600">{q.id}</span>
                     <p className="text-sm text-slate-700 leading-relaxed">{q.text}</p>
                   </div>
                 </div>
@@ -68,7 +70,7 @@ export default function Design() {
                 </>
               )}
               {quality && (
-                <div className="card p-5 border-sky-200">
+                <div className="card p-5 border-indigo-200">
                   <h3 className="sec-label !mb-3">AI 评价 · 问题质量检验</h3>
                   <div className="space-y-2">
                     <ScoreBar label="清晰度" value={quality.clarity} />

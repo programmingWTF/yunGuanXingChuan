@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 云观星传 V3.0 - 科研流程页面共享 UI 组件（他山世界学术风 · 浅色）
  *
  * 7 个科研流程页面（选题孵化/文献综述/研究设计/方法推荐/数据分析/学术写作/同行评审）
@@ -42,7 +42,7 @@ export function StageLayout({ info, children }: { info: StageInfo; children: Rea
 }
 
 /** 0-100 评分条 */
-export function ScoreBar({ label, value, color = 'bg-sky-500' }: { label: string; value: number; color?: string }) {
+export function ScoreBar({ label, value, color = 'bg-indigo-500' }: { label: string; value: number; color?: string }) {
   return (
     <div className="flex items-center gap-2">
       <span className="text-[11px] text-slate-500 w-20 shrink-0">{label}</span>
@@ -59,7 +59,7 @@ export function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     pending: { label: '待开始', cls: 'text-slate-500 bg-slate-50 border-slate-200' },
     running: { label: '运行中', cls: 'text-amber-600 bg-amber-50 border-amber-200 animate-pulse' },
-    awaiting_review: { label: '待确认', cls: 'text-sky-700 bg-sky-50 border-sky-200' },
+    awaiting_review: { label: '待确认', cls: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
     completed: { label: '已完成', cls: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
     failed: { label: '失败', cls: 'text-red-600 bg-red-50 border-red-200' },
   }
@@ -67,10 +67,11 @@ export function StatusBadge({ status }: { status: string }) {
   return <span className={`text-[10px] shrink-0 px-2.5 py-1 rounded-full border font-medium ${m.cls}`}>{m.label}</span>
 }
 
-/** 运行/确认操作区 */
+/** 运行/确认操作区（阶段页统一操作：首跑 / 确认产出 / 重新运行） */
 export function StageActions({
-  status, onRun, onApprove, running, error, runLabel = '开始本阶段',
+  stage, status, onRun, onApprove, running, error, runLabel = '开始本阶段',
 }: {
+  stage: number
   status: string
   onRun: () => void
   onApprove: () => void
@@ -82,8 +83,12 @@ export function StageActions({
   const [confirming, setConfirming] = useState(false)
   const { user } = useAuth()
   const navigate = useNavigate()
+  const { currentProject } = useStore()
+  // 未解锁判定：pending 且阶段号大于项目当前进度（需先完成并确认上一阶段）
+  const locked = status === 'pending' && stage > (currentProject?.current_stage ?? stage)
   const isRerun = status === 'completed'
   const handleRunClick = () => {
+    if (locked) return // 未解锁阶段不允许发起运行
     if (isRerun) setConfirming(true) // 先确认再执行，避免误触清空旧产出物
     else onRun()
   }
@@ -99,16 +104,18 @@ export function StageActions({
   return (
     <div className="flex items-center gap-3 flex-wrap">
       {status === 'pending' || status === 'failed' ? (
-        <button onClick={handleRunClick} disabled={running}
-          className="btn-primary text-xs disabled:opacity-45 disabled:cursor-not-allowed">
-          {running ? 'AI 生成中…' : runLabel}
+        <button onClick={handleRunClick} disabled={running || locked}
+          className="text-xs px-3.5 py-2 rounded-lg bg-indigo-50/70 border border-indigo-200/70 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900 disabled:opacity-45 disabled:cursor-not-allowed transition-all"
+          title={locked ? '请先完成上一阶段并确认' : undefined}>
+          {running ? 'AI 生成中…' : locked ? '先完成上一阶段' : runLabel}
         </button>
       ) : status === 'awaiting_review' ? (
-        <button onClick={onApprove} className="btn-primary text-xs">
+        <button onClick={onApprove} disabled={running}
+          className="text-xs px-3.5 py-2 rounded-lg bg-indigo-50/70 border border-indigo-200/70 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900 disabled:opacity-45 transition-all">
           确认产出，进入下一阶段 →
         </button>
       ) : status === 'completed' ? (
-        <button onClick={handleRunClick} disabled={running} className="text-xs px-3.5 py-2 rounded-btn border border-slate-200 text-slate-600 hover:border-sky-300 hover:text-sky-700 hover:bg-sky-50 disabled:opacity-45 transition-all">
+        <button onClick={handleRunClick} disabled={running} className="text-xs px-3.5 py-2 rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-700 hover:bg-indigo-50 disabled:opacity-45 transition-all">
           重新运行
         </button>
       ) : null}
@@ -143,7 +150,7 @@ export function NoProjectHint() {
       <div className="text-4xl mb-4 opacity-30">🔭</div>
       <p className="text-sm text-slate-500 mb-2">暂无项目上下文</p>
       <p className="text-xs text-slate-400">
-        请先到 <Link to="/" className="text-sky-600 hover:text-sky-700 font-medium underline underline-offset-2">科研工作台</Link> 创建研究项目
+        请先到 <Link to="/" className="text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2">科研工作台</Link> 创建研究项目
       </p>
     </div>
   )
@@ -160,6 +167,8 @@ export function useStageExec(stage: number) {
   const projectId = currentProject?.id ?? null
   const rec = currentProject?.stages ? currentProject.stages[String(stage)] : null
   const status = rec?.status ?? 'pending'
+  // 未解锁判定：阶段为 pending 且阶段号大于项目当前进度（需先完成并确认上一阶段）
+  const locked = status === 'pending' && stage > (currentProject?.current_stage ?? stage)
 
   const exec = async (inputs: Record<string, unknown>) => {
     if (!projectId) return
@@ -218,7 +227,7 @@ export function useStageExec(stage: number) {
     }
   }
 
-  return { projectId, status, rec, running, error, exec, approve, loadProject, confirmRerun, rerunConfirmEl }
+  return { projectId, status, rec, running, error, locked, exec, approve, loadProject, confirmRerun, rerunConfirmEl }
 }
 
 /** 产出物 JSON 展示 */
@@ -259,7 +268,7 @@ export interface VerificationReport {
 
 const VERIFY_STATUS_META: Record<string, { label: string; cls: string }> = {
   verified: { label: '✓ 已验证', cls: 'text-emerald-700 border-emerald-200 bg-emerald-50' },
-  partial: { label: '◐ 部分验证', cls: 'text-sky-700 border-sky-200 bg-sky-50' },
+  partial: { label: '◐ 部分验证', cls: 'text-indigo-700 border-indigo-200 bg-indigo-50' },
   unverified: { label: '○ 未验证', cls: 'text-slate-500 border-slate-200 bg-slate-50' },
   conflicting: { label: '⚠ 存在冲突', cls: 'text-red-700 border-red-200 bg-red-50' },
 }

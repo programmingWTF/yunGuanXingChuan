@@ -299,12 +299,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const runStage = useCallback(async (id: string, stage: number, inputs: Record<string, unknown> = {}) => {
+    // 乐观更新：请求发出前先把该阶段置为 running，全站（含主页驾驶舱/阶段圆点）立即显示「运行中」
+    const current = projects.find(p => p.id === id) ?? currentProject
+    if (current && current.stages?.[String(stage)]) {
+      const optimistic = {
+        ...current,
+        stages: {
+          ...current.stages,
+          [String(stage)]: { ...current.stages[String(stage)], status: 'running' as const, error: null },
+        },
+      }
+      setCurrentProject(optimistic)
+      setProjects(prev => prev.map(p => (p.id === id ? optimistic : p)))
+    }
     const { output } = await runWorkflowStage(id, stage, inputs)
     const { project } = await getWorkflowProject(id)
     setCurrentProject(project)
     setProjects(prev => prev.map(p => (p.id === id ? project : p)))
     return output
-  }, [])
+  }, [projects, currentProject])
 
   const approveStage = useCallback(async (id: string, stage: number) => {
     const { project } = await approveWorkflowStage(id, stage)

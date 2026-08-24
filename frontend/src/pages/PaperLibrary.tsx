@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 云观星传 - 个人论文库（我的论文库）
  *
  * 用户上传自己的论文（PDF/DOCX/MD/TXT），系统解析后存入用户级向量库，
@@ -22,7 +22,7 @@ const ACCEPT = '.pdf,.docx,.md,.txt'
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   uploaded: { label: '待处理', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
-  processing: { label: '处理中', cls: 'bg-sky-50 text-sky-700 border-sky-200 animate-pulse' },
+  processing: { label: '处理中', cls: 'bg-indigo-50 text-indigo-700 border-indigo-200 animate-pulse' },
   ready: { label: '已就绪', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   error: { label: '失败', cls: 'bg-red-50 text-red-700 border-red-200' },
 }
@@ -157,7 +157,7 @@ export default function PaperLibrary() {
           登录后即可上传自己的论文（PDF/DOCX/MD/TXT），让 AI 学习你的研究成果与写作风格，
           在学术写作阶段真正用上你自己的科研积累。
         </p>
-        <a href="/login" className="inline-block mt-5 text-sm font-medium px-4 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700 transition-all">
+        <a href="/login" className="inline-block mt-5 text-sm font-medium px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-all">
           去登录
         </a>
       </div>
@@ -198,7 +198,7 @@ export default function PaperLibrary() {
         onDrop={onDrop}
         onClick={() => !uploading && fileInputRef.current?.click()}
         className={`rounded-2xl border-2 border-dashed px-6 py-8 text-center cursor-pointer transition-all ${
-          dragOver ? 'border-sky-400 bg-sky-50/60' : 'border-slate-300 bg-white hover:border-sky-300 hover:bg-slate-50/50'
+          dragOver ? 'border-indigo-400 bg-indigo-50/60' : 'border-slate-300 bg-white/70 backdrop-blur-md hover:border-indigo-300 hover:bg-white/85'
         } ${uploading ? 'pointer-events-none opacity-80' : ''}`}
       >
         <input ref={fileInputRef} type="file" accept={ACCEPT} className="hidden" onChange={onPickFile} />
@@ -214,7 +214,7 @@ export default function PaperLibrary() {
               正在上传「{fileName}」… {progress}%
             </p>
             <div className="h-2 rounded-full bg-slate-200 overflow-hidden max-w-md mx-auto">
-              <div className="h-full bg-sky-500 transition-all duration-200" style={{ width: `${progress}%` }} />
+              <div className="h-full bg-indigo-500 transition-all duration-200" style={{ width: `${progress}%` }} />
             </div>
             <p className="text-[11px] text-slate-400 mt-2">
               {progress < 95 ? '直传 Cloudflare R2…' : '后端解析 & 向量化…'}
@@ -224,7 +224,7 @@ export default function PaperLibrary() {
       </div>
 
       {/* 检索测试 */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="rounded-2xl border border-slate-200/70 bg-white/75 backdrop-blur-md p-5">
         <h3 className="text-sm font-semibold text-slate-800 mb-1">🔍 试一下检索你的论文库</h3>
         <p className="text-[11px] text-slate-400 mb-3">输入一个研究方向/关键词，看 AI 能从你库里召回什么。</p>
         <form onSubmit={onSearch} className="flex gap-2">
@@ -232,7 +232,7 @@ export default function PaperLibrary() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="例如：深度学习在医学影像中的应用"
-            className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+            className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
           />
           <button type="submit" disabled={searching || !searchQuery.trim()}
             className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-700 disabled:opacity-40 transition-all">
@@ -249,7 +249,7 @@ export default function PaperLibrary() {
                   <span className="text-[11px] font-medium text-slate-500 truncate">
                     {String(r.metadata?.title ?? '')} · 片段 {i + 1}
                   </span>
-                  <span className="text-[11px] font-mono text-sky-600 shrink-0">{(r.score * 100).toFixed(0)}%</span>
+                  <span className="text-[11px] font-mono text-indigo-600 shrink-0">{(r.score * 100).toFixed(0)}%</span>
                 </div>
                 <p className="text-xs text-slate-600 mt-1 leading-relaxed line-clamp-2">{r.text}</p>
               </div>
@@ -260,10 +260,10 @@ export default function PaperLibrary() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* 论文列表 */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="rounded-2xl border border-slate-200/70 bg-white/75 backdrop-blur-md p-5">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-slate-800">📄 我的论文（{papers.length}）</h3>
-            <button onClick={() => void loadAll()} className="text-[11px] text-slate-400 hover:text-sky-600 transition-colors">↻ 刷新</button>
+            <button onClick={() => void loadAll()} className="text-[11px] text-slate-400 hover:text-indigo-600 transition-colors">↻ 刷新</button>
           </div>
           {papers.length === 0 ? (
             <p className="text-xs text-slate-400 py-8 text-center">还没有论文，先上传一篇吧</p>
@@ -272,7 +272,7 @@ export default function PaperLibrary() {
               {papers.map((p) => {
                 const st = STATUS_META[p.status] ?? STATUS_META.uploaded
                 return (
-                  <li key={p.id} className="group rounded-lg border border-slate-100 hover:border-slate-200 bg-slate-50/50 hover:bg-white px-3 py-2.5 transition-all">
+                  <li key={p.id} className="group rounded-lg border border-slate-100 hover:border-slate-200 bg-slate-50/50 hover:bg-white/80 px-3 py-2.5 transition-all">
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-xs font-medium text-slate-700 truncate">{p.file_name}</p>
@@ -300,7 +300,7 @@ export default function PaperLibrary() {
         </div>
 
         {/* 风格三件套 */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="rounded-2xl border border-slate-200/70 bg-white/75 backdrop-blur-md p-5">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-slate-800">✍️ 已学习的写作风格</h3>
             {style && (
@@ -321,7 +321,7 @@ export default function PaperLibrary() {
                   <p className="text-[11px] font-medium text-slate-500 mb-1.5">🔤 高频术语</p>
                   <div className="flex flex-wrap gap-1.5">
                     {style.terms.slice(0, 15).map((t, i) => (
-                      <span key={i} className="text-[11px] px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-100">{t}</span>
+                      <span key={i} className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">{t}</span>
                     ))}
                     {style.terms.length > 15 && <span className="text-[11px] text-slate-300 self-center">+{style.terms.length - 15}</span>}
                   </div>
