@@ -67,6 +67,8 @@ interface SearchSourcesProps {
   collapseAfter?: number
   /** 自定义标题文案 */
   title?: string
+  /** 本阶段实际使用的搜索查询词（Issue #98 优化：标注“哪个阶段搜了什么”） */
+  query?: string
   className?: string
 }
 
@@ -74,11 +76,13 @@ interface SearchSourcesProps {
  * 联网搜索来源：可折叠的可点击链接列表。
  *
  * 无来源（空数组 / null / undefined）时返回 null，不占版面。
+ * query 非空时在标题下方以水墨小字展示“本阶段搜索词”。
  */
 export default function SearchSources({
   sources,
   collapseAfter = 3,
   title = '📎 联网搜索来源',
+  query = '',
   className = '',
 }: SearchSourcesProps) {
   // 注意：useState 必须置于任何提前 return 之前（React Hooks 规则），
@@ -89,6 +93,7 @@ export default function SearchSources({
 
   const shown = expanded ? list : list.slice(0, collapseAfter)
   const hasMore = list.length > collapseAfter
+  const queryText = (query || '').trim()
 
   return (
     <div className={`card p-4 ${className}`}>
@@ -96,6 +101,14 @@ export default function SearchSources({
         <h3 className="sec-label !mb-0">{title}</h3>
         <span className="text-[10px] font-sans text-slate-400">共 {list.length} 条</span>
       </div>
+      {queryText && (
+        <div className="flex items-center gap-1.5 mb-2.5 -mt-1">
+          <span className="text-[9px] font-mono text-slate-400 shrink-0">搜</span>
+          <span className="text-[10px] text-slate-500 leading-snug line-clamp-1 border-l border-slate-200 pl-2">
+            {queryText}
+          </span>
+        </div>
+      )}
       <ul className="space-y-1.5">
         {shown.map((item, i) => (
           <SourceRow key={i} item={item as SearchSource} index={i} />

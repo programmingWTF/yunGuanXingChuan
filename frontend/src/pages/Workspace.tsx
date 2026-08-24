@@ -12,9 +12,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { useAuth } from '../auth'
 import { runAllWorkflow, getWorkflowProject, exportWorkflowProject, getHotTopics, deleteWorkflowProject } from '../api'
-import type { ResearchProject } from '../api'
+import type { ResearchProject, SearchSource } from '../api'
 import ResearchPipeline from '../components/ResearchPipeline'
 import ConfirmDialog from '../components/ConfirmDialog'
+import SearchSources from '../components/SearchSources'
 import { StageSources } from '../components/StageUI'
 
 const STAGE_NAMES: Record<string, string> = {
@@ -435,30 +436,101 @@ export default function Workspace() {
 
               {/* 7 阶段产出物摘要 */}
               <div className="space-y-2.5 border-t border-slate-100 pt-4">
-                {Object.keys(detail.stages).map(s => {
-                  const rec = detail.stages[s]
-                  const meta = STATUS_META[rec?.status] ?? STATUS_META.pending
+                {(() => {
+                  // ── 联网搜索来源：阶段独立展示（Issue #98 优化）──
+                  // 后端已按阶段聚焦查询词搜索并随产出物返回 search_sources + search_query；
+                  // 此处收集全部阶段来源：若各阶段来源高度重复（旧数据/无法区分），
+                  // 自动降级为任务级整块展示，避免 7 个阶段重复刷屏。
+                  interface StageSrcView {
+                    key: string
+                    sources: SearchSource[]
+                    query: string
+                    fresh: SearchSource[]
+                    carried: number
+                  }
+                  const stageSrcViews: StageSrcView[] = Object.keys(detail.stages ?? {}).map(s => {
+                    const rec = detail.stages[s]
+                    const output = rec?.output as (Record<string, unknown> & {
+                      search_sources?: SearchSource[] | null
+                      search_query?: string
+                    }) | null | undefined
+                    const sources = Array.isArray(output?.search_sources)
+                      ? output.search_sources.filter((x): x is SearchSource => Boolean(x && x.url))
+                      : []
+                    return {
+                      key: s,
+                      sources,
+                      query: typeof output?.search_query === 'string' ? output.search_query : '',
+                      fresh: [],
+                      carried: 0,
+                    }
+                  })
+                  // 全局去重（按 url）
+                  const uniqueMap = new Map<string, SearchSource>()
+                  for (const st of stageSrcViews) for (const src of st.sources) uniqueMap.set(src.url, src)
+                  const uniqueSources = [...uniqueMap.values()]
+                  const maxPerStage = stageSrcViews.reduce((m, st) => Math.max(m, st.sources.length), 0)
+                  // 判定：去重后总数 ≤ 单阶段最多来源数 → 各阶段基本重复、无法区分 → 整块展示
+                  const mergedSourcesMode = uniqueSources.length > 0 && uniqueSources.length <= maxPerStage
+                  // 独立模式：每阶段只保留相对前序阶段“独立新增”的来源
+                  const seenUrls = new Set<string>()
+                  for (const st of stageSrcViews) {
+                    st.fresh = st.sources.filter(src => {
+                      if (seenUrls.has(src.url)) return false
+                      seenUrls.add(src.url)
+                      return true
+                    })
+                    st.carried = st.sources.length - st.fresh.length
+                  }
                   return (
-                    <div key={s} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="text-base">{STAGE_ICONS[s]}</span>
-                          <span className="text-[13px] font-medium text-slate-700">{STAGE_NAMES[s]}</span>
-                          {rec?.error && <span className="text-[10px] text-red-600 truncate">{rec.error}</span>}
-                        </div>
-                        <span className={`text-[10px] shrink-0 px-2 py-0.5 rounded border ${meta.cls}`}>{meta.label}</span>
-                      </div>
-                      {rec?.output && (
-                        <>
-                          <StageSources output={rec.output} />
-                          <pre className="text-[9px] text-slate-500 whitespace-pre-wrap bg-slate-50 rounded-lg p-2.5 mt-2 max-h-24 overflow-y-auto">
-                            {JSON.stringify(rec.output, null, 1).slice(0, 500)}
-                          </pre>
-                        </>
+                    <>
+                      {/* 整块模式：全任务来源总览（旧数据/无法区分阶段时） */}
+                      {mergedSourcesMode && uniqueSources.length > 0 && (
+                        <SearchSources sources={uniqueSources} title="📎 联网搜索来源（全任务）" />
                       )}
-                    </div>
+                      {Object.keys(detail.stages).map(s => {
+                        const rec = detail.stages[s]
+                        const meta = STATUS_META[rec?.status] ?? STATUS_META.pending
+                        const view = stageSrcViews.find(v => v.key === s)
+                        return (
+                          <div key={s} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <span className="text-base">{STAGE_ICONS[s]}</span>
+                                <span className="text-[13px] font-medium text-slate-700">{STAGE_NAMES[s]}</span>
+                                {rec?.error && <span className="text-[10px] text-red-600 truncate">{rec.error}</span>}
+                              </div>
+                              <span className={`text-[10px] shrink-0 px-2 py-0.5 rounded border ${meta.cls}`}>{meta.label}</span>
+                            </div>
+                            {rec?.output && (
+                              <>
+                                {/* 独立模式：只显示本阶段独立新增的来源；与前序一致的来源折叠为一行提示 */}
+                                {!mergedSourcesMode && view && view.fresh.length > 0 && (
+                                  <StageSources
+                                    output={{ search_sources: view.fresh, search_query: view.query }}
+                                  />
+                                )}
+                                {!mergedSourcesMode && view && view.fresh.length === 0 && view.sources.length > 0 && (
+                                  <div className="mt-4 text-[10px] text-slate-400 border-l-2 border-slate-200 pl-2 leading-snug">
+                                    本阶段搜索结果与前序阶段一致（{view.sources.length} 条已折叠，未重复展示）
+                                  </div>
+                                )}
+                                {!mergedSourcesMode && view && view.fresh.length > 0 && view.carried > 0 && (
+                                  <div className="mt-1.5 text-[10px] text-slate-400 border-l-2 border-slate-200 pl-2 leading-snug">
+                                    另有 {view.carried} 条来源与前序阶段一致，已折叠
+                                  </div>
+                                )}
+                                <pre className="text-[9px] text-slate-500 whitespace-pre-wrap bg-slate-50 rounded-lg p-2.5 mt-2 max-h-24 overflow-y-auto">
+                                  {JSON.stringify(rec.output, null, 1).slice(0, 500)}
+                                </pre>
+                              </>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </>
                   )
-                })}
+                })()}
               </div>
             </div>
           )}
