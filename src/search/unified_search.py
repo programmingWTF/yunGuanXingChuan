@@ -17,6 +17,16 @@ from src.search.tashan_search import TashanSearchService, get_tashan_search_serv
 
 logger = logging.getLogger(__name__)
 
+# ── 受限域名（联网搜索来源过滤）──
+# 用户要求：联网搜索内容不得来自南京航空航天大学官网（nuaa.edu.cn 及其子域）
+_BANNED_DOMAINS = ("nuaa.edu.cn",)
+
+
+def _is_banned_domain(url: str) -> bool:
+    """判断 URL 是否属于受限域名（南航官网）"""
+    u = (url or "").lower()
+    return any(d in u for d in _BANNED_DOMAINS)
+
 
 class UnifiedSearchService:
     """统一搜索服务：合并 Tavily + 百炼 WebSearch + 他山世界"""
@@ -129,7 +139,18 @@ class UnifiedSearchService:
                     f"(Tavily: {sum(1 for s in all_sources if s.source == 'TavilySearch')}, "
                     f"Qwen: {sum(1 for s in all_sources if s.source == 'QwenWebSearch')}, "
                     f"Tashan: {tashan_count})")
-        return all_sources
+
+        # 过滤受限域名：用户要求联网内容不得来自南京航空航天大学官网（nuaa.edu.cn 及其子域）
+        banned_count = 0
+        filtered: List[SearchSource] = []
+        for s in all_sources:
+            if s.url and _is_banned_domain(s.url):
+                banned_count += 1
+                continue
+            filtered.append(s)
+        if banned_count:
+            logger.info(f"统一搜索过滤受限域名 {banned_count} 条（nuaa.edu.cn）")
+        return filtered
 
     def format_search_context(self, sources: List[SearchSource]) -> str:
         """
