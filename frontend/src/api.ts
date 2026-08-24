@@ -783,9 +783,9 @@ export async function uploadLibraryPaper(file: File, onProgress?: (pct: number) 
   form.append('file', file)
   const base = await resolveUploadBase()
   const cross = base !== ''
-  const url = cross ? `${base}/api/library/upload` : '/api/library/upload'
-  const client = cross ? axios : api
-  const res = await client.post(url, form, {
+  // ⚠️ 统一用裸 axios + 绝对 URL：同域不能用 api 实例（baseURL='/api' 会叠加成 /api/api/...）
+  const url = cross ? `${base}/api/library/upload` : `${window.location.origin}/api/library/upload`
+  const res = await axios.post(url, form, {
     headers: {
       'Content-Type': 'multipart/form-data',
       ...(cross && getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}),
