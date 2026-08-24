@@ -176,3 +176,222 @@ class TestVerificationResult:
         assert result.rag_evidence is None
         assert result.kg_match is None
         assert result.cross_source_agreement is None
+
+
+class TestFourWayVoteAdaptive:
+    """自适应四路投票测试（Issue #116 修复验证）"""
+
+    @staticmethod
+    def _mock_heavy_deps():
+        """Mock 未安装的重型依赖"""
+        for mod_name, mock_mod in [
+            ('faiss', MagicMock()),
+            ('openai', MagicMock()),
+            ('openai.OpenAI', MagicMock()),
+            ('httpx', MagicMock()),
+        ]:
+            if mod_name not in sys.modules:
+                sys.modules[mod_name] = mock_mod
+        for mod_name in list(sys.modules):
+            if any(mod_name.startswith(p) for p in [
+                'src.knowledge.vector_store', 'src.verification.rag_checker',
+                'src.verification.external_validator', 'src.verification.cross_validator',
+                'src.llm_client', 'src.search',
+            ]):
+                del sys.modules[mod_name]
+
+    def test_two_voters_all_support_verified(self):
+        """2 路参与全部支持 → VERIFIED（修复前：PARTIALLY_VERIFIED）"""
+        self._mock_heavy_deps()
+        import src.verification.cross_validator as cv_module
+
+        with patch.object(cv_module, 'RAGChecker') as MockRAG, \
+             patch.object(cv_module, 'KGChecker') as MockKG, \
+             patch.object(cv_module, 'get_external_validator') as MockGetExt:
+            mock_rag = MockRAG.return_value
+            mock_rag.verify_claim.return_value = {
+                "status": "supported", "confidence": 0.8, "evidence": "RAG证据",
+            }
+            mock_kg = MockKG.return_value
+            mock_kg.get_related_context.return_value = []
+            mock_ext = MockGetExt.return_value
+            mock_ext.validate.return_value = {
+                "status": "partial", "confidence": 0.6, "evidence": "外部证据",
+            }
+            validator = cv_module.CrossValidator()
+            result = validator.cross_validate_claim("嫦娥六号实现月背采样", entities=None)
+            assert result.status == VerificationStatus.VERIFIED
+
+    def test_three_voters_majority_support_partial(self):
+        """3 路参与（含 entity_found），2 路支持 → PARTIALLY_VERIFIED"""
+        self._mock_heavy_deps()
+        import src.verification.cross_validator as cv_module
+
+        with patch.object(cv_module, 'RAGChecker') as MockRAG, \
+             patch.object(cv_module, 'KGChecker') as MockKG, \
+             patch.object(cv_module, 'get_external_validator') as MockGetExt:
+            mock_rag = MockRAG.return_value
+            mock_rag.verify_claim.return_value = {
+                "status": "supported", "confidence": 0.8, "evidence": "RAG证据",
+            }
+            mock_kg = MockKG.return_value
+            mock_kg.get_related_context.return_value = [
+                {"entity": "嫦娥六号", "relation": "launched_by", "direction": "outgoing", "depth": 1, "confidence": 0.9},
+            ]
+            mock_ext = MockGetExt.return_value
+            mock_ext.validate.return_value = {
+                "status": "partial", "confidence": 0.6, "evidence": "外部证据",
+            }
+            validator = cv_module.CrossValidator()
+            result = validator.cross_validate_claim("嫦娥六号实现月背采样", entities=["嫦娥六号"])
+            assert result.status == VerificationStatus.PARTIALLY_VERIFIED
+
+    def test_four_voters_two_support_partial(self):
+        """4 路模式：2 支持 + 1 entity_found → 多数支持 → PARTIALLY_VERIFIED"""
+        self._mock_heavy_deps()
+        import src.verification.cross_validator as cv_module
+
+        with patch.object(cv_module, 'RAGChecker') as MockRAG, \
+             patch.object(cv_module, 'KGChecker') as MockKG, \
+             patch.object(cv_module, 'get_external_validator') as MockGetExt:
+            mock_rag = MockRAG.return_value
+            mock_rag.verify_claim.return_value = {
+                "status": "supported", "confidence": 0.8, "evidence": "RAG证据",
+            }
+            mock_kg = MockKG.return_value
+            mock_kg.get_related_context.return_value = [
+                {"entity": "嫦娥六号", "relation": "launched_by", "direction": "outgoing", "depth": 1, "confidence": 0.9},
+            ]
+            mock_kg.verify_triple.return_value = {
+                "status": "unverified", "confidence": 0.1, "source": "", "message": "不匹配",
+            }
+            mock_ext = MockGetExt.return_value
+            mock_ext.validate.return_value = {
+                "status": "partial", "confidence": 0.5, "evidence": "外部证据",
+            }
+            validator = cv_module.CrossValidator()
+            result = validator.cross_validate_claim("某断言", entities=["嫦娥六号"])
+            assert result.status == VerificationStatus.PARTIALLY_VERIFIED
+
+    def test_one_voter_support_partial(self):
+        """仅 1 路参与且支持 → PARTIALLY_VERIFIED（修复前：UNVERIFIED）"""
+        self._mock_heavy_deps()
+        import src.verification.cross_validator as cv_module
+
+        with patch.object(cv_module, 'RAGChecker') as MockRAG, \
+             patch.object(cv_module, 'KGChecker') as MockKG, \
+             patch.object(cv_module, 'get_external_validator') as MockGetExt:
+            mock_rag = MockRAG.return_value
+            mock_rag.verify_claim.return_value = {
+                "status": "supported", "confidence": 0.8, "evidence": "RAG证据",
+            }
+            mock_kg = MockKG.return_value
+            mock_kg.get_related_context.return_value = []
+            mock_ext = MockGetExt.return_value
+            mock_ext.validate.return_value = {
+                "status": "unverified", "confidence": 0.1, "evidence": "",
+            }
+            validator = cv_module.CrossValidator()
+            result = validator.cross_validate_claim("某断言", entities=None)
+            assert result.status == VerificationStatus.PARTIALLY_VERIFIED
+
+    def test_all_unverified(self):
+        """全部 unverified → UNVERIFIED"""
+        self._mock_heavy_deps()
+        import src.verification.cross_validator as cv_module
+
+        with patch.object(cv_module, 'RAGChecker') as MockRAG, \
+             patch.object(cv_module, 'KGChecker') as MockKG, \
+             patch.object(cv_module, 'get_external_validator') as MockGetExt:
+            mock_rag = MockRAG.return_value
+            mock_rag.verify_claim.return_value = {
+                "status": "unverified", "confidence": 0.1, "evidence": "",
+            }
+            mock_kg = MockKG.return_value
+            mock_kg.get_related_context.return_value = []
+            mock_ext = MockGetExt.return_value
+            mock_ext.validate.return_value = {
+                "status": "unverified", "confidence": 0.05, "evidence": "",
+            }
+            validator = cv_module.CrossValidator()
+            result = validator.cross_validate_claim("月球由奶酪构成", entities=[])
+            assert result.status == VerificationStatus.UNVERIFIED
+
+    def test_conflicting(self):
+        """支持+冲突 → CONFLICTING"""
+        self._mock_heavy_deps()
+        import src.verification.cross_validator as cv_module
+
+        with patch.object(cv_module, 'RAGChecker') as MockRAG, \
+             patch.object(cv_module, 'KGChecker') as MockKG, \
+             patch.object(cv_module, 'get_external_validator') as MockGetExt:
+            mock_rag = MockRAG.return_value
+            mock_rag.verify_claim.return_value = {
+                "status": "supported", "confidence": 0.8, "evidence": "RAG证据",
+            }
+            mock_kg = MockKG.return_value
+            mock_kg.get_related_context.return_value = []
+            mock_ext = MockGetExt.return_value
+            mock_ext.validate.return_value = {
+                "status": "conflicting", "confidence": 0.6, "evidence": "冲突证据",
+            }
+            validator = cv_module.CrossValidator()
+            result = validator.cross_validate_claim("争议性断言", entities=None)
+            assert result.status == VerificationStatus.CONFLICTING
+
+    def test_kg_entity_found_not_support(self):
+        """KG entity_found 不虚增支持数：RAG=supported + KG=entity_found + Ext=unverified → 1路支持 → PARTIAL"""
+        self._mock_heavy_deps()
+        import src.verification.cross_validator as cv_module
+
+        with patch.object(cv_module, 'RAGChecker') as MockRAG, \
+             patch.object(cv_module, 'KGChecker') as MockKG, \
+             patch.object(cv_module, 'get_external_validator') as MockGetExt:
+            mock_rag = MockRAG.return_value
+            mock_rag.verify_claim.return_value = {
+                "status": "supported", "confidence": 0.8, "evidence": "RAG证据",
+            }
+            mock_kg = MockKG.return_value
+            mock_kg.get_related_context.return_value = [
+                {"entity": "嫦娥六号", "relation": "launched_by", "direction": "outgoing", "depth": 1, "confidence": 0.9},
+            ]
+            mock_ext = MockGetExt.return_value
+            mock_ext.validate.return_value = {
+                "status": "unverified", "confidence": 0.1, "evidence": "",
+            }
+            validator = cv_module.CrossValidator()
+            result = validator.cross_validate_claim("某断言", entities=["嫦娥六号"])
+            assert result.status == VerificationStatus.PARTIALLY_VERIFIED
+            assert "entity_found" in result.notes
+
+
+class TestSubjectiveClaimFilter:
+    """主观性断言过滤测试（Issue #116 修复验证）"""
+
+    def test_subjective_claims_filtered(self):
+        """主观性断言应被过滤"""
+        from src.workflow.engine import WorkflowEngine
+        from src.workflow.stages import WorkflowStage
+        engine = WorkflowEngine.__new__(WorkflowEngine)
+        output = {
+            "directions": [
+                {"title": "具有重要意义", "summary": "该方向具有重要的理论和实践意义"},
+                {"title": "嫦娥六号月背采样返回技术", "summary": "嫦娥六号于2024年实现人类首次月球背面采样返回"},
+            ]
+        }
+        claims = engine._extract_claims(WorkflowStage.INSPIRATION, output)
+        assert "具有重要意义" not in claims
+        assert any("嫦娥六号" in c for c in claims)
+
+    def test_factual_claims_kept(self):
+        """事实性断言应保留"""
+        from src.workflow.engine import WorkflowEngine
+        from src.workflow.stages import WorkflowStage
+        engine = WorkflowEngine.__new__(WorkflowEngine)
+        output = {
+            "directions": [
+                {"title": "嫦娥六号月背采样返回", "summary": "嫦娥六号于2024年实现人类首次月球背面采样返回"},
+            ]
+        }
+        claims = engine._extract_claims(WorkflowStage.INSPIRATION, output)
+        assert len(claims) > 0

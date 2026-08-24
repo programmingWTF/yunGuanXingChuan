@@ -59,7 +59,7 @@ class ExternalValidator:
     - 查询结果缓存 10 分钟
     """
 
-    def __init__(self, timeout: float = 5.0):
+    def __init__(self, timeout: float = 10.0):
         """
         Args:
             timeout: 外部 API 请求超时（秒）
