@@ -229,7 +229,9 @@ class WorkflowEngine:
                     output["topic"] = full_inputs.get("topic", "")
                 output.setdefault("project_title", full_inputs.get("project_title", ""))
                 # 联网搜索来源：把注入 LLM 的 search_context 作为结构化 search_sources 随产出物返回，供前端渲染可点击链接（Issue #98）
-                self._attach_search_sources(output, full_inputs.get("search_context") or [])
+                self._attach_search_sources(
+                    output, full_inputs.get("search_context") or [], full_inputs.get("search_query") or ""
+                )
                 # RAG + KG 双校验：对产出物中的关键断言做事实校验，结果附加到产出物（不阻塞、可降级）
                 self._attach_verification(stage, output, full_inputs.get("topic", ""), llm_client)
             updated = self.store.update_stage(
@@ -344,7 +346,9 @@ class WorkflowEngine:
                         output["topic"] = topic
                     output.setdefault("project_title", project.title)
                     # 联网搜索来源：把注入 LLM 的 search_context 作为结构化 search_sources 随产出物返回，供前端渲染可点击链接（Issue #98）
-                    self._attach_search_sources(output, inputs.get("search_context") or [])
+                    self._attach_search_sources(
+                        output, inputs.get("search_context") or [], inputs.get("search_query") or ""
+                    )
                     # RAG + KG 双校验：对产出物中的关键断言做事实校验，结果附加到产出物（不阻塞、可降级）
                     self._attach_verification(stage, output, topic, llm_client)
                 project = self.store.update_stage(
@@ -400,21 +404,26 @@ class WorkflowEngine:
         context: Dict[str, Any] = {}
         topic = inputs.get("topic", "")
         keywords = self._extract_keywords(inputs)
+        # 阶段聚焦查询词：各阶段 Agent 关注点不同，主查询不再固定为 topic，
+        # 避免 7 个阶段的联网搜索来源高度重复（Issue #98 优化）
+        stage_query = self._stage_search_query(stage, inputs)
 
-        if topic:
+        if stage_query:
             try:
                 from src.search.unified_search import get_unified_search_service
                 service = get_unified_search_service()
 
                 def _search():
-                    # 传关键词扩展查询词：他山按多查询词 × 多 scene 全量召回（多多调用）
-                    return service.search_for_topic(topic, extra_queries=keywords)
+                    # 阶段聚焦查询 + 关键词扩展：他山按多查询词 × 多 scene 全量召回（多多调用）
+                    return service.search_for_topic(stage_query, extra_queries=keywords)
 
                 sources = self._run_with_timeout(_search, 12.0, [], "统一搜索")
                 context["search_context"] = [
                     {"url": s.url, "title": s.title, "content": (s.content or "")[:400], "source": s.source}
                     for s in (sources or [])[:12]
                 ]
+                # 记录本阶段实际使用的搜索查询词，随产出物返回供前端标注（哪个阶段搜了什么）
+                context["search_query"] = stage_query
             except Exception as e:
                 logger.warning(f"[WorkflowEngine] 搜索上下文注入失败: {e}")
                 context["search_context"] = []
@@ -485,6 +494,61 @@ class WorkflowEngine:
             if isinstance(rq, dict):
                 keywords.append(str(rq.get("text", ""))[:50])
         return keywords[:5]
+
+    # ------------------------------------------------------------------
+    # 阶段聚焦搜索查询（Issue #98 优化：让各阶段搜索来源可区分）
+    # ------------------------------------------------------------------
+    def _stage_search_query(self, stage: int, inputs: Dict[str, Any]) -> str:
+        """按阶段构造联网搜索主查询词。
+
+        各阶段 Agent 关注点不同：选题阶段搜 topic 本身即可，文献阶段关心研究现状/空白，
+        设计阶段关心研究问题，方法阶段关心技术路线，写作阶段关心论文表达。
+        主查询随阶段聚焦后，各阶段返回的搜索来源差异明显，前端即可按阶段独立展示。
+
+        Returns:
+            聚焦查询词（topic + 阶段特有内容，截断 ≤100 字）；无 topic 时返回空串
+        """
+        topic = str(inputs.get("topic") or "").strip()
+        if not topic:
+            return ""
+
+        def _first_text(key: str) -> str:
+            """从 inputs 的字段里提取第一条可读文本（兼容 str / dict / list）"""
+            v = inputs.get(key)
+            if isinstance(v, str):
+                return v.strip()
+            if isinstance(v, dict):
+                for k in ("gap", "title", "summary", "description", "text", "question"):
+                    if isinstance(v.get(k), str) and v[k].strip():
+                        return v[k].strip()
+                return ""
+            if isinstance(v, list):
+                for item in v:
+                    if isinstance(item, str) and item.strip():
+                        return item.strip()
+                    if isinstance(item, dict):
+                        for k in ("text", "title", "question", "method", "name", "summary"):
+                            if isinstance(item.get(k), str) and item[k].strip():
+                                return item[k].strip()
+            return ""
+
+        if stage == WorkflowStage.LITERATURE:
+            extra = _first_text("research_gap") or "研究现状"
+        elif stage == WorkflowStage.DESIGN:
+            extra = _first_text("research_questions") or "研究问题"
+        elif stage == WorkflowStage.METHOD:
+            extra = _first_text("methods") or "研究方法"
+        elif stage == WorkflowStage.DATA_ANALYSIS:
+            extra = _first_text("data_analysis") or "数据分析"
+        elif stage == WorkflowStage.WRITING:
+            extra = _first_text("outline") or str(inputs.get("project_title") or "").strip() or "论文写作"
+        else:
+            extra = ""
+
+        parts = [topic]
+        if extra and extra != topic:
+            parts.append(extra)
+        return " ".join(parts)[:100]
 
     # ------------------------------------------------------------------
     # RAG + KG 双校验（产出物后置校验，不阻塞主流程）
@@ -570,11 +634,12 @@ class WorkflowEngine:
         return [e for e in entities if e][:4]
 
     @staticmethod
-    def _attach_search_sources(output: Dict[str, Any], search_context: List[Any]) -> None:
+    def _attach_search_sources(output: Dict[str, Any], search_context: List[Any], query: str = "") -> None:
         """把检索到的联网搜索来源作为结构化 search_sources 附加到产出物（Issue #98）。
 
         - search_context 来自 _build_stage_context（含 url/title/content/source）
         - 附加为 output["search_sources"]，供前端渲染可点击来源链接
+        - query 为本阶段实际使用的搜索查询词，写入 output["search_query"] 供前端标注阶段独立搜索
         - 仅当存在有效来源时才写字段：无来源时不污染产出物，前端组件对缺失/空字段有兜底
         """
         sources = [
@@ -589,6 +654,8 @@ class WorkflowEngine:
         ]
         if sources:
             output["search_sources"] = sources
+            if query:
+                output["search_query"] = query
     def _inject_user_style(self, stage: int, inputs: Dict[str, Any], owner_id: Optional[str] = None) -> None:
         """
         用户论文库风格注入（个人论文库模块）。

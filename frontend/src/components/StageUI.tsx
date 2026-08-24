@@ -321,9 +321,11 @@ export function StageSources({ output }: { output: Record<string, unknown> | nul
   if (!output) return null
   const sources = (output as { search_sources?: SearchSource[] | null }).search_sources
   if (!Array.isArray(sources) || sources.length === 0) return null
+  // 本阶段独立搜索词（Issue #98 优化）：由后端随产出物返回，用于标注“哪个阶段搜了什么”
+  const query = (output as { search_query?: string }).search_query ?? ''
   return (
     <div className="mt-4">
-      <SearchSources sources={sources} />
+      <SearchSources sources={sources} query={query} />
     </div>
   )
 }
