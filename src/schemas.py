@@ -699,6 +699,16 @@ class PaperDraft(BaseModel):
     style_notes: List[str] = Field(default_factory=list)      # 风格蒸馏说明
 
 
+    @field_validator("style_notes", mode="before")
+    @classmethod
+    def _coerce_style_notes(cls, v):
+        """LLM 偶发把 style_notes 写成整段字符串（如 "1. ... 2. ..."）而非数组，
+        按行拆分并去掉序号前缀，避免 schema 校验失败（实测 2026-08-26 paper_writer_agent）"""
+        if isinstance(v, str):
+            notes = [re.sub(r'^\s*\d+\s*[\.、．]\s*', '', ln.strip()) for ln in v.splitlines()]
+            return [n for n in notes if n]
+        return v
+
     @model_validator(mode="before")
     @classmethod
     def _coerce_list_root(cls, data):
