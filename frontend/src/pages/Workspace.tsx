@@ -11,7 +11,7 @@ import axios from 'axios'
 import { Link, useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { useAuth } from '../auth'
-import { runAllWorkflow, getWorkflowProject, exportWorkflowProject, getHotTopics, deleteWorkflowProject } from '../api'
+import { runAllWorkflow, getWorkflowProject, exportWorkflowProject, getHotTopics, deleteWorkflowProject, getLibraryStyle } from '../api'
 import type { ResearchProject, SearchSource } from '../api'
 import ResearchPipeline from '../components/ResearchPipeline'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -32,6 +32,9 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
   completed: { label: '已完成', cls: 'text-emerald-600 border-emerald-300' },
   failed: { label: '失败', cls: 'text-red-600 border-red-300' },
 }
+
+/** 「按我的风格写作」开关偏好持久化 key（与学术写作页共享，issue #115） */
+const USE_USER_STYLE_STORAGE_KEY = 'yungx-writing-style-toggle'
 
 function downloadText(filename: string, content: string, mime: string) {
   const blob = new Blob([content], { type: mime })
@@ -54,6 +57,28 @@ export default function Workspace() {
   const [generatingAll, setGeneratingAll] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState('')
+  // 一键全流程「按我的风格写作」开关：上传过论文才显示；偏好与写作页共享 localStorage
+  const [hasUserStyle, setHasUserStyle] = useState(false)
+  const [useUserStyle, setUseUserStyleState] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(USE_USER_STYLE_STORAGE_KEY) !== 'false' // 未存过/异常时默认开
+    } catch {
+      return true
+    }
+  })
+  const setUseUserStyle = (v: boolean) => {
+    setUseUserStyleState(v)
+    try { localStorage.setItem(USE_USER_STYLE_STORAGE_KEY, String(v)) } catch { /* 隐身模式等场景忽略 */ }
+  }
+  // 挂载时探测用户论文库是否已有风格（GET /api/library/style：200=有，404=空库）
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    getLibraryStyle()
+      .then(() => { if (!cancelled) setHasUserStyle(true) })
+      .catch(() => { if (!cancelled) setHasUserStyle(false) })
+    return () => { cancelled = true }
+  }, [user])
   // 「一键生成全部」二次确认（会串行重跑 7 阶段并覆盖全部产出物，issue #66）
   const [confirmingAll, setConfirmingAll] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -111,7 +136,7 @@ export default function Workspace() {
     setError('')
     setCreating(false)
     try {
-      await runAllWorkflow(id)
+      await runAllWorkflow(id, { use_user_style: useUserStyle })
     } catch (err: unknown) {
       const status = axios.isAxiosError(err) ? err.response?.status : null
       setError(status === 400 ? '该项目已全部生成完成' : '启动全流程失败，请确认后端已启动')
@@ -314,6 +339,13 @@ export default function Workspace() {
                 className="btn-primary w-full mt-3 text-xs disabled:opacity-40 disabled:cursor-not-allowed">
                 {creating ? '创建中…' : generatingAll ? '⏳ 全流程生成中…' : '🚀 新建并一键生成'}
               </button>
+            )}
+            {user && hasUserStyle && (
+              <label className="flex items-center gap-2 mt-2 text-[11px] text-slate-600 cursor-pointer select-none">
+                <input type="checkbox" checked={useUserStyle} onChange={e => setUseUserStyle(e.target.checked)}
+                  className="w-3.5 h-3.5 accent-indigo-600" />
+                ✍️ 按我的风格写作（使用论文库风格）
+              </label>
             )}
             {generatingAll && (
               <p className="text-[10px] text-indigo-600 mt-2 animate-pulse">AI 正在串行生成 7 个阶段（约 8-12 分钟），进度实时更新，可离开页面</p>
@@ -546,6 +578,13 @@ export default function Workspace() {
             将<strong className="text-red-600 font-medium">串行重跑全部 7 个阶段</strong>（约 8-12 分钟），
             <strong className="text-red-600 font-medium">覆盖当前项目的全部已确认产出物</strong>，此操作
             <strong className="text-red-600 font-medium">不可撤销</strong>。确认后点「继续」，否则点「取消」。
+            {hasUserStyle && (
+              <label className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 text-[11px] text-slate-600 cursor-pointer select-none">
+                <input type="checkbox" checked={useUserStyle} onChange={e => setUseUserStyle(e.target.checked)}
+                  className="w-3.5 h-3.5 accent-indigo-600" />
+                ✍️ 按我的风格写作（使用论文库风格）
+              </label>
+            )}
           </>
         }
         confirmText="继续生成"
