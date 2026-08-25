@@ -259,3 +259,55 @@ class TestDoExport:
     def test_invalid_format(self):
         content = do_export(SAMPLE_DATA, SAMPLE_META, "xlsx")
         assert content is None
+
+
+class TestNoTruncation:
+    """导出内容绝不截断（原文完整输出）"""
+
+    LONG_TEXT = "这是一段非常长的原文内容，用于验证导出不做任何截断。" * 20  # ~960 字
+    LONG_ITEMS = [
+        {"name": f"条目{i}", "detail": f"超长详情字段内容{i}。" * 40} for i in range(3)
+    ]
+
+    def test_markdown_object_array_full_content(self):
+        """对象数组表格单元格：超长值必须原文完整出现，不得出现省略号截断"""
+        data = {"items": self.LONG_ITEMS}
+        lines: list = []
+        _dict_to_md(data, lines, level=2)
+        md = "\n".join(lines)
+        assert "..." not in md
+        for i in range(3):
+            full = f"超长详情字段内容{i}。" * 40
+            assert full in md, f"第 {i} 条长文本被截断"
+
+    def test_html_long_cell_preserved(self):
+        data = {"items": self.LONG_ITEMS}
+        html = export_html(data, SAMPLE_META).decode("utf-8")
+        assert "..." not in html.replace("……", "")
+        full = f"超长详情字段内容0。" * 40
+        assert full in html
+
+    def test_pdf_long_cell_preserved(self):
+        data = {"items": self.LONG_ITEMS}
+        content = export_pdf(data, SAMPLE_META)
+        assert isinstance(content, bytes) and len(content) > 1000
+
+    def test_word_long_cell_preserved(self):
+        import io
+        from docx import Document
+        data = {"items": self.LONG_ITEMS}
+        doc = Document(io.BytesIO(export_word(data, SAMPLE_META)))
+        all_text = "\n".join(p.text for p in doc.paragraphs)
+        for t in doc.tables:
+            for row in t.rows:
+                for cell in row.cells:
+                    all_text += "\n" + cell.text
+        assert "..." not in all_text
+        full = f"超长详情字段内容0。" * 40
+        assert full in all_text
+
+    def test_multiline_value_no_literal_br_in_pdf_word(self):
+        """含换行的长值：<br> 标记在 PDF/Word 纯文本里应还原为换行而非字面量"""
+        from src.export_service import _strip_md
+        assert "<br>" not in _strip_md("第一行<br>第二行")
+        assert _strip_md("第一行<br>第二行") == "第一行\n第二行"

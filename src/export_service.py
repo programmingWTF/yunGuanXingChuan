@@ -76,7 +76,7 @@ def _dict_to_md(d: Any, lines: list, level: int = 2):
 
     规则：
     - 标量键值对 → 表格（`| 字段 | 值 |`）；超长文本 / JSON 片段值单独成段（JSON 用围栏代码块）
-    - 标量数组 → 无序列表；对象数组 → 表格（对象字段名作表头，超长值截断）
+    - 标量数组 → 无序列表；对象数组 → 表格（对象字段名作表头，**所有单元格原文完整输出，不截断**）
     - 嵌套 dict/list → 下一级标题（### / ####），层级用 # 数量控制
     - 空值（None / "" / [] / {}）跳过
     """
@@ -142,11 +142,12 @@ def _dict_to_md(d: Any, lines: list, level: int = 2):
                     if vv is None or vv == "":
                         row.append("")
                     elif isinstance(vv, (dict, list)):
+                        # 原文完整输出，绝不截断
                         s = json.dumps(vv, ensure_ascii=False, separators=(",", ":"))
-                        row.append(s if len(s) <= _TABLE_CELL_LIMIT else s[:_TABLE_CELL_LIMIT - 3] + "...")
+                        row.append(s)
                     else:
-                        s = str(vv).replace(chr(10), _INLINE_BR)
-                        row.append(s if len(s) <= _TABLE_CELL_LIMIT else s[:_TABLE_CELL_LIMIT - 3] + "...")
+                        # 原文完整输出，换行转 <br> 保持表格结构，不截断
+                        row.append(str(vv).replace(chr(10), _INLINE_BR))
                 lines.append("| " + " | ".join(row) + " |")
             lines.append("")
         else:
@@ -258,14 +259,16 @@ def _parse_md_blocks(md: str) -> List[dict]:
 
 
 def _strip_md(text: str) -> str:
-    """去掉行内 Markdown 标记（** 加粗等），用于 PDF/Word 纯文本渲染"""
-    return text.replace("**", "")
+    """去掉行内 Markdown 标记（** 加粗等），并把 <br> 还原为换行，用于 PDF/Word 纯文本渲染（原文完整保留）"""
+    return text.replace("**", "").replace(_INLINE_BR, "\n")
 
 
 def _inline_md_to_html(text: str) -> str:
     """行内 Markdown → HTML（先转义，再处理 **加粗** 与 `行内码`）"""
     from html import escape
     text = escape(text)
+    # 表格单元格内的 <br> 是我们自己写的换行标记（原文换行的替身），还原成真换行
+    text = text.replace(escape(_INLINE_BR), "<br>")
     text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
     text = re.sub(r"`([^`]+)`", r"<code>\1</code>", text)
     return text
@@ -444,8 +447,9 @@ def export_pdf(data: Dict[str, Any], meta: Dict[str, str]) -> bytes:
             # Helvetica 仅支持 latin-1：中文/emoji 会抛 FPDFUnicodeEncodingException，
             # 降级为 ? 保证导出不崩溃（部署环境 Docker 打包 NotoSansSC 后正常显示中文）
             text = text.encode("latin-1", "replace").decode("latin-1")
-        for phys in _pdf_wrap(pdf, text, max_width):
-            pdf.cell(0, h, phys, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        for phys_line in text.split("\n"):
+            for phys in _pdf_wrap(pdf, phys_line, max_width):
+                pdf.cell(0, h, phys, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
     if not cjk_available:
         # ⚠️ 注意：Helvetica 仅支持 latin-1，任何非 ASCII（含 ⚠/中文）都会抛异常，必须用纯 ASCII 警告
