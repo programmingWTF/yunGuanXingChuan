@@ -61,6 +61,7 @@ class CreateProjectRequest(BaseModel):
 
 class RunStageRequest(BaseModel):
     inputs: Dict = Field(default_factory=dict, max_length=100, description="阶段输入（如 direction/materials/style_sample）")
+    use_user_style: bool = Field(default=True, description="是否注入用户论文库写作风格（issue #115，默认 True 保持现状）")
 
 
 class RunAllRequest(BaseModel):
@@ -68,6 +69,7 @@ class RunAllRequest(BaseModel):
     materials: Optional[list] = Field(default=None, description="数据分析素材列表（[{name, content}]）")
     style_sample: Optional[str] = Field(default=None, max_length=5000, description="论文写作风格蒸馏样本")
     topic: Optional[str] = Field(default=None, max_length=200, description="研究主题覆盖（默认项目兴趣）")
+    use_user_style: bool = Field(default=True, description="是否注入用户论文库写作风格（issue #115，默认 True 保持现状）")
 
 
 @router.get("/stages")
@@ -119,7 +121,11 @@ def run_stage(project_id: str, stage: int, req: RunStageRequest, request: Reques
     _require_owned_project(project_id, user)
     llm_config = _require_llm_config(request)
     try:
-        record = get_workflow_engine().run_stage(project_id, stage, req.inputs, llm_config=llm_config, owner_id=user["id"])
+        record = get_workflow_engine().run_stage(
+            project_id, stage, req.inputs,
+            llm_config=llm_config, owner_id=user["id"],
+            use_user_style=req.use_user_style,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception:
@@ -176,6 +182,7 @@ def run_all(project_id: str, req: RunAllRequest, request: Request, background_ta
         get_workflow_engine().run_all, project_id,
         materials=req.materials, style_sample=req.style_sample, topic=req.topic,
         llm_config=llm_config, owner_id=user["id"],
+        use_user_style=req.use_user_style,
     )
     return {"status": "running", "message": "全流程生成已启动，请通过 GET /projects/{id} 查看各阶段进度"}
 

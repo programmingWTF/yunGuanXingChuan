@@ -555,9 +555,10 @@ export async function deleteWorkflowProject(id: string) {
   return res.data as { status: string; project_id: string }
 }
 
-/** 执行阶段智能体（同步，产出物落盘为 awaiting_review） */
-export async function runWorkflowStage(id: string, stage: number, inputs: Record<string, unknown> = {}) {
-  const res = await api.post(`/workflow/projects/${id}/stages/${stage}/run`, { inputs })
+/** 执行阶段智能体（同步，产出物落盘为 awaiting_review）
+ * use_user_style: 写作阶段是否注入用户论文库风格（issue #115，默认 true 保持现状） */
+export async function runWorkflowStage(id: string, stage: number, inputs: Record<string, unknown> = {}, use_user_style = true) {
+  const res = await api.post(`/workflow/projects/${id}/stages/${stage}/run`, { inputs, use_user_style })
   return res.data as {
     stage: number
     status: WorkflowStageStatus
@@ -578,10 +579,11 @@ export async function approveWorkflowStage(id: string, stage: number) {
   return res.data as { project: ResearchProject }
 }
 
-/** 一键全流程：后台串行执行全部 7 阶段（进度通过 getWorkflowProject 轮询各阶段状态） */
+/** 一键全流程：后台串行执行全部 7 阶段（进度通过 getWorkflowProject 轮询各阶段状态）
+ * use_user_style: 写作阶段是否注入用户论文库风格（issue #115，默认 true 保持现状） */
 export async function runAllWorkflow(
   id: string,
-  opts: { materials?: { name: string; content: string }[]; style_sample?: string; topic?: string } = {},
+  opts: { materials?: { name: string; content: string }[]; style_sample?: string; topic?: string; use_user_style?: boolean } = {},
 ) {
   const res = await api.post(`/workflow/projects/${id}/run-all`, opts)
   return res.data as { status: string; message: string }

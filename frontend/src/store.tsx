@@ -68,7 +68,7 @@ interface StoreContextValue {
   /** 创建科研项目 */
   createProject: (title: string, interest: string) => Promise<ResearchProject>
   /** 执行阶段智能体 */
-  runStage: (id: string, stage: number, inputs?: Record<string, unknown>) => Promise<Record<string, unknown> | null>
+  runStage: (id: string, stage: number, inputs?: Record<string, unknown>, useUserStyle?: boolean) => Promise<Record<string, unknown> | null>
   /** 确认阶段产出物，推进到下一阶段 */
   approveStage: (id: string, stage: number) => Promise<void>
 }
@@ -298,7 +298,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return project
   }, [])
 
-  const runStage = useCallback(async (id: string, stage: number, inputs: Record<string, unknown> = {}) => {
+  const runStage = useCallback(async (id: string, stage: number, inputs: Record<string, unknown> = {}, useUserStyle?: boolean) => {
     // 乐观更新：请求发出前先把该阶段置为 running，全站（含主页驾驶舱/阶段圆点）立即显示「运行中」
     const current = projects.find(p => p.id === id) ?? currentProject
     if (current && current.stages?.[String(stage)]) {
@@ -312,7 +312,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setCurrentProject(optimistic)
       setProjects(prev => prev.map(p => (p.id === id ? optimistic : p)))
     }
-    const { output } = await runWorkflowStage(id, stage, inputs)
+    // issue #115：useUserStyle 未传时保持后端默认（true=注入用户论文库风格）
+    const { output } = await runWorkflowStage(id, stage, inputs, useUserStyle ?? true)
     const { project } = await getWorkflowProject(id)
     setCurrentProject(project)
     setProjects(prev => prev.map(p => (p.id === id ? project : p)))

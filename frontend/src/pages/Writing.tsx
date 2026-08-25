@@ -2,9 +2,9 @@
  * 云观星传 - ⑥ 学术写作（产出物查看 + 章节级 AI 润色）
  * Notion 式分栏：左目录 / 右正文；每章支持 AI 润色（独立接口，不修改已确认产出物）
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { StageLayout, StageSources, StatusBadge, NoProjectHint, useStageExec, StageActions, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
-import { polishWorkflowSection } from '../api'
+import { polishWorkflowSection, getLibraryStyle } from '../api'
 
 const INFO: StageInfo = {
   stage: 6, icon: '✍️', title: '学术写作', en: 'ACADEMIC WRITING',
@@ -18,6 +18,18 @@ export default function Writing() {
   const [polishing, setPolishing] = useState(false)
   const [polishResult, setPolishResult] = useState<{ section: string; content: string } | null>(null)
   const [polishError, setPolishError] = useState('')
+  // issue #115：用户论文库风格开关（上传过论文才显示，默认开与现状一致）
+  const [hasUserStyle, setHasUserStyle] = useState(false)
+  const [useUserStyle, setUseUserStyle] = useState(true)
+
+  // 挂载时探测用户论文库是否已有风格（GET /api/library/style：200=有，404=空库）
+  useEffect(() => {
+    let cancelled = false
+    getLibraryStyle()
+      .then(() => { if (!cancelled) setHasUserStyle(true) })
+      .catch(() => { if (!cancelled) setHasUserStyle(false) }) // 空库/未登录/后端异常均不显示开关
+    return () => { cancelled = true }
+  }, [])
 
   const output = (rec?.output ?? null) as {
     title?: string
@@ -51,11 +63,14 @@ export default function Writing() {
             <StageActions
             stage={6}
             status={status}
-            onRun={() => void exec({})}
+            onRun={() => void exec({}, { useUserStyle })}
             onApprove={approve}
             running={running}
             error={error}
             runLabel="开始写作"
+            hasUserStyle={hasUserStyle}
+            useUserStyle={useUserStyle}
+            onToggleUseUserStyle={() => setUseUserStyle(v => !v)}
           />
           </div>
 

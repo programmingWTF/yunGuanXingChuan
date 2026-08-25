@@ -67,9 +67,11 @@ export function StatusBadge({ status }: { status: string }) {
   return <span className={`text-[10px] shrink-0 px-2.5 py-1 rounded-full border font-medium ${m.cls}`}>{m.label}</span>
 }
 
-/** 运行/确认操作区（阶段页统一操作：首跑 / 确认产出 / 重新运行） */
+/** 运行/确认操作区（阶段页统一操作：首跑 / 确认产出 / 重新运行）
+ * hasUserStyle/useUserStyle/onToggleUseUserStyle：写作阶段「按我的风格写作」开关（issue #115） */
 export function StageActions({
   stage, status, onRun, onApprove, running, error, runLabel = '开始本阶段',
+  hasUserStyle, useUserStyle, onToggleUseUserStyle,
 }: {
   stage: number
   status: string
@@ -78,6 +80,9 @@ export function StageActions({
   running: boolean
   error: string
   runLabel?: string
+  hasUserStyle?: boolean
+  useUserStyle?: boolean
+  onToggleUseUserStyle?: () => void
 }) {
   // 重新运行属覆盖型危险操作：仅当该阶段已有已确认/产出物待覆盖时才需二次确认
   const [confirming, setConfirming] = useState(false)
@@ -119,6 +124,20 @@ export function StageActions({
           重新运行
         </button>
       ) : null}
+      {/* issue #115：用户上传过论文时，写作前可显式开关「按我的风格写作」 */}
+      {hasUserStyle && onToggleUseUserStyle && (
+        <button type="button" onClick={onToggleUseUserStyle}
+          className={`inline-flex items-center gap-1.5 text-[11px] px-3 py-2 rounded-lg border transition-all ${
+            useUserStyle
+              ? 'border-indigo-300/80 bg-indigo-50/80 text-indigo-700 hover:bg-indigo-100'
+              : 'border-slate-200 bg-white/60 text-slate-400 hover:text-slate-600 hover:border-slate-300'
+          }`}
+          title={useUserStyle ? '已开启：本次生成将学习你论文库的风格' : '已关闭：本次生成使用规范写作风格'}>
+          <span className={`inline-block w-1.5 h-1.5 rounded-full ${useUserStyle ? 'bg-indigo-500' : 'bg-slate-300'}`} />
+          <span className="font-display">按我的风格写作</span>
+          <span className={`text-[9px] tracking-wide ${useUserStyle ? 'text-indigo-400' : 'text-slate-300'}`}>{useUserStyle ? '开' : '关'}</span>
+        </button>
+      )}
       {running && (
         <span className="text-[11px] text-amber-600 animate-pulse">
           AI 正在分析中…（生成质量优先，约需 1-3 分钟，请耐心等待，勿刷新页面）
@@ -170,12 +189,13 @@ export function useStageExec(stage: number) {
   // 未解锁判定：阶段为 pending 且阶段号大于项目当前进度（需先完成并确认上一阶段）
   const locked = status === 'pending' && stage > (currentProject?.current_stage ?? stage)
 
-  const exec = async (inputs: Record<string, unknown>) => {
+  const exec = async (inputs: Record<string, unknown>, opts?: { useUserStyle?: boolean }) => {
     if (!projectId) return
     setRunning(true)
     setError('')
     try {
-      await runStage(projectId, stage, inputs)
+      // issue #115：opts.useUserStyle 未传时保持后端默认（true=注入用户论文库风格）
+      await runStage(projectId, stage, inputs, opts?.useUserStyle)
       await loadProject(projectId)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : '执行失败'

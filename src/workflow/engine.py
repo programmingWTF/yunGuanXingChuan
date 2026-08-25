@@ -115,13 +115,15 @@ class WorkflowEngine:
     # 阶段执行
     # ------------------------------------------------------------------
     def run_stage(self, project_id: str, stage: int, inputs: Dict[str, Any],
-                  llm_config: Optional[dict] = None, owner_id: Optional[str] = None) -> StageRecord:
+                  llm_config: Optional[dict] = None, owner_id: Optional[str] = None,
+                  use_user_style: bool = True) -> StageRecord:
         """
         执行指定阶段智能体（多租户：llm_config 为当前用户模型配置，None 则用全局默认）。
 
         - 前置校验：项目存在；阶段在 [1,7]；未解锁（> current_stage）拒绝
         - 注入知识库/搜索上下文（try/except 降级）
         - 产出物落盘为 awaiting_review（等待研究者确认）
+        - use_user_style=False：写作阶段跳过用户论文库风格注入（issue #115）
         """
         from src.llm_client import get_llm_client
         # 多租户：仅当调用方提供用户配置时才构造 per-user client（
@@ -217,7 +219,8 @@ class WorkflowEngine:
         full_inputs.update(context)
         self._inject_previous_outputs(project, stage, full_inputs)
         # 用户论文库风格注入（写作阶段）：用户上传过论文时，自动学习其写作风格（降级保护）
-        self._inject_user_style(stage, full_inputs, owner_id)
+        # use_user_style=False 时跳过（用户在前端显式关闭，issue #115）
+        self._inject_user_style(stage, full_inputs, owner_id, use_user_style=use_user_style)
 
         try:
             output = self._run_with_timeout(lambda: agent.run(full_inputs), 240.0, None, "智能体生成", swallow_exc=False)
@@ -283,7 +286,8 @@ class WorkflowEngine:
                 style_sample: Optional[str] = None,
                 topic: Optional[str] = None,
                 llm_config: Optional[dict] = None,
-                owner_id: Optional[str] = None) -> Dict[str, Any]:
+                owner_id: Optional[str] = None,
+                use_user_style: bool = True) -> Dict[str, Any]:
         """
         一键跑通全部 7 个科研阶段（选题→文献→设计→方法→数据→写作→评审）。
 
@@ -292,6 +296,7 @@ class WorkflowEngine:
         - 单阶段失败即停止（后续阶段依赖前序产出）
         - 所有阶段直接置 COMPLETED，项目 status=completed
         - 多租户：llm_config 为当前用户模型配置（None 用全局默认）
+        - use_user_style=False：写作阶段跳过用户论文库风格注入（issue #115）
         """
         from src.llm_client import get_llm_client
         # 多租户：仅当调用方提供用户配置时才构造 per-user client（
@@ -326,7 +331,8 @@ class WorkflowEngine:
             if stage == WorkflowStage.WRITING and style_sample:
                 inputs["style_sample"] = style_sample
             # 用户论文库风格注入（降级保护，不影响主流程）
-            self._inject_user_style(stage, inputs, owner_id)
+            # use_user_style=False 时跳过（用户在前端显式关闭，issue #115）
+            self._inject_user_style(stage, inputs, owner_id, use_user_style=use_user_style)
 
             # 注入上下文 + 前序产出
             context = self._build_stage_context(stage, inputs)
@@ -656,16 +662,18 @@ class WorkflowEngine:
             output["search_sources"] = sources
             if query:
                 output["search_query"] = query
-    def _inject_user_style(self, stage: int, inputs: Dict[str, Any], owner_id: Optional[str] = None) -> None:
+    def _inject_user_style(self, stage: int, inputs: Dict[str, Any], owner_id: Optional[str] = None,
+                           use_user_style: bool = True) -> None:
         """
         用户论文库风格注入（个人论文库模块）。
 
         - 仅写作阶段（WRITING）注入；用户已提供 style_sample 时不覆盖
         - owner_id 为 None（未登录/测试）跳过
+        - use_user_style=False 时跳过注入（用户显式关闭，issue #115）
         - 任何异常均降级（不影响主流程）：用户没传论文 / 库空 / 解析失败都静默跳过
         - 注入内容：few-shot 风格示例 + 术语表（写入 style_sample 供 PaperWriter 消费）
         """
-        if stage != WorkflowStage.WRITING or not owner_id:
+        if stage != WorkflowStage.WRITING or not owner_id or not use_user_style:
             return
         if inputs.get("style_sample"):
             return  # 用户显式提供的风格样本优先

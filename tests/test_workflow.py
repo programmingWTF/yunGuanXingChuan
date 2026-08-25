@@ -356,6 +356,64 @@ class TestWorkflowEngine:
         assert final.stages["4"].status == StageStatus.PENDING
         assert result["stages"][3]["status"] == "failed"
 
+    # ------------------------------------------------------------------
+    # issue #115：写作阶段「按照我的风格写作」开关（use_user_style）
+    # ------------------------------------------------------------------
+
+    def _unlock_to_writing(self, engine, interest="朱雀2号火箭"):
+        """跑完并确认前 5 阶段，解锁写作阶段（6），返回项目"""
+        p = engine.create_project(interest=interest)
+        for stage in range(1, 6):
+            engine.run_stage(p.id, stage, {"topic": interest}, owner_id="user-1")
+            engine.approve_stage(p.id, stage)
+        return p
+
+    def test_inject_user_style_disabled_skips_style_sample(self, engine):
+        """issue #115：use_user_style=False 时写作阶段不注入用户论文库风格（style_sample 不出现）"""
+        from src.knowledge.user_library import get_user_library
+        fake_lib = MagicMock()
+        fake_lib.global_style.return_value = {
+            "few_shot": ["示例1：句式A"],
+            "terms": ["术语A", "术语B"],
+        }
+        with patch("src.knowledge.user_library.get_user_library", return_value=fake_lib):
+            p = self._unlock_to_writing(engine)
+            agent = engine._get_agent(6)
+            agent.run.side_effect = lambda inputs: dict(inputs)  # 原样返回输入以检查
+            engine.run_stage(p.id, 6, {"topic": "朱雀2号火箭"}, owner_id="user-1", use_user_style=False)
+            called = agent.run.call_args[0][0]
+            assert "style_sample" not in called, "use_user_style=False 时不得注入 style_sample"
+
+    def test_inject_user_style_enabled_by_default(self, engine):
+        """issue #115：默认 use_user_style=True（现状）仍自动注入用户论文库风格"""
+        from src.knowledge.user_library import get_user_library
+        fake_lib = MagicMock()
+        fake_lib.global_style.return_value = {
+            "few_shot": ["示例1：句式A"],
+            "terms": ["术语A"],
+        }
+        with patch("src.knowledge.user_library.get_user_library", return_value=fake_lib):
+            p = self._unlock_to_writing(engine)
+            agent = engine._get_agent(6)
+            agent.run.side_effect = lambda inputs: dict(inputs)
+            engine.run_stage(p.id, 6, {"topic": "朱雀2号火箭"}, owner_id="user-1")
+            called = agent.run.call_args[0][0]
+            assert "style_sample" in called, "默认应注入用户论文库风格"
+            assert "示例1：句式A" in called["style_sample"]
+            assert "术语A" in called["style_sample"]
+
+    def test_run_all_use_user_style_false_skips_style(self, engine):
+        """issue #115：run_all 透传 use_user_style=False，写作阶段不注入用户风格"""
+        from src.knowledge.user_library import get_user_library
+        fake_lib = MagicMock()
+        fake_lib.global_style.return_value = {"few_shot": ["示例X"], "terms": ["术语X"]}
+        with patch("src.knowledge.user_library.get_user_library", return_value=fake_lib):
+            p = engine.create_project(interest="朱雀2号火箭")
+            engine.run_all(p.id, owner_id="user-1", use_user_style=False)
+            agent6 = engine._get_agent(6)
+            called = agent6.run.call_args[0][0]
+            assert "style_sample" not in called, "run_all use_user_style=False 时不得注入 style_sample"
+
     def test_export_markdown_contains_stages(self, engine):
         p = engine.create_project(interest="朱雀2号火箭")
         engine.run_stage(p.id, 1, {})
