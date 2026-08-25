@@ -11,6 +11,9 @@ const INFO: StageInfo = {
   description: '整合前期产出，按标准论文结构生成初稿（支持章节润色与风格蒸馏）',
 }
 
+// 「按我的风格写作」开关偏好持久化 key（issue #115 后续优化）
+const USE_USER_STYLE_STORAGE_KEY = 'yungx-writing-style-toggle'
+
 export default function Writing() {
   const { projectId, status, rec, running, error, locked, exec, approve, confirmRerun, rerunConfirmEl } = useStageExec(6)
   const [activeSection, setActiveSection] = useState(0)
@@ -18,9 +21,19 @@ export default function Writing() {
   const [polishing, setPolishing] = useState(false)
   const [polishResult, setPolishResult] = useState<{ section: string; content: string } | null>(null)
   const [polishError, setPolishError] = useState('')
-  // issue #115：用户论文库风格开关（上传过论文才显示，默认开与现状一致）
+  // issue #115：用户论文库风格开关（上传过论文才显示；偏好持久化到 localStorage，刷新不丢）
   const [hasUserStyle, setHasUserStyle] = useState(false)
-  const [useUserStyle, setUseUserStyle] = useState(true)
+  const [useUserStyle, setUseUserStyleState] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(USE_USER_STYLE_STORAGE_KEY) !== 'false' // 未存过/异常时默认开
+    } catch {
+      return true
+    }
+  })
+  const setUseUserStyle = (v: boolean) => {
+    setUseUserStyleState(v)
+    try { localStorage.setItem(USE_USER_STYLE_STORAGE_KEY, String(v)) } catch { /* 隐身模式等场景忽略 */ }
+  }
 
   // 挂载时探测用户论文库是否已有风格（GET /api/library/style：200=有，404=空库）
   useEffect(() => {
@@ -70,7 +83,7 @@ export default function Writing() {
             runLabel="开始写作"
             hasUserStyle={hasUserStyle}
             useUserStyle={useUserStyle}
-            onToggleUseUserStyle={() => setUseUserStyle(v => !v)}
+            onToggleUseUserStyle={() => setUseUserStyle(!useUserStyle)}
           />
           </div>
 

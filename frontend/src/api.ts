@@ -556,8 +556,8 @@ export async function deleteWorkflowProject(id: string) {
 }
 
 /** 执行阶段智能体（同步，产出物落盘为 awaiting_review）
- * use_user_style: 写作阶段是否注入用户论文库风格（issue #115，默认 true 保持现状） */
-export async function runWorkflowStage(id: string, stage: number, inputs: Record<string, unknown> = {}, use_user_style = true) {
+ * use_user_style: 写作阶段是否注入用户论文库风格（issue #115；不传时字段不下发，由后端默认值决定） */
+export async function runWorkflowStage(id: string, stage: number, inputs: Record<string, unknown> = {}, use_user_style?: boolean) {
   const res = await api.post(`/workflow/projects/${id}/stages/${stage}/run`, { inputs, use_user_style })
   return res.data as {
     stage: number
