@@ -312,8 +312,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setCurrentProject(optimistic)
       setProjects(prev => prev.map(p => (p.id === id ? optimistic : p)))
     }
-    // issue #115：useUserStyle 未传时保持后端默认（true=注入用户论文库风格）
-    const { output } = await runWorkflowStage(id, stage, inputs, useUserStyle ?? true)
+    // issue #115：useUserStyle 未传时不下发字段，由后端默认值兜底（当前为 true=注入用户论文库风格）
+    const { output } = await runWorkflowStage(id, stage, inputs, useUserStyle)
     const { project } = await getWorkflowProject(id)
     setCurrentProject(project)
     setProjects(prev => prev.map(p => (p.id === id ? project : p)))
