@@ -38,9 +38,9 @@ def send_verification_code(to: str, code: str) -> bool:
       .email-box {{ background:linear-gradient(180deg,#0b1d3a 0%,#101f42 100%); border-radius:16px; }}
       .email-title {{ color:#fff; }}
       .email-star {{ color:#7dd3fc; }}
-      .email-code-bg {{ background:rgba(14,165,233,0.12); border:1px solid rgba(125,211,252,0.35); }}
+      .email-code-bg {{ background:rgba(14,165,233,0.12); border:1px solid rgba(125,211,252,0.35); white-space:nowrap; }}
       .email-code-label {{ color:rgba(255,255,255,0.55); }}
-      .email-code {{ color:#fff; text-shadow:0 0 12px rgba(125,211,252,0.6); }}
+      .email-code {{ color:#fff; text-shadow:0 0 12px rgba(125,211,252,0.6); white-space:nowrap; }}
       .email-hint {{ color:rgba(255,255,255,0.38); }}
       @media (prefers-color-scheme: light) {{
         .email-box {{ background:#f8fafc; border:1px solid #e2e8f0; }}
