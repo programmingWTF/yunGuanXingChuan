@@ -530,6 +530,7 @@ export interface IterationRecord {
   conclusion?: string     // 结论可靠性一句话（确认版第一层）
   confidence?: number     // 综合可信度 0~1
   problems?: IterationProblem[]  // 结构化问题清单（确认版第二层）
+  strengths?: string[]           // LLM 方法学评判的优点
 }
 
 export interface ResearchProject {

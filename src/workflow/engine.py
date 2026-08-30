@@ -250,7 +250,7 @@ class WorkflowEngine:
             # - 研究设计（stage 3）重新生成 = 设计版本 +1（V1→V2→V3…）
             try:
                 if stage == 5:
-                    self._append_iteration(project_id, updated, output)
+                    self._append_iteration(project_id, updated, output, llm_config=llm_config)
                 elif stage == 3:
                     self.store.bump_design_version(project_id, summary=f"研究设计重新生成（V{updated.design_version + 1}）")
             except Exception as e:
@@ -327,13 +327,16 @@ class WorkflowEngine:
             raise RuntimeError(f"项目已不存在: {project_id}")
         return updated
 
-    def _append_iteration(self, project_id: str, project: ResearchProject, output: Dict[str, Any]) -> None:
+    def _append_iteration(self, project_id: str, project: ResearchProject, output: Dict[str, Any],
+                          llm_config: Optional[dict] = None) -> None:
         """数据分析产出后追加一条闭环迭代记录（指标 + AI 诊断建议，落盘持久化）"""
         from src.schemas import IterationRecord
         from datetime import datetime
         n = len(project.iterations) + 1
         version = project.design_version
-        conclusion, confidence, problems = self._diagnose(output)
+        # 确认版（2026-08-31 桂鱼定）：可信度由 LLM 方法学评判给出——本地知识库覆盖有限，
+        # 规则式"覆盖率×置信度"无法代表真实质量。LLM 失败时才降级规则诊断。
+        conclusion, confidence, problems = self._llm_diagnose(project, output, llm_config)
         hint = self._build_iteration_suggestion(output)
         iteration = IterationRecord(
             iteration=n,
@@ -353,6 +356,62 @@ class WorkflowEngine:
     # ------------------------------------------------------------------
     # 确认版诊断：结论可靠性 / 综合可信度 / 结构化问题清单（2026-08-30）
     # ------------------------------------------------------------------
+    def _llm_diagnose(self, project: ResearchProject, output: Dict[str, Any],
+                      llm_config: Optional[dict]) -> tuple:
+        """LLM 方法学评判（确认版 2026-08-31）：让模型从研究方法视角评估本轮分析——
+        方法适配性 / 抽样与类目设计 / 结论-证据匹配度 / 论文呈现质量。
+        本地校验报告只作为参考材料之一，不再决定可信度（本地库覆盖有限，规则
+        式"覆盖率×置信度"无法反映真实质量）。
+
+        Returns: (conclusion, confidence 0~1, problems [{text, target_stage}])
+        LLM 不可用/失败 → 降级为规则诊断（_diagnose）。
+        """
+        try:
+            if not llm_config:
+                raise ValueError("no user llm config")
+            from src.llm_client import get_llm_client
+            client = get_llm_client(llm_config)
+            rq = (project.stages.get("3").output or {}).get("research_questions", []) if project.stages.get("3") else []
+            prev = project.iterations[-1] if project.iterations else None
+            prev_info = f"上一轮（设计 V{prev.design_version}）可信度 {prev.confidence:.2f}" if prev else "这是第一轮分析"
+            system = (
+                "你是严格的社会科学研究方法评审专家（如同行评审人）。请从研究方法学视角评估本轮内容分析结果的质量，"
+                "不要被表面数据量迷惑，重点评估："
+                "①研究设计与方法的适配性；②抽样与编码类目设计的合理性（维度覆盖/颗粒度）；"
+                "③结论与证据的匹配度（是否过度推断）；④作为论文素材的呈现质量（可写性/深度）。"
+                "confidence 是你对本轮研究综合质量的真实评分（0~1，0.6 以下表示有明显方法缺陷）。"
+                "problems 列出当前最需要修复的问题（2-4 条，每条标注去哪个页面修：3=研究设计 2=文献综述）。"
+                "strengths 列出做得好的 1-3 点。"
+                '严格输出 JSON：{"conclusion":"一句话总体判断","confidence":0.0~1.0,'
+                '"problems":[{"text":"...","target_stage":3}],"strengths":["..."]}'
+            )
+            user = (
+                f"研究主题：{project.title}（{project.interest}）\n"
+                f"研究问题：{json.dumps(rq, ensure_ascii=False)[:800]}\n"
+                f"编码类目：{json.dumps(output.get('coding_table') or [], ensure_ascii=False)[:800]}\n"
+                f"研究发现：{json.dumps(output.get('findings') or [], ensure_ascii=False)[:1200]}\n"
+                f"初步解读：{str(output.get('interpretation') or '')[:600]}\n"
+                f"本地校验报告（仅供参考，注意其覆盖局限）：{json.dumps((output.get('verification') or {}).get('summary') or {}, ensure_ascii=False)[:400]}\n"
+                f"迭代背景：{prev_info}\n"
+                "请给出本轮评估。"
+            )
+            data = client.chat_json(system_prompt=system, user_prompt=user, temperature=0.2)
+            conclusion = str(data.get("conclusion") or "").strip()
+            confidence = float(data.get("confidence") or 0.0)
+            confidence = max(0.0, min(1.0, confidence))
+            problems = [
+                {"text": str(p.get("text", ""))[:200], "target_stage": int(p.get("target_stage") or 3)}
+                for p in (data.get("problems") or [])[:5]
+                if isinstance(p, dict) and p.get("text")
+            ]
+            if not conclusion or confidence <= 0:
+                raise ValueError("LLM 诊断输出不完整")
+            logger.info(f"[WorkflowEngine] LLM 方法学诊断：可信度 {confidence:.2f}，问题 {len(problems)} 条")
+            return conclusion, confidence, problems
+        except Exception as e:
+            logger.warning(f"[WorkflowEngine] LLM 诊断失败，降级规则诊断: {e}")
+            return self._diagnose(output)
+
     def _diagnose(self, output: Dict[str, Any]) -> tuple:
         """从数据分析产出物生成三层诊断：（结论, 综合可信度, 问题清单）
 

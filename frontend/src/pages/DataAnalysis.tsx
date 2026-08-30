@@ -450,7 +450,7 @@ export default function DataAnalysis() {
           {latestIteration && latestIteration.suggestion && (
             <div className="card p-5 !border-indigo-300/70 bg-gradient-to-br from-indigo-50/70 via-white to-white">
               <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
-                <h3 className="sec-label !mb-0">🤖 AI 诊断与迭代建议</h3>
+                <h3 className="sec-label !mb-0">🩺 AI 方法学评估</h3>
                 <span className="text-[9px] text-slate-400">基于第 {latestIteration.iteration} 轮分析 · 设计 V{latestIteration.design_version}</span>
               </div>
               {/* 确认版第一层：结论 + 综合可信度进度条 */}
@@ -471,6 +471,17 @@ export default function DataAnalysis() {
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* LLM 方法学评判：做得好的点 */}
+              {(latestIteration.strengths?.length ?? 0) > 0 && (
+                <div className="mt-2.5">
+                  <ul className="space-y-1">
+                    {latestIteration.strengths!.map((st, i) => (
+                      <li key={i} className="text-[11px] text-emerald-600 leading-relaxed">✓ {st}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
