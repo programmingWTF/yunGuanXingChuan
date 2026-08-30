@@ -921,16 +921,39 @@ class WorkflowEngine:
             raise TimeoutError("论文润色超时（>90 秒），请重试")
         return text.strip()
 
+    # 热点主题池：每次调用随机抽 2 个主题域 + 当日日期词，避免固定查询词反复命中同一批常青结果
+    _HOT_THEMES = [
+        "中国航天", "人工智能 大模型", "新能源 电池", "生命科学 医药",
+        "量子计算", "半导体 芯片", "深海 深空探测", "新材料", "脑机接口", "商业航天",
+    ]
+    _hot_cache: Dict[str, Any] = {"at": 0.0, "items": []}
+
     def get_hot_topics(self, limit: int = 6) -> List[Dict[str, str]]:
-        """今日科技热点（统一搜索召回，超时/异常降级为空列表）"""
+        """今日科技热点（统一搜索召回，超时/异常降级为空列表）
+
+        多样性策略（修复"每次都一样"）：
+        - 查询词带当日日期锚点，过滤常青旧闻
+        - 每次调用从主题池随机抽 2 个领域（航天/AI/新能源/生医/量子/芯片/深海等），
+          不同时段刷新返回不同板块的热点
+        - 引擎实例内 5 分钟缓存，避免高频刷新重复打搜索配额
+        """
+        import random as _random
+        import time as _time
+        now = _time.time()
+        if self._hot_cache["items"] and now - self._hot_cache["at"] < 300:
+            return self._hot_cache["items"][:limit]
+
         try:
             from src.search.unified_search import get_unified_search_service
             service = get_unified_search_service()
+            today = _dt.now()
+            date_str = f"{today.month}月{today.day}日"
+            extra_q = _random.sample(self._HOT_THEMES, 2)
 
             def _search():
                 return service.search_for_topic(
-                    "中国航天 科技 今日热点",
-                    extra_queries=["航天 新闻 最新进展", "科技 突破 新闻"],
+                    f"科技 热点 新闻 {date_str}",
+                    extra_queries=[f"{q} {date_str}" for q in extra_q],
                 )
 
             sources = self._run_with_timeout(_search, 12.0, [], "热点搜索")
@@ -945,7 +968,11 @@ class WorkflowEngine:
                     })
                 except Exception:
                     continue
-            return items
+            # 打乱后截取：同一批结果的不同排列 + 随机主题，降低连续刷新的重复感
+            _random.shuffle(items)
+            self._hot_cache["at"] = now
+            self._hot_cache["items"] = items[:limit]
+            return self._hot_cache["items"]
         except Exception as e:
             logger.warning(f"[WorkflowEngine] 热点获取失败: {e}")
             return []
