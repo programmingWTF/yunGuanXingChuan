@@ -514,6 +514,11 @@ export interface WorkflowStageRecord {
 }
 
 /** 闭环迭代记录（issue #129）：数据分析每轮产出落盘一条，含指标与 AI 诊断建议 */
+export interface IterationProblem {
+  text: string
+  target_stage: number   // 3=研究设计 2=文献综述
+}
+
 export interface IterationRecord {
   iteration: number
   timestamp: string
@@ -522,6 +527,9 @@ export interface IterationRecord {
   summary: string
   metrics: Record<string, number>
   suggestion: string
+  conclusion?: string     // 结论可靠性一句话（确认版第一层）
+  confidence?: number     // 综合可信度 0~1
+  problems?: IterationProblem[]  // 结构化问题清单（确认版第二层）
 }
 
 export interface ResearchProject {
@@ -590,6 +598,18 @@ export async function getWorkflowStageResult(id: string, stage: number) {
 export async function approveWorkflowStage(id: string, stage: number) {
   const res = await api.post(`/workflow/projects/${id}/stages/${stage}/approve`)
   return res.data as { project: ResearchProject }
+}
+
+/** 启动自动闭环迭代（确认版：分析→诊断→自动改设计→自动重跑，后台执行） */
+export async function startAutoIterate(
+  id: string,
+  opts?: { max_rounds?: number; target_confidence?: number },
+) {
+  const res = await api.post(`/workflow/projects/${id}/auto-iterate`, {
+    max_rounds: opts?.max_rounds ?? 3,
+    target_confidence: opts?.target_confidence ?? 0.85,
+  })
+  return res.data as { started: boolean; max_rounds: number; target_confidence: number }
 }
 
 /** 保存研究设计编辑（issue #129 闭环迭代）：更新 RQ/H 产出物，design_version +1 */

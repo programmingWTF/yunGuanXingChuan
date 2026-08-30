@@ -4,11 +4,12 @@
  * - 有素材：上传报道文本/访谈记录/数据表格 → 基于选定研究方法真实执行分析
  * 展示：词云（类目权重）/ 类目分布 / 研究发现 / 传播路径证据 / 初步解读
  */
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { StageLayout, StageSources, StatusBadge, NoProjectHint, useStageExec, StageActions, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
 import { useStore } from '../store'
-import type { IterationRecord } from '../api'
+import { startAutoIterate } from '../api'
+import type { IterationRecord, IterationProblem } from '../api'
 
 const INFO: StageInfo = {
   stage: 5, icon: '📊', title: '数据分析', en: 'DATA ANALYSIS',
@@ -193,6 +194,8 @@ export default function DataAnalysis() {
   const { projectId, status, rec, running, error, locked, exec, approve, confirmRerun, rerunConfirmEl } = useStageExec(5)
   const { currentProject, setIterationSuggestion, setRevisionHint } = useStore()
   const navigate = useNavigate()
+  const [autoRunning, setAutoRunning] = useState(false)
+  const [autoMsg, setAutoMsg] = useState('')
   const [materials, setMaterials] = useState<Material[]>([])
   const [pasteText, setPasteText] = useState('')
   const [reading, setReading] = useState(false)
@@ -266,6 +269,54 @@ export default function DataAnalysis() {
       setRevisionHint({ text: latestIteration.suggestion, source: 'analysis' })
     }
     navigate('/literature')
+  }
+
+  /** 确认版第二层：单条问题 → 按路由跳转（3=研究设计 2=文献综述） */
+  const goFixProblem = (pb: IterationProblem) => {
+    if (pb.target_stage === 2) {
+      setRevisionHint({ text: pb.text, source: 'analysis' })
+      navigate('/literature')
+    } else {
+      setIterationSuggestion({ text: pb.text, iteration: latestIteration?.iteration ?? 0 })
+      navigate('/design')
+    }
+  }
+
+  /** 确认版核心：自动迭代（分析→诊断→自动改设计→自动重跑，后台执行，轮询进度） */
+  const runAutoIterate = async () => {
+    if (!projectId || autoRunning) return
+    setAutoRunning(true)
+    const before = currentProject?.iterations?.length ?? 0
+    setAutoMsg('🤖 自动迭代已启动：AI 正在分析 → 诊断 → 修订设计 → 重跑…')
+    try {
+      await startAutoIterate(projectId, { max_rounds: 3, target_confidence: 0.85 })
+      let done = false
+      const t0 = Date.now()
+      const timer = setInterval(async () => {
+        if (done) return
+        if (Date.now() - t0 > 8 * 60 * 1000) {
+          done = true; clearInterval(timer); setAutoRunning(false)
+          setAutoMsg('⏱ 自动迭代仍在后台进行，稍后刷新查看结果')
+          return
+        }
+        try {
+          const { getWorkflowProject } = await import('../api')
+          const detail = (await getWorkflowProject(projectId)).project
+          const its = detail?.iterations ?? []
+          const n = its.length
+          const last = its[n - 1]
+          if (n > before && last && (last.problems?.length ?? 1) === 0) {
+            done = true; clearInterval(timer); setAutoRunning(false)
+            setAutoMsg(`✅ 自动迭代完成：本轮综合可信度 ${((last.confidence ?? 0) * 100).toFixed(0)}%，${last.conclusion ?? '结论可靠'}`)
+            return
+          }
+          setAutoMsg(`🤖 自动迭代进行中…（迭代记录 ${n} 条，最新可信度 ${(((last?.confidence) ?? 0) * 100).toFixed(0)}%）`)
+        } catch { /* 轮询失败忽略 */ }
+      }, 8000)
+    } catch (err: unknown) {
+      setAutoRunning(false)
+      setAutoMsg('❌ 自动迭代启动失败：' + (err instanceof Error ? err.message : '未知错误'))
+    }
   }
 
   return (
@@ -402,15 +453,58 @@ export default function DataAnalysis() {
                 <h3 className="sec-label !mb-0">🤖 AI 诊断与迭代建议</h3>
                 <span className="text-[9px] text-slate-400">基于第 {latestIteration.iteration} 轮分析 · 设计 V{latestIteration.design_version}</span>
               </div>
-              <p className="text-[12px] text-slate-600 leading-relaxed">{latestIteration.suggestion}</p>
+              {/* 确认版第一层：结论 + 综合可信度进度条 */}
+              {(latestIteration.conclusion || typeof latestIteration.confidence === 'number') && (
+                <div className="mb-3">
+                  <p className="text-[13px] text-slate-700 font-medium leading-relaxed">
+                    {latestIteration.conclusion || 'AI 已完成本轮诊断'}
+                  </p>
+                  {typeof latestIteration.confidence === 'number' && latestIteration.confidence > 0 && (
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1">
+                        <span>综合可信度</span>
+                        <span className="font-mono font-bold text-indigo-600">{(latestIteration.confidence * 100).toFixed(0)}%</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${latestIteration.confidence >= 0.85 ? 'bg-emerald-500' : latestIteration.confidence >= 0.7 ? 'bg-amber-500' : 'bg-red-400'}`}
+                          style={{ width: `${Math.round(latestIteration.confidence * 100)}%` }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 确认版第二层：结构化问题清单（每条独立跳转按钮） */}
+              {(latestIteration.problems?.length ?? 0) > 0 && (
+                <div className="mb-3">
+                  <p className="text-[11px] font-medium text-slate-600 mb-1.5">📋 发现 {latestIteration.problems!.length} 个问题：</p>
+                  <ul className="space-y-1.5">
+                    {latestIteration.problems!.map((pb, i) => (
+                      <li key={i} className="flex items-start gap-2 text-[11px] text-slate-600 leading-relaxed">
+                        <span className="flex-1 min-w-0">· {pb.text}</span>
+                        <button onClick={() => goFixProblem(pb)}
+                          className={`shrink-0 text-[9px] px-2 py-0.5 rounded border transition-all ${pb.target_stage === 2 ? 'border-sky-200 text-sky-600 hover:bg-sky-50' : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}>
+                          {pb.target_stage === 2 ? '📚 去修改' : '✏️ 去修改'}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* 确认版核心：自动迭代一键启动 */}
               <div className="flex items-center gap-3 mt-3 flex-wrap">
-                <button onClick={goFixDesign} className="btn-primary text-xs">✏️ 去修改设计 →</button>
+                <button onClick={() => void runAutoIterate()} disabled={autoRunning}
+                  className="text-xs px-3.5 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                  {autoRunning ? '⏳ 自动迭代中…' : '🤖 自动迭代（≤3 轮，可信度 ≥85% 自动停）'}
+                </button>
+                <button onClick={goFixDesign} className="btn-primary text-xs">✏️ 手动去修改设计 →</button>
                 <button onClick={goSupplementLiterature}
                   className="text-xs px-3 py-2 rounded-lg border border-sky-200 text-sky-600 hover:bg-sky-50 transition-all">
                   📚 去补充文献 →
                 </button>
-                <span className="text-[10px] text-slate-400">跳转研究设计页按建议调整 RQ/假设，或到文献综述页补充检索</span>
               </div>
+              {autoMsg && <p className="text-[11px] text-indigo-600 mt-2 leading-snug">{autoMsg}</p>}
             </div>
           )}
         </div>

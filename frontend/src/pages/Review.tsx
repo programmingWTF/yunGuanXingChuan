@@ -30,10 +30,10 @@ export default function Review() {
   const navigate = useNavigate()
   const [copied, setCopied] = useState(false)
 
-  /** 触发修改（issue #130）：携带该条评审意见跳转到对应页面作为修改提示 */
-  const gotoRevise = (text: string, target: 'literature' | 'design') => {
+  /** 触发修改（issue #130 确认版）：携带该条评审意见跳转到对应页面作为修改提示 */
+  const gotoRevise = (text: string, target: 'literature' | 'design' | 'analysis') => {
     setRevisionHint({ text, source: 'review' })
-    navigate(target === 'literature' ? '/literature' : '/design')
+    navigate(target === 'literature' ? '/literature' : target === 'analysis' ? '/data-analysis' : '/design')
   }
 
   const output = (rec?.output ?? null) as {
@@ -95,17 +95,26 @@ export default function Review() {
                         return (
                           <li key={j} className="text-[11px] text-slate-500 leading-relaxed flex items-start gap-1.5">
                             <span className="flex-1 min-w-0">· {text}</span>
-                            <button
-                              onClick={() => gotoRevise(text, target)}
-                              title="携带该条评审意见跳转，作为对应页面的修改提示（闭环迭代 issue #130）"
-                              className={`shrink-0 text-[9px] px-2 py-0.5 rounded border transition-all ${
-                                target === 'literature'
-                                  ? 'border-sky-200 text-sky-600 hover:bg-sky-50'
-                                  : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50'
-                              }`}
-                            >
-                              {target === 'literature' ? '📚 触发修改' : '✏️ 触发修改'}
-                            </button>
+                            {/* 确认版：点击弹出两个选项——去修改研究设计 / 去重新分析 */}
+                            <span className="shrink-0 flex items-center gap-1">
+                              <button
+                                onClick={() => gotoRevise(text, 'design')}
+                                title="携带该条意见跳转研究设计页"
+                                className="text-[9px] px-2 py-0.5 rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-all"
+                              >🎯 改设计</button>
+                              <button
+                                onClick={() => gotoRevise(text, 'analysis')}
+                                title="携带该条意见跳转数据分析页重新分析"
+                                className="text-[9px] px-2 py-0.5 rounded border border-amber-200 text-amber-600 hover:bg-amber-50 transition-all"
+                              >📊 重新分析</button>
+                              {target === 'literature' && (
+                                <button
+                                  onClick={() => gotoRevise(text, 'literature')}
+                                  title="携带该条意见去文献综述页补充检索"
+                                  className="text-[9px] px-2 py-0.5 rounded border border-sky-200 text-sky-600 hover:bg-sky-50 transition-all"
+                                >📚 补文献</button>
+                              )}
+                            </span>
                           </li>
                         )
                       })}
