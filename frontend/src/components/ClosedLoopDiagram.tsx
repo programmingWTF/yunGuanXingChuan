@@ -28,16 +28,16 @@ const BACKFLOW = [
   { from: 6, to: 1, label: '补充文献检索' },
 ]
 
-const W = 860
-const H = 300
+const W = 900
+const H = 360
 const CX = W / 2
-const CY = 138
-const R = 108
+const CY = 158
+const R = 132
 
 /** 节点在环上的坐标（第 0 个在正上方，顺时针排布） */
 function nodePos(i: number): { x: number; y: number } {
   const angle = -Math.PI / 2 + (i * 2 * Math.PI) / NODES.length
-  return { x: CX + R * Math.cos(angle), y: CY + R * Math.sin(angle) * 0.78 }
+  return { x: CX + R * Math.cos(angle), y: CY + R * Math.sin(angle) * 0.92 }
 }
 
 /** 节点状态（与 ResearchPipeline 同口径）：done/active/running/locked */
@@ -114,16 +114,18 @@ export default function ClosedLoopDiagram({ stages, currentStage = 1, iterations
           const a = nodePos(from)
           const b = nodePos(to)
           const midX = (a.x + b.x) / 2
-          const midY = Math.max(a.y, b.y) + (i === 0 ? 92 : 58)
+          const midY = Math.max(a.y, b.y) + (i === 0 ? 128 : 96)
           const lit = iterationsCount > 0
+          // 标签固定画在弧线最低点下方，两端对齐避让节点文字
+          const lblY = H - (i === 0 ? 64 : 44)
           return (
             <g key={i}>
-              <path d={`M ${a.x} ${a.y + 30} Q ${midX} ${midY} ${b.x} ${b.y - 26}`}
+              <path d={`M ${a.x} ${a.y + 28} Q ${midX} ${midY} ${b.x} ${b.y - 28}`}
                 fill="none"
                 stroke={lit ? 'rgba(217,119,6,.75)' : 'rgba(217,119,6,.35)'}
                 strokeWidth={i === 0 ? 2.2 : 1.6} strokeDasharray="7 5"
                 markerEnd="url(#cl-arrow-dash)" />
-              <text x={midX} y={midY - (i === 0 ? 8 : -14)} textAnchor="middle" fontSize="10.5"
+              <text x={midX} y={lblY} textAnchor="middle" fontSize="10.5"
                 className="fill-amber-600" opacity={lit ? 1 : 0.75}>
                 {label}{lit && i === 0 ? `（已迭代 ${iterationsCount} 轮）` : ''}
               </text>
@@ -142,8 +144,9 @@ export default function ClosedLoopDiagram({ stages, currentStage = 1, iterations
               <circle cx={x} cy={y} r="24" fill={style.fill} stroke={style.ring} strokeWidth="2" />
               <text x={x} y={y + 6} textAnchor="middle" fontSize="16" style={{ pointerEvents: 'none' }}>{n.icon}</text>
               {st === 'running' && <circle cx={x} cy={y} r="30" fill="none" stroke="rgba(245,158,11,.5)" strokeWidth="2" className="animate-pulse" />}
-              <text x={x} y={y + 44} textAnchor="middle" fontSize="11.5" className="fill-slate-600">{n.label}</text>
-              <text x={x} y={y + 56} textAnchor="middle" fontSize="9" fill={style.color} opacity="0.85">{style.badge}</text>
+              {/* 状态小圆点（右上角），文字角标简化——降低与相邻节点标签的拥挤 */}
+              <circle cx={x + 19} cy={y - 19} r="5" fill={style.color} stroke="white" strokeWidth="1.5" />
+              <text x={x} y={y + 43} textAnchor="middle" fontSize="11.5" className="fill-slate-600">{n.label}</text>
             </>
           )
           if (locked) {
