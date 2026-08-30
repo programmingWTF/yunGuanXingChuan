@@ -464,7 +464,7 @@ export default function Workspace() {
 
               {/* 闭环迭代流程示意图（issue #130：评审第一眼能看到闭环能力） */}
               <div className="border-t border-slate-100 pt-4">
-                <ClosedLoopDiagram />
+                <ClosedLoopDiagram stages={detail.stages} currentStage={detail.current_stage} iterationsCount={detail.iterations?.length ?? 0} />
               </div>
 
               {/* Research Pipeline 进度 */}
