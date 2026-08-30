@@ -76,6 +76,10 @@ export default function ClosedLoopDiagram({ stages, currentStage = 1, iterations
               🔄 本项目已迭代 {iterationsCount} 轮
             </span>
           )}
+          <Link to="/data-analysis"
+            className="text-[10px] px-2.5 py-1 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-all font-medium">
+            🤖 自动迭代 →
+          </Link>
           <span className="text-[10px] text-slate-400">{hasProject ? '点击节点直达对应阶段' : '创建项目后此处展示实时进度'}</span>
         </div>
       </div>
@@ -113,25 +117,28 @@ export default function ClosedLoopDiagram({ stages, currentStage = 1, iterations
         {BACKFLOW.map(({ from, to, label }, i) => {
           const a = nodePos(from)
           const b = nodePos(to)
-          const midX = (a.x + b.x) / 2
-          const midY = Math.max(a.y, b.y) + (i === 0 ? 128 : 96)
+          // 回流弧线走环内空白区（中轴附近），控制点分上下两档避免两条线重叠
+          const midX = CX + (i === 0 ? 24 : -24)
+          const midY = CY + (i === 0 ? 10 : -34)
           const lit = iterationsCount > 0
-          // 标签固定画在弧线最低点下方，两端对齐避让节点文字
-          const lblY = H - (i === 0 ? 64 : 44)
           return (
             <g key={i}>
-              <path d={`M ${a.x} ${a.y + 28} Q ${midX} ${midY} ${b.x} ${b.y - 28}`}
+              <path d={`M ${a.x} ${a.y + (i === 0 ? 26 : -26)} Q ${midX} ${midY} ${b.x} ${b.y + (i === 0 ? -26 : 26)}`}
                 fill="none"
                 stroke={lit ? 'rgba(217,119,6,.75)' : 'rgba(217,119,6,.35)'}
                 strokeWidth={i === 0 ? 2.2 : 1.6} strokeDasharray="7 5"
                 markerEnd="url(#cl-arrow-dash)" />
-              <text x={midX} y={lblY} textAnchor="middle" fontSize="10.5"
-                className="fill-amber-600" opacity={lit ? 1 : 0.75}>
-                {label}{lit && i === 0 ? `（已迭代 ${iterationsCount} 轮）` : ''}
-              </text>
             </g>
           )
         })}
+
+        {/* 回流标签：固定在图底部，不与节点/箭头重叠 */}
+        <text x={CX - 150} y={H - 30} textAnchor="middle" fontSize="10.5"
+          className="fill-amber-600" opacity={iterationsCount > 0 ? 1 : 0.75}>
+          ⤺ 按评审意见修改设计{iterationsCount > 0 ? `（已迭代 ${iterationsCount} 轮）` : ''}
+        </text>
+        <text x={CX - 24} y={H - 8} textAnchor="middle" fontSize="10"
+          className="fill-amber-500" opacity="0.75">补充文献检索</text>
 
         {/* 节点（可点击跳转；状态着色 + 角标） */}
         {NODES.map((n, i) => {
