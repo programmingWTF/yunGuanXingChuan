@@ -1056,26 +1056,32 @@ class WorkflowEngine:
             raise TimeoutError("论文润色超时（>90 秒），请重试")
         return text.strip()
 
-    # 热点主题池：每次调用随机抽 2 个主题域 + 当日日期词，避免固定查询词反复命中同一批常青结果
+    # 热点主题池：每次调用随机抽 1 个主题域作主查询 + 当日日期词，避免固定查询词反复命中同一批常青结果
     _HOT_THEMES = [
-        "中国航天", "人工智能 大模型", "新能源 电池", "生命科学 医药",
-        "量子计算", "半导体 芯片", "深海 深空探测", "新材料", "脑机接口", "商业航天",
+        "中国航天 航天发射", "人工智能 大模型 发布", "新能源 电池 突破", "生命科学 医药 疗法",
+        "量子计算", "半导体 芯片 制程", "深海 深空探测", "新材料 材料科学",
+        "脑机接口 神经科学", "商业航天 卫星", "可控核聚变 能源", "机器人 具身智能",
     ]
+    # 门户/聚合站 junk 标题黑名单（无具体新闻内容，只列出站名）
+    _HOT_JUNK_TITLES = {"热点科技", "中国科技网", "科技热点", "新闻中心", "科技日报", "热点新闻"}
     _hot_cache: Dict[str, Any] = {"at": 0.0, "items": []}
+    _hot_seen_urls: List[str] = []  # 最近已展示过的 URL（避免跨刷新重复）
 
     def get_hot_topics(self, limit: int = 6) -> List[Dict[str, str]]:
         """今日科技热点（统一搜索召回，超时/异常降级为空列表）
 
-        多样性策略（修复"每次都一样"）：
+        多样性 + 质量策略（2026-08-30 二次修复）：
+        - 主查询词本身从主题池随机抽 1 个领域（此前主查询固定"科技热点新闻"，
+          导致无论 extra 怎么换，Tavily/百炼主召回都是同一批门户站）
         - 查询词带当日日期锚点，过滤常青旧闻
-        - 每次调用从主题池随机抽 2 个领域（航天/AI/新能源/生医/量子/芯片/深海等），
-          不同时段刷新返回不同板块的热点
-        - 引擎实例内 5 分钟缓存，避免高频刷新重复打搜索配额
+        - junk 过滤：门户/聚合站站名黑名单 + 标题过短剔除
+        - URL 记忆去重：最近展示过的 150 条不再返回
+        - 引擎实例内 2 分钟缓存，避免高频刷新重复打搜索配额
         """
         import random as _random
         import time as _time
         now = _time.time()
-        if self._hot_cache["items"] and now - self._hot_cache["at"] < 300:
+        if self._hot_cache["items"] and now - self._hot_cache["at"] < 120:
             return self._hot_cache["items"][:limit]
 
         try:
@@ -1084,27 +1090,41 @@ class WorkflowEngine:
             from datetime import datetime as _dt_now
             today = _dt_now.now()
             date_str = f"{today.month}月{today.day}日"
-            extra_q = _random.sample(self._HOT_THEMES, 2)
+            theme = _random.choice(self._HOT_THEMES)  # 主查询随刷新轮换领域
 
             def _search():
                 return service.search_for_topic(
-                    f"科技 热点 新闻 {date_str}",
-                    extra_queries=[f"{q} {date_str}" for q in extra_q],
+                    f"{theme} 最新进展 新闻 {date_str}",
+                    extra_queries=[f"{theme} {date_str}", "科技 突破 今日"],
                 )
 
             sources = self._run_with_timeout(_search, 12.0, [], "热点搜索")
             items = []
-            for s in (sources or [])[:limit]:
+            for s in (sources or []):
+                if len(items) >= limit:
+                    break
                 try:
+                    title = str(s.title).strip()
+                    url = str(s.url)
+                    if not url or url in self._hot_seen_urls:
+                        continue
+                    if title in self._HOT_JUNK_TITLES or len(title) < 12:
+                        continue  # 门户站名 / 无信息量标题
                     items.append({
-                        "title": str(s.title)[:60],
-                        "url": str(s.url),
+                        "title": title[:60],
+                        "url": url,
                         "source": str(getattr(s, "source", "")),
                         "content": str(getattr(s, "content", "") or "")[:120],
                     })
+                    self._hot_seen_urls.append(url)
                 except Exception:
                     continue
-            # 打乱后截取：同一批结果的不同排列 + 随机主题，降低连续刷新的重复感
+            # URL 记忆只留最近 150 条
+            if len(self._hot_seen_urls) > 150:
+                self._hot_seen_urls[:] = self._hot_seen_urls[-150:]
+            if not items:
+                # 全被过滤时回退缓存或上次的，避免开天窗
+                return self._hot_cache["items"][:limit]
             _random.shuffle(items)
             self._hot_cache["at"] = now
             self._hot_cache["items"] = items[:limit]
