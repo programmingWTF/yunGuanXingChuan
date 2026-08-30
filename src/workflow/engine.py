@@ -245,6 +245,17 @@ class WorkflowEngine:
             )
             if updated is None:
                 raise RuntimeError(f"项目已不存在: {project_id}")
+            # issue #129 闭环迭代：
+            # - 数据分析（stage 5）产出后追加一条迭代记录（指标 + AI 诊断建议）
+            # - 研究设计（stage 3）重新生成 = 设计版本 +1（V1→V2→V3…）
+            try:
+                if stage == 5:
+                    self._append_iteration(project_id, updated, output)
+                elif stage == 3:
+                    self.store.bump_design_version(project_id, summary=f"研究设计重新生成（V{updated.design_version + 1}）")
+            except Exception as e:
+                # 迭代记录失败不影响主流程（降级：仅告警）
+                logger.warning(f"[WorkflowEngine] 迭代记录写入失败（忽略）: {e}")
             return updated.stages[str(stage)]
         except Exception as e:
             logger.error(f"[WorkflowEngine] 阶段 {stage} 执行失败: {e}")
@@ -278,6 +289,108 @@ class WorkflowEngine:
             return None
         record = project.stages.get(str(stage))
         return record.output if record else None
+
+    # ------------------------------------------------------------------
+    # 闭环迭代（issue #129）：迭代记录 + 设计修改保存
+    # ------------------------------------------------------------------
+    def save_design(self, project_id: str, research_questions: List[Dict], hypotheses: List[Dict],
+                    suggestion: str = "") -> ResearchProject:
+        """保存研究设计编辑（迭代闭环：按 AI 诊断建议修改 RQ/H 后保存），设计版本号 +1
+
+        - 校验：设计阶段已有产出物（completed / awaiting_review）
+        - 更新 stage 3 产出物中的 research_questions / hypotheses
+        - design_version +1（V1→V2→V3…），history 记录 "design_saved"
+        """
+        project = self.store.get(project_id)
+        if project is None:
+            raise ValueError(f"项目不存在: {project_id}")
+        record = project.stages.get("3")
+        if record is None or record.status not in (StageStatus.COMPLETED, StageStatus.AWAITING_REVIEW):
+            raise ValueError("研究设计阶段尚无产出物，请先完成研究设计")
+
+        output = dict(record.output or {})
+        output["research_questions"] = research_questions
+        output["hypotheses"] = hypotheses
+        next_version = project.design_version + 1
+        # 原子保存：产出物更新与 design_version +1 在同一次加锁写盘内完成
+        # （issue #129 review 修复：原先两次独立加锁写盘，中间崩溃会产出「产物已更新但版本号未变」的不一致）
+        updated = self.store.update_stage(
+            project_id, 3,
+            output=output,
+            bump_design_version=True,
+            append_history={
+                "stage": 3, "action": "design_saved",
+                "summary": f"按迭代建议保存设计修改（V{next_version}）",
+            },
+        )
+        if updated is None:
+            raise RuntimeError(f"项目已不存在: {project_id}")
+        return updated
+
+    def _append_iteration(self, project_id: str, project: ResearchProject, output: Dict[str, Any]) -> None:
+        """数据分析产出后追加一条闭环迭代记录（指标 + AI 诊断建议，落盘持久化）"""
+        from src.schemas import IterationRecord
+        from datetime import datetime
+        n = len(project.iterations) + 1
+        version = project.design_version
+        iteration = IterationRecord(
+            iteration=n,
+            timestamp=datetime.now().isoformat(timespec="microseconds"),
+            source_stage=5,
+            design_version=version,
+            summary=f"第 {n} 轮分析完成（设计 V{version}）",
+            metrics=self._extract_iteration_metrics(output),
+            suggestion=self._build_iteration_suggestion(output),
+        )
+        self.store.add_iteration(project_id, iteration, summary=iteration.summary)
+        logger.info(f"[WorkflowEngine] ✓ 迭代记录 #{n} 已落盘（设计 V{version}）")
+
+    @staticmethod
+    def _extract_iteration_metrics(output: Dict[str, Any]) -> Dict[str, float]:
+        """从数据分析产出物提取本轮指标（编码类目数 / 证据覆盖率 / 平均置信度 / 研究发现数）"""
+        metrics: Dict[str, float] = {}
+        verify = (output.get("verification") or {}).get("summary") or {}
+        total = verify.get("total") or 0
+        if total:
+            rate = ((verify.get("verified") or 0) + (verify.get("partial") or 0)) / total
+            metrics["证据覆盖率"] = round(rate, 3)
+            metrics["平均置信度"] = round(verify.get("avg_confidence") or 0, 3)
+        coding = output.get("coding_table") or []
+        if coding:
+            metrics["编码类目数"] = float(len(coding))
+        findings = output.get("findings") or []
+        if findings:
+            metrics["研究发现数"] = float(len(findings))
+        sentiment = output.get("sentiment")
+        if isinstance(sentiment, dict):
+            sample = sum(sentiment.get(k) or 0 for k in ("positive", "neutral", "negative"))
+            if sample > 0:
+                metrics["情绪样本量"] = float(sample)
+        return metrics
+
+    @staticmethod
+    def _build_iteration_suggestion(output: Dict[str, Any]) -> str:
+        """基于产出物特征生成 AI 诊断与迭代建议（规则式，无需额外 LLM 调用，避免拖慢分析）"""
+        hints: List[str] = []
+        verify = (output.get("verification") or {}).get("summary") or {}
+        total = verify.get("total") or 0
+        if total:
+            rate = ((verify.get("verified") or 0) + (verify.get("partial") or 0)) / total
+            if rate < 0.7:
+                hints.append(f"断言证据覆盖率仅 {rate:.0%}，建议在设计中收窄假设范围并补充本地文献/科学事实语料")
+            elif rate >= 0.9:
+                hints.append(f"断言证据覆盖率高达 {rate:.0%}，事实基础扎实，可尝试扩展分析维度")
+        coding = output.get("coding_table") or []
+        if coding and len(coding) < 5:
+            hints.append(f"编码类目仅 {len(coding)} 个，颗粒度偏粗——建议在设计中增加维度（如信源类型、叙事框架、情感倾向）")
+        if not output.get("sentiment"):
+            hints.append("本次产出缺少情绪分析维度，建议在设计假设中补充情感倾向相关变量")
+        findings = output.get("findings") or []
+        if findings and len(findings) < 3:
+            hints.append(f"研究发现仅 {len(findings)} 条，建议细化 RQ 拆分，提升可操作性")
+        if not hints:
+            hints.append("整体质量良好；如需进一步提升，可聚焦证据覆盖率的完整性与编码类目的精细度")
+        return "；".join(hints)
 
     # ------------------------------------------------------------------
     # 一键全流程（run-all）：串行执行 7 阶段，自动完成（不要求逐阶段确认）

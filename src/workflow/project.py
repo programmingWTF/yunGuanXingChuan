@@ -141,8 +141,13 @@ class ProjectStore:
                      error: Optional[str] = None,
                      clear_output: bool = False,
                      increment_run_count: bool = False,
+                     bump_design_version: bool = False,
                      append_history: Optional[Dict] = None) -> Optional[ResearchProject]:
-        """更新某阶段状态并写盘（read-modify-write 整体持锁，返回更新后的项目）"""
+        """更新某阶段状态并写盘（read-modify-write 整体持锁，返回更新后的项目）
+
+        bump_design_version: 同锁内完成设计版本号 +1（issue #129 原子保存设计修改用，
+        避免产出物更新与版本号递增分两次加锁写盘出现中间态不一致）
+        """
         with self._lock:
             project = self.get(project_id)
             if project is None:
@@ -168,6 +173,8 @@ class ProjectStore:
                 record.error = error
             if increment_run_count:
                 record.run_count += 1
+            if bump_design_version:
+                project.design_version += 1
             record.updated_at = now
             if append_history:
                 item = dict(append_history)
@@ -182,6 +189,43 @@ class ProjectStore:
                 else:
                     project.current_stage = stage + 1
 
+            self._write(project)
+            return project
+
+    # ------------------------------------------------------------------
+    # 闭环迭代（issue #129）：迭代记录 + 设计版本号
+    # ------------------------------------------------------------------
+    def add_iteration(self, project_id: str, iteration, summary: str = "") -> Optional[ResearchProject]:
+        """追加一条闭环迭代记录并写盘（数据分析每轮产出后调用）"""
+        with self._lock:
+            project = self.get(project_id)
+            if project is None:
+                return None
+            project.iterations.append(iteration)
+            if summary:
+                project.history.append({
+                    "stage": iteration.source_stage,
+                    "action": "iteration_done",
+                    "summary": summary,
+                    "timestamp": iteration.timestamp or datetime.now().isoformat(timespec="microseconds"),
+                })
+            self._write(project)
+            return project
+
+    def bump_design_version(self, project_id: str, summary: str = "") -> Optional[ResearchProject]:
+        """研究设计版本号 +1（设计保存/重跑后调用，V1→V2→V3…）"""
+        with self._lock:
+            project = self.get(project_id)
+            if project is None:
+                return None
+            project.design_version += 1
+            if summary:
+                project.history.append({
+                    "stage": 3,
+                    "action": "design_version",
+                    "summary": summary,
+                    "timestamp": datetime.now().isoformat(timespec="microseconds"),
+                })
             self._write(project)
             return project
 

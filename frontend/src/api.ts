@@ -513,6 +513,17 @@ export interface WorkflowStageRecord {
   updated_at: string
 }
 
+/** 闭环迭代记录（issue #129）：数据分析每轮产出落盘一条，含指标与 AI 诊断建议 */
+export interface IterationRecord {
+  iteration: number
+  timestamp: string
+  source_stage: number
+  design_version: number
+  summary: string
+  metrics: Record<string, number>
+  suggestion: string
+}
+
 export interface ResearchProject {
   id: string
   title: string
@@ -523,6 +534,8 @@ export interface ResearchProject {
   updated_at: string
   stages: Record<string, WorkflowStageRecord>
   history: Record<string, unknown>[]
+  design_version: number
+  iterations: IterationRecord[]
 }
 
 /** 获取科研流程阶段元数据（Research Pipeline 渲染） */
@@ -577,6 +590,15 @@ export async function getWorkflowStageResult(id: string, stage: number) {
 export async function approveWorkflowStage(id: string, stage: number) {
   const res = await api.post(`/workflow/projects/${id}/stages/${stage}/approve`)
   return res.data as { project: ResearchProject }
+}
+
+/** 保存研究设计编辑（issue #129 闭环迭代）：更新 RQ/H 产出物，design_version +1 */
+export async function saveDesignStage(
+  id: string,
+  payload: { research_questions: { id: string; text: string }[]; hypotheses: { id: string; statement: string; hypothesis_type: string }[]; suggestion?: string },
+) {
+  const res = await api.post(`/workflow/projects/${id}/stages/3/save`, payload)
+  return res.data as { project: ResearchProject; design_version: number }
 }
 
 /** 一键全流程：后台串行执行全部 7 阶段（进度通过 getWorkflowProject 轮询各阶段状态）

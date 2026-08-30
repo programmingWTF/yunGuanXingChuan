@@ -71,6 +71,11 @@ interface StoreContextValue {
   runStage: (id: string, stage: number, inputs?: Record<string, unknown>, useUserStyle?: boolean) => Promise<Record<string, unknown> | null>
   /** 确认阶段产出物，推进到下一阶段 */
   approveStage: (id: string, stage: number) => Promise<void>
+  // ===== 闭环迭代（issue #129）=====
+  /** 从数据分析页跳转研究设计页时携带的 AI 诊断建议（全局 store，刷新即清） */
+  iterationSuggestion: { text: string; iteration: number } | null
+  /** 设置/清除迭代建议 */
+  setIterationSuggestion: (s: { text: string; iteration: number } | null) => void
 }
 
 const initialState: AnalysisState = {
@@ -113,6 +118,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [stageMeta, setStageMeta] = useState<WorkflowStageMeta[]>([])
   const [projects, setProjects] = useState<ResearchProject[]>([])
   const [currentProject, setCurrentProject] = useState<ResearchProject | null>(null)
+  // issue #129 闭环迭代：分析页 → 设计页跳转携带的 AI 诊断建议
+  const [iterationSuggestion, setIterationSuggestion] = useState<{ text: string; iteration: number } | null>(null)
 
   // 启动时加载历史记录 + 恢复运行中的任务
   useEffect(() => {
@@ -338,6 +345,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       stageMeta, projects, currentProject,
       setCurrentProject, setProjects,
       refreshProjects, loadProject, createProject, runStage, approveStage,
+      iterationSuggestion, setIterationSuggestion,
     }}>
       {children}
     </StoreContext.Provider>
