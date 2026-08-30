@@ -76,6 +76,11 @@ interface StoreContextValue {
   iterationSuggestion: { text: string; iteration: number } | null
   /** 设置/清除迭代建议 */
   setIterationSuggestion: (s: { text: string; iteration: number } | null) => void
+  // ===== 闭环迭代外围支撑（issue #130）=====
+  /** 评审意见 / 分析诊断 → 跳转目标页携带的修改提示（全局 store，刷新即清） */
+  revisionHint: { text: string; source: 'review' | 'analysis' } | null
+  /** 设置/清除修改提示 */
+  setRevisionHint: (s: { text: string; source: 'review' | 'analysis' } | null) => void
 }
 
 const initialState: AnalysisState = {
@@ -120,6 +125,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [currentProject, setCurrentProject] = useState<ResearchProject | null>(null)
   // issue #129 闭环迭代：分析页 → 设计页跳转携带的 AI 诊断建议
   const [iterationSuggestion, setIterationSuggestion] = useState<{ text: string; iteration: number } | null>(null)
+  // issue #130 闭环迭代外围：评审意见 / 分析诊断 → 目标页携带的修改提示
+  const [revisionHint, setRevisionHint] = useState<{ text: string; source: 'review' | 'analysis' } | null>(null)
 
   // 启动时加载历史记录 + 恢复运行中的任务
   useEffect(() => {
@@ -346,6 +353,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setCurrentProject, setProjects,
       refreshProjects, loadProject, createProject, runStage, approveStage,
       iterationSuggestion, setIterationSuggestion,
+      revisionHint, setRevisionHint,
     }}>
       {children}
     </StoreContext.Provider>

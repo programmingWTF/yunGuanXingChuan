@@ -3,7 +3,9 @@
  * 展示三审稿人评分与一键修改说明
  */
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { StageLayout, StageSources, ScoreBar, StatusBadge, NoProjectHint, useStageExec, StageActions, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
+import { useStore } from '../store'
 
 const INFO: StageInfo = {
   stage: 7, icon: '👨‍⚖️', title: '同行评审', en: 'PEER REVIEW',
@@ -17,9 +19,22 @@ interface ReviewerShape {
   suggestions: string[]
 }
 
+/** 评审意见 → 目标页���由（issue #130）：涉及文献/综述/引用的意见去文献综述页，其余去研究设计页 */
+function suggestionTarget(text: string): 'literature' | 'design' {
+  return /文献|参考|综述|引用|出处|literature|citation|reference/i.test(text) ? 'literature' : 'design'
+}
+
 export default function Review() {
   const { projectId, status, rec, running, error, locked, exec, approve, confirmRerun, rerunConfirmEl } = useStageExec(7)
+  const { setRevisionHint } = useStore()
+  const navigate = useNavigate()
   const [copied, setCopied] = useState(false)
+
+  /** 触发修改（issue #130）：携带该条评审意见跳转到对应页面作为修改提示 */
+  const gotoRevise = (text: string, target: 'literature' | 'design') => {
+    setRevisionHint({ text, source: 'review' })
+    navigate(target === 'literature' ? '/literature' : '/design')
+  }
 
   const output = (rec?.output ?? null) as {
     reviewers?: ReviewerShape[]
@@ -74,11 +89,26 @@ export default function Review() {
                   </div>
                   {r.suggestions?.length > 0 && (
                     <ul className="space-y-1.5 pt-2 border-t border-slate-100">
-                      {r.suggestions.map((s, j) => (
-                        <li key={j} className="text-[11px] text-slate-500 leading-relaxed">
-                          · {typeof s === 'string' ? s : JSON.stringify(s)}
-                        </li>
-                      ))}
+                      {r.suggestions.map((s, j) => {
+                        const text = typeof s === 'string' ? s : JSON.stringify(s)
+                        const target = suggestionTarget(text)
+                        return (
+                          <li key={j} className="text-[11px] text-slate-500 leading-relaxed flex items-start gap-1.5">
+                            <span className="flex-1 min-w-0">· {text}</span>
+                            <button
+                              onClick={() => gotoRevise(text, target)}
+                              title="携带该条评审意见跳转，作为对应页面的修改提示（闭环迭代 issue #130）"
+                              className={`shrink-0 text-[9px] px-2 py-0.5 rounded border transition-all ${
+                                target === 'literature'
+                                  ? 'border-sky-200 text-sky-600 hover:bg-sky-50'
+                                  : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50'
+                              }`}
+                            >
+                              {target === 'literature' ? '📚 触发修改' : '✏️ 触发修改'}
+                            </button>
+                          </li>
+                        )
+                      })}
                     </ul>
                   )}
                 </div>
@@ -94,6 +124,17 @@ export default function Review() {
                 </button>
               </div>
               <p className="text-[13px] text-slate-700 leading-relaxed whitespace-pre-wrap">{output.revision_notes}</p>
+              {/* issue #130 闭环迭代：一键修改说明整体也可作为提示跳转 */}
+              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
+                <button onClick={() => gotoRevise(output!.revision_notes!, 'design')}
+                  className="text-[11px] px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-all">
+                  ✏️ 按修改说明去研究设计 →
+                </button>
+                <button onClick={() => gotoRevise(output!.revision_notes!, 'literature')}
+                  className="text-[11px] px-3 py-1.5 rounded-lg border border-sky-200 text-sky-600 hover:bg-sky-50 transition-all">
+                  📚 去补充文献检索 →
+                </button>
+              </div>
             </div>
           )}
         </div>

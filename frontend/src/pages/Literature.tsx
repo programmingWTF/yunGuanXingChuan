@@ -2,7 +2,9 @@
  * 云观星传 - ② 文献综述（产出物查看页）
  * 展示文献归类、综述正文与 Research Gap
  */
+import { useState } from 'react'
 import { StageLayout, StageSources, StatusBadge, NoProjectHint, useStageExec, StageActions, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
+import { useStore } from '../store'
 
 const INFO: StageInfo = {
   stage: 2, icon: '📚', title: '文献综述', en: 'LITERATURE REVIEW',
@@ -124,6 +126,19 @@ function TheoryRelationGraph({ relations }: { relations: TheoryRelation[] }) {
 
 export default function Literature() {
   const { projectId, status, rec, running, error, locked, exec, approve, confirmRerun, rerunConfirmEl } = useStageExec(2)
+  const { revisionHint, setRevisionHint } = useStore()
+  // issue #130：补充检索的覆盖确认（重跑会清空并覆盖现有综述产出物）
+  const [confirmSearch, setConfirmSearch] = useState(false)
+
+  /** 发起补充检索（issue #130）：携带修改提示作为额外检索关键词重跑本阶段。
+   * 上下文经由 inputs.research_questions 进入后端 _extract_keywords 的扩展查询词，
+   * 文献 Agent 提示词本身不读该字段，方向（direction）不受影响。 */
+  const runSupplementarySearch = () => {
+    setConfirmSearch(false)
+    const hint = revisionHint?.text ?? ''
+    void exec(hint ? { research_questions: [{ id: 'HINT', text: hint.slice(0, 200) }] } : {})
+    setRevisionHint(null)
+  }
 
   const output = (rec?.output ?? null) as {
     sections?: { theme: string; content: string }[]
@@ -150,6 +165,49 @@ export default function Literature() {
             runLabel="开始综述"
           />
           </div>
+
+          {/* issue #130 闭环迭代：来自评审意见 / 数据分析诊断的修改提示 + 补充检索入口 */}
+          {revisionHint && (
+            <div className="card p-4 !border-amber-300/80 bg-gradient-to-br from-amber-50/80 via-white to-white">
+              <div className="flex items-start gap-3">
+                <span className="text-lg shrink-0">{revisionHint.source === 'review' ? '👨‍⚖️' : '📊'}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-slate-700 flex items-center flex-wrap gap-1.5">
+                    {revisionHint.source === 'review' ? '来自同行评审的修改提示' : '来自数据分析的迭代建议'}
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">
+                      {revisionHint.source === 'review' ? '评审意见' : 'AI 诊断'}
+                    </span>
+                  </p>
+                  <p className="text-[11px] text-slate-600 mt-1.5 leading-relaxed">{revisionHint.text}</p>
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    {!confirmSearch ? (
+                      <button onClick={() => setConfirmSearch(true)} disabled={running}
+                        className="text-[11px] px-3 py-1.5 rounded-lg bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-40 transition-all">
+                        🔍 发起补充文献检索
+                      </button>
+                    ) : (
+                      <span className="flex items-center gap-2 text-[11px]">
+                        <span className="text-red-500">⚠️ 将重新生成综述并覆盖现有产出，确认？</span>
+                        <button onClick={runSupplementarySearch} disabled={running}
+                          className="px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 disabled:opacity-40 transition-all">
+                          确认重跑
+                        </button>
+                        <button onClick={() => setConfirmSearch(false)} disabled={running}
+                          className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:border-slate-300 transition-all">
+                          取消
+                        </button>
+                      </span>
+                    )}
+                    <button onClick={() => setRevisionHint(null)} disabled={running}
+                      className="text-[11px] px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300 disabled:opacity-40 transition-all">
+                      稍后处理
+                    </button>
+                    <span className="text-[10px] text-slate-400">提示内容将作为补充检索关键词参与本轮搜索</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* RAG + KG 双校验报告（产出物后置校验） */}
           <VerificationPanel verification={(rec?.output as { verification?: VerificationReport } | null)?.verification ?? null} />

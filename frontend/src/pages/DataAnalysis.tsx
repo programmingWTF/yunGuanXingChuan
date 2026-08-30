@@ -191,7 +191,7 @@ function IterationCounter({ iterations, designVersion }: { iterations: Iteration
 
 export default function DataAnalysis() {
   const { projectId, status, rec, running, error, locked, exec, approve, confirmRerun, rerunConfirmEl } = useStageExec(5)
-  const { currentProject, setIterationSuggestion } = useStore()
+  const { currentProject, setIterationSuggestion, setRevisionHint } = useStore()
   const navigate = useNavigate()
   const [materials, setMaterials] = useState<Material[]>([])
   const [pasteText, setPasteText] = useState('')
@@ -258,6 +258,14 @@ export default function DataAnalysis() {
       setIterationSuggestion({ text: latestIteration.suggestion, iteration: latestIteration.iteration })
     }
     navigate('/design')
+  }
+
+  /** issue #130：携带 AI 诊断建议跳转文献综述页，发起补充检索 */
+  const goSupplementLiterature = () => {
+    if (latestIteration) {
+      setRevisionHint({ text: latestIteration.suggestion, source: 'analysis' })
+    }
+    navigate('/literature')
   }
 
   return (
@@ -397,7 +405,11 @@ export default function DataAnalysis() {
               <p className="text-[12px] text-slate-600 leading-relaxed">{latestIteration.suggestion}</p>
               <div className="flex items-center gap-3 mt-3 flex-wrap">
                 <button onClick={goFixDesign} className="btn-primary text-xs">✏️ 去修改设计 →</button>
-                <span className="text-[10px] text-slate-400">跳转研究设计页，按建议调整 RQ/假设后重新分析，指标将逐轮提升</span>
+                <button onClick={goSupplementLiterature}
+                  className="text-xs px-3 py-2 rounded-lg border border-sky-200 text-sky-600 hover:bg-sky-50 transition-all">
+                  📚 去补充文献 →
+                </button>
+                <span className="text-[10px] text-slate-400">跳转研究设计页按建议调整 RQ/假设，或到文献综述页补充检索</span>
               </div>
             </div>
           )}

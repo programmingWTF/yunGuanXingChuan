@@ -14,6 +14,7 @@ import { useAuth } from '../auth'
 import { runAllWorkflow, getWorkflowProject, exportWorkflowProject, getHotTopics, deleteWorkflowProject, getLibraryStyle } from '../api'
 import type { ResearchProject, SearchSource } from '../api'
 import ResearchPipeline from '../components/ResearchPipeline'
+import ClosedLoopDiagram from '../components/ClosedLoopDiagram'
 import ConfirmDialog from '../components/ConfirmDialog'
 import SearchSources from '../components/SearchSources'
 import { StageSources } from '../components/StageUI'
@@ -459,6 +460,11 @@ export default function Workspace() {
                     JSON
                   </button>
                 </div>
+              </div>
+
+              {/* 闭环迭代流程示意图（issue #130：评审第一眼能看到闭环能力） */}
+              <div className="border-t border-slate-100 pt-4">
+                <ClosedLoopDiagram />
               </div>
 
               {/* Research Pipeline 进度 */}

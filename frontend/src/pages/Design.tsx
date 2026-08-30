@@ -21,7 +21,7 @@ interface HY { id: string; statement: string; hypothesis_type: string }
 
 export default function Design() {
   const { projectId, status, rec, running, error, locked, exec, approve, confirmRerun, rerunConfirmEl } = useStageExec(3)
-  const { currentProject, iterationSuggestion, setIterationSuggestion, loadProject } = useStore()
+  const { currentProject, iterationSuggestion, setIterationSuggestion, revisionHint, setRevisionHint, loadProject } = useStore()
 
   // issue #129 闭环迭代：设计版本号 + 迭代记录（后端持久化）
   const designVersion = currentProject?.design_version ?? 1
@@ -68,6 +68,7 @@ export default function Design() {
       await loadProject(projectId)
       setEditing(false)
       setIterationSuggestion(null)
+      setRevisionHint(null)
       setSaveMsg('✅ 设计已保存（版本 +1），可返回数据分析页重新分析')
     } catch (err: unknown) {
       setSaveMsg('❌ 保存失败：' + (err instanceof Error ? err.message : '未知错误'))
@@ -101,6 +102,31 @@ export default function Design() {
             runLabel="开始设计"
           />
           </div>
+
+          {/* issue #130：同行评审「触发修改」跳转过来的修改提示条 */}
+          {revisionHint && !iterationSuggestion && (
+            <div className="card p-4 !border-rose-200/80 bg-gradient-to-br from-rose-50/70 via-white to-white">
+              <div className="flex items-start gap-3">
+                <span className="text-lg shrink-0">👨‍⚖️</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-slate-700 flex items-center flex-wrap gap-1.5">
+                    来自同行评审的修改提示
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-600 border border-rose-200">评审意见</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-200">保存修改后 V{designVersion + 1}</span>
+                  </p>
+                  <p className="text-[11px] text-slate-600 mt-1.5 leading-relaxed">{revisionHint.text}</p>
+                  <div className="flex gap-2 mt-2 flex-wrap">
+                    <button onClick={startEdit} className="text-[11px] px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-all">
+                      ✏️ 按评审意见修改设计
+                    </button>
+                    <button onClick={() => setRevisionHint(null)} className="text-[11px] px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300 transition-all">
+                      稍后处理
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* issue #129：迭代提示条（从数据分析页「去修改」跳转过来时展示 AI 建议） */}
           {iterationSuggestion && (
