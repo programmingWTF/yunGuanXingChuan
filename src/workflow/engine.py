@@ -312,9 +312,12 @@ class WorkflowEngine:
         output["research_questions"] = research_questions
         output["hypotheses"] = hypotheses
         next_version = project.design_version + 1
+        # 原子保存：产出物更新与 design_version +1 在同一次加锁写盘内完成
+        # （issue #129 review 修复：原先两次独立加锁写盘，中间崩溃会产出「产物已更新但版本号未变」的不一致）
         updated = self.store.update_stage(
             project_id, 3,
             output=output,
+            bump_design_version=True,
             append_history={
                 "stage": 3, "action": "design_saved",
                 "summary": f"按迭代建议保存设计修改（V{next_version}）",
@@ -322,8 +325,7 @@ class WorkflowEngine:
         )
         if updated is None:
             raise RuntimeError(f"项目已不存在: {project_id}")
-        self.store.bump_design_version(project_id, summary=f"设计修改保存（V{next_version}）")
-        return self.store.get(project_id)
+        return updated
 
     def _append_iteration(self, project_id: str, project: ResearchProject, output: Dict[str, Any]) -> None:
         """数据分析产出后追加一条闭环迭代记录（指标 + AI 诊断建议，落盘持久化）"""

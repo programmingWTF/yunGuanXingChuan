@@ -72,10 +72,23 @@ class RunAllRequest(BaseModel):
     use_user_style: bool = Field(default=True, description="是否注入用户论文库写作风格（issue #115，默认 True 保持现状）")
 
 
+class RQItem(BaseModel):
+    """研究问题条目（issue #129 闭环迭代：保存设计编辑入参校验）"""
+    id: str = Field(..., min_length=1, max_length=32, description="问题编号（如 RQ1）")
+    text: str = Field(..., min_length=1, max_length=2000, description="研究问题文本")
+
+
+class HypothesisItem(BaseModel):
+    """假设条目（issue #129 闭环迭代：保存设计编辑入参校验）"""
+    id: str = Field(..., min_length=1, max_length=32, description="假设编号（如 H1）")
+    statement: str = Field(..., min_length=1, max_length=3000, description="假设陈述")
+    hypothesis_type: str = Field(default="qualitative", description="假设类型（quantitative/qualitative）")
+
+
 class SaveDesignRequest(BaseModel):
     """保存研究设计编辑（issue #129 闭环迭代：按 AI 诊断建议修改 RQ/H 后保存，design_version +1）"""
-    research_questions: list = Field(default_factory=list, description="修改后的 RQ 列表 [{id, text}]")
-    hypotheses: list = Field(default_factory=list, description="修改后的 H 列表 [{id, statement, hypothesis_type}]")
+    research_questions: List[RQItem] = Field(default_factory=list, description="修改后的 RQ 列表 [{id, text}]")
+    hypotheses: List[HypothesisItem] = Field(default_factory=list, description="修改后的 H 列表 [{id, statement, hypothesis_type}]")
     suggestion: str = Field(default="", max_length=2000, description="触发本次修改的 AI 诊断建议（溯源用）")
 
 
@@ -156,8 +169,8 @@ def save_design_stage(project_id: str, req: SaveDesignRequest, request: Request)
     try:
         project = get_workflow_engine().save_design(
             project_id,
-            research_questions=req.research_questions,
-            hypotheses=req.hypotheses,
+            research_questions=[q.model_dump() for q in req.research_questions],
+            hypotheses=[h.model_dump() for h in req.hypotheses],
             suggestion=req.suggestion,
         )
     except ValueError as e:

@@ -1260,3 +1260,65 @@ class TestUserStyleInjection:
         inputs = {"topic": "t"}
         eng._inject_user_style(WorkflowStage.WRITING, inputs, owner_id="u1")  # 不应抛异常
         assert "style_sample" not in inputs
+
+
+# ---------------------------------------------------------------------------
+# 闭环迭代（issue #129）：save_design 原子性 + 版本号 + 入参校验
+# ---------------------------------------------------------------------------
+
+
+class TestClosedLoopIteration:
+    def test_update_stage_atomic_bump_design_version(self, store):
+        """update_stage(bump_design_version=True) 单次加锁内同时更新产出物与版本号"""
+        p = store.create(title="原子", interest="i")
+        assert p.design_version == 1
+        updated = store.update_stage(
+            p.id, 3,
+            status=StageStatus.AWAITING_REVIEW,
+            output={"research_questions": [{"id": "RQ1", "text": "x"}], "hypotheses": []},
+            bump_design_version=True,
+            append_history={"stage": 3, "action": "design_saved", "summary": "保存 V2"},
+        )
+        # 一次写盘：产出物 + 版本号同步落盘，无中间态
+        assert updated.design_version == 2
+        assert updated.stages["3"].output["research_questions"][0]["id"] == "RQ1"
+        # 重新从盘上读，确认已持久化
+        reloaded = store.get(p.id)
+        assert reloaded.design_version == 2
+        assert reloaded.stages["3"].output["hypotheses"] == []
+
+    def test_save_design_updates_output_and_version(self, store, tmp_path):
+        """save_design：更新 stage3 产出物 + design_version +1，同一次写盘完成"""
+        p = store.create(title="闭环", interest="i")
+        store.update_stage(p.id, 3, status=StageStatus.COMPLETED,
+                           output={"research_questions": [{"id": "RQ1", "text": "旧"}],
+                                   "hypotheses": [{"id": "H1", "statement": "旧", "hypothesis_type": "qualitative"}]})
+        eng = WorkflowEngine(store=store)
+        proj = eng.save_design(p.id, [{"id": "RQ1", "text": "新"}], [{"id": "H1", "statement": "新", "hypothesis_type": "quantitative"}], suggestion="建议")
+        assert proj.design_version == 2
+        out = proj.stages["3"].output
+        assert out["research_questions"][0]["text"] == "新"
+        assert out["hypotheses"][0]["hypothesis_type"] == "quantitative"
+        reloaded = store.get(p.id)
+        assert reloaded.design_version == 2  # 落盘一致
+
+    def test_save_design_requires_design_output(self, store):
+        """设计阶段尚无产出物时保存应报 ValueError"""
+        p = store.create(title="无产出", interest="i")
+        eng = WorkflowEngine(store=store)
+        with pytest.raises(ValueError, match="尚无产出物"):
+            eng.save_design(p.id, [], [])
+
+    def test_save_design_request_rejects_malformed_items(self):
+        """畸形 RQ/H 条目（缺字段）应在校验层拒绝（422），而非静默落盘"""
+        from api.routes.workflow import SaveDesignRequest
+        from pydantic import ValidationError
+        with pytest.raises(Exception):
+            SaveDesignRequest(research_questions=[{"text": "缺 id"}])
+        with pytest.raises(Exception):
+            SaveDesignRequest(hypotheses=[{"id": "H1"}])  # 缺 statement
+        ok = SaveDesignRequest(
+            research_questions=[{"id": "RQ1", "text": "合法"}],
+            hypotheses=[{"id": "H1", "statement": "合法", "hypothesis_type": "quantitative"}],
+        )
+        assert ok.research_questions[0].id == "RQ1"
