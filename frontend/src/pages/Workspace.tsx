@@ -11,7 +11,7 @@ import axios from 'axios'
 import { Link, useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { useAuth } from '../auth'
-import { runAllWorkflow, getWorkflowProject, exportWorkflowProject, getHotTopics, deleteWorkflowProject, getLibraryStyle } from '../api'
+import { runAllWorkflow, getWorkflowProject, exportWorkflowProject, getHotTopics, deleteWorkflowProject, getLibraryStyle, startAutoIterate } from '../api'
 import type { ResearchProject, SearchSource } from '../api'
 import ResearchPipeline from '../components/ResearchPipeline'
 import ClosedLoopDiagram from '../components/ClosedLoopDiagram'
@@ -58,6 +58,15 @@ export default function Workspace() {
   const [generatingAll, setGeneratingAll] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState('')
+  // 「自动迭代」开关：一键生成完成后自动启动 闭环迭代循环（确认版，2026-08-31）
+  const [autoIterateAfter, setAutoIterateAfter] = useState<boolean>(() => {
+    try { return localStorage.getItem('ygc_auto_iterate_after') === '1' } catch { return false }
+  })
+  const toggleAutoIterateAfter = (v: boolean) => {
+    setAutoIterateAfter(v)
+    try { localStorage.setItem('ygc_auto_iterate_after', v ? '1' : '0') } catch { /* ignore */ }
+  }
+  const [autoMsg, setAutoMsg] = useState('')
   // 一键全流程「按我的风格写作」开关：上传过论文才显示；偏好与写作页共享 localStorage
   const [hasUserStyle, setHasUserStyle] = useState(false)
   const [useUserStyle, setUseUserStyleState] = useState<boolean>(() => {
@@ -153,6 +162,13 @@ export default function Workspace() {
         if (project.status === 'completed') {
           if (pollRef.current) clearInterval(pollRef.current)
           setGeneratingAll(false)
+          // 自动迭代：全流程生成完成后自动启动闭环迭代（分析→诊断→改设计→重跑）
+          if (autoIterateAfter && project.stages?.['3']?.status === 'completed') {
+            try {
+              await startAutoIterate(id, { max_rounds: 3, target_confidence: 0.85 })
+              setAutoMsg('🔄 自动迭代已接棒启动（分析→诊断→改设计→重跑，可信度 ≥85% 停）')
+            } catch { /* 启动失败静默，可在数据分析页手动启动 */ }
+          }
         }
       } catch { /* 网络抖动忽略 */ }
     }, 2500)
@@ -348,6 +364,12 @@ export default function Workspace() {
                 ✍️ 按我的风格写作（使用论文库风格）
               </label>
             )}
+            <label className="flex items-center gap-2 mt-2 text-[11px] text-slate-600 cursor-pointer select-none">
+              <input type="checkbox" checked={autoIterateAfter} onChange={e => toggleAutoIterateAfter(e.target.checked)}
+                className="w-3.5 h-3.5 accent-amber-500" />
+              🔄 自动迭代（生成完成后 AI 自动 分析→诊断→改设计→重跑，可信度达标停）
+            </label>
+            {autoMsg && <p className="text-[10px] text-amber-600 mt-1.5">{autoMsg}</p>}
             {generatingAll && (
               <p className="text-[10px] text-indigo-600 mt-2 animate-pulse">AI 正在串行生成 7 个阶段（约 8-12 分钟），进度实时更新，可离开页面</p>
             )}
