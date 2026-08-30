@@ -333,6 +333,8 @@ class WorkflowEngine:
         from datetime import datetime
         n = len(project.iterations) + 1
         version = project.design_version
+        conclusion, confidence, problems = self._diagnose(output)
+        hint = self._build_iteration_suggestion(output)
         iteration = IterationRecord(
             iteration=n,
             timestamp=datetime.now().isoformat(timespec="microseconds"),
@@ -340,10 +342,65 @@ class WorkflowEngine:
             design_version=version,
             summary=f"第 {n} 轮分析完成（设计 V{version}）",
             metrics=self._extract_iteration_metrics(output),
-            suggestion=self._build_iteration_suggestion(output),
+            suggestion=hint,
+            conclusion=conclusion,
+            confidence=confidence,
+            problems=problems,
         )
         self.store.add_iteration(project_id, iteration, summary=iteration.summary)
-        logger.info(f"[WorkflowEngine] ✓ 迭代记录 #{n} 已落盘（设计 V{version}）")
+        logger.info(f"[WorkflowEngine] ✓ 迭代记录 #{n} 已落盘（设计 V{version}，可信度 {confidence:.2f}）")
+
+    # ------------------------------------------------------------------
+    # 确认版诊断：结论可靠性 / 综合可信度 / 结构化问题清单（2026-08-30）
+    # ------------------------------------------------------------------
+    def _diagnose(self, output: Dict[str, Any]) -> tuple:
+        """从数据分析产出物生成三层诊断：（结论, 综合可信度, 问题清单）
+
+        问题清单每项 {text, target_stage}：target_stage=3 → 去研究设计页修改，
+        target_stage=2 → 去文献综述页补充检索。
+        """
+        problems: List[Dict[str, Any]] = []
+        verify = (output.get("verification") or {}).get("summary") or {}
+        total = verify.get("total") or 0
+        coverage = ((verify.get("verified") or 0) + (verify.get("partial") or 0)) / total if total else 0.0
+        avg_conf = float(verify.get("avg_confidence") or 0.0)
+        coding = output.get("coding_table") or []
+        findings = output.get("findings") or []
+        has_sentiment = bool(output.get("sentiment"))
+
+        if total:
+            if coverage < 0.7:
+                problems.append({"text": f"断言证据覆盖率仅 {coverage:.0%}，部分结论缺乏文献/事实支撑",
+                                 "target_stage": 3})
+            if avg_conf < 0.7:
+                problems.append({"text": f"平均置信度 {avg_conf:.2f} 偏低，关键断言校验证据不足",
+                                 "target_stage": 2})
+        if coding and len(coding) < 5:
+            problems.append({"text": f"编码类目仅 {len(coding)} 个，颗粒度偏粗（如缺少信源类型/情感立场维度）",
+                             "target_stage": 3})
+        if not has_sentiment:
+            problems.append({"text": "缺少情绪/情感倾向分析维度，建议补充相关编码类目",
+                             "target_stage": 3})
+        if findings and len(findings) < 3:
+            problems.append({"text": f"研究发现仅 {len(findings)} 条，RQ 拆分可能不够细化",
+                             "target_stage": 3})
+        if not total:
+            problems.append({"text": "本次产出未附校验报告，无法评估结论可靠性，建议检查校验服务",
+                             "target_stage": 2})
+
+        # 综合可信度：证据覆盖率与平均置信度加权（无校验数据时保守给低分）
+        if total:
+            confidence = round(coverage * 0.5 + avg_conf * 0.5, 3)
+        else:
+            confidence = 0.0
+
+        if confidence >= 0.85 and len(findings) >= 3:
+            conclusion = "当前分析结果可靠支持研究假设，可以进入写作阶段"
+        elif confidence >= 0.7:
+            conclusion = "当前分析结果部分支持研究假设，仍有可修复的质量缺口"
+        else:
+            conclusion = "当前分析结果可靠性不足，建议按问题清单修改设计后重新分析"
+        return conclusion, confidence, problems
 
     @staticmethod
     def _extract_iteration_metrics(output: Dict[str, Any]) -> Dict[str, float]:
@@ -391,6 +448,84 @@ class WorkflowEngine:
         if not hints:
             hints.append("整体质量良好；如需进一步提升，可聚焦证据覆盖率的完整性与编码类目的精细度")
         return "；".join(hints)
+
+    # ------------------------------------------------------------------
+    # 自动迭代（确认版方案核心：分析 → 诊断 → 自动改设计 → 自动重跑）
+    # ------------------------------------------------------------------
+    def auto_iterate(self, project_id: str, max_rounds: int = 3,
+                     target_confidence: float = 0.85,
+                     llm_config: Optional[dict] = None, owner_id: Optional[str] = None,
+                     use_user_style: bool = True) -> List[Dict[str, Any]]:
+        """自动闭环迭代：反复「数据分析 → 诊断 → LLM 修订研究设计 → 重跑分析」，
+        直到综合可信度达标或轮数用尽。每轮与手动迭代一样落盘 IterationRecord，
+        前端迭代计数器/对比简表自动可见。
+
+        Returns: 每轮摘要 [{iteration, confidence, conclusion, problems, design_revised}]
+        """
+        rounds: List[Dict[str, Any]] = []
+        for _ in range(max(1, min(int(max_rounds), 5))):
+            self.run_stage(project_id, 5, {}, llm_config=llm_config, owner_id=owner_id,
+                           use_user_style=use_user_style)
+            project = self.store.get(project_id)
+            it = project.iterations[-1] if project and project.iterations else None
+            if it is None:
+                break
+            rounds.append({
+                "iteration": it.iteration,
+                "confidence": it.confidence,
+                "conclusion": it.conclusion,
+                "problems": it.problems,
+                "design_revised": False,
+            })
+            if it.confidence >= target_confidence or not it.problems:
+                break  # 达标或无问题 → 停
+            # LLM 按问题清单修订研究设计 → 版本 +1（失败则终止循环，不让自动迭代卡死）
+            revised = self._revise_design_with_llm(project, it, llm_config)
+            if not revised:
+                logger.warning("[WorkflowEngine] 自动迭代：设计修订失败，提前终止")
+                break
+            self.save_design(project_id, revised["research_questions"], revised["hypotheses"],
+                             suggestion=f"自动迭代第 {it.iteration} 轮：按诊断问题修订设计")
+            rounds[-1]["design_revised"] = True
+        return rounds
+
+    def _revise_design_with_llm(self, project: ResearchProject, it, llm_config: Optional[dict]) -> Optional[Dict[str, Any]]:
+        """按本轮诊断问题清单，用 LLM 修订 RQ/假设（返回 {research_questions, hypotheses} 或 None）"""
+        try:
+            from src.llm_client import get_llm_client
+            client = get_llm_client(llm_config) if llm_config else None
+            if client is None:
+                logger.warning("[WorkflowEngine] 自动迭代：无用户 LLM 配置，跳过设计修订")
+                return None
+            record = project.stages.get("3")
+            output = (record.output or {}) if record else {}
+            rq = output.get("research_questions") or []
+            hy = output.get("hypotheses") or []
+            if not rq:
+                return None
+            problems_text = "\n".join(f"- {p.get('text', '')}" for p in it.problems) or it.suggestion
+            system = (
+                "你是社会科学研究方法专家。根据数据分析诊断发现的问题，修订研究设计与假设。"
+                "只做针对性小修订（增加编码维度/细化RQ/扩展抽样视角），不要推翻重来。"
+                '严格输出 JSON：{"research_questions":[{"id":"RQ1","text":"..."}],'
+                '"hypotheses":[{"id":"H1","statement":"...","hypothesis_type":"qualitative"}]}'
+            )
+            user = (
+                f"研究主题：{project.title}（{project.interest}）\n"
+                f"当前研究问题：{json.dumps(rq, ensure_ascii=False)}\n"
+                f"当前假设：{json.dumps(hy, ensure_ascii=False)}\n"
+                f"本轮诊断问题：\n{problems_text}\n"
+                "请输出修订后的完整 RQ 与假设列表。"
+            )
+            data = client.chat_json(system_prompt=system, user_prompt=user, temperature=0.3)
+            rq2 = data.get("research_questions") or []
+            hy2 = data.get("hypotheses") or []
+            if not rq2:
+                return None
+            return {"research_questions": rq2, "hypotheses": hy2}
+        except Exception as e:
+            logger.warning(f"[WorkflowEngine] LLM 设计修订失败: {e}")
+            return None
 
     # ------------------------------------------------------------------
     # 一键全流程（run-all）：串行执行 7 阶段，自动完成（不要求逐阶段确认）

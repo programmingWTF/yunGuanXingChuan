@@ -290,6 +290,35 @@ def polish_stage_section(project_id: str, stage: int, req: PolishSectionRequest,
     return {"section": req.section, "content": polished}
 
 
+class AutoIterateRequest(BaseModel):
+    """自动迭代请求（确认版方案：分析→诊断→自动改设计→自动重跑）"""
+    max_rounds: int = Field(default=3, ge=1, le=5, description="最大迭代轮数")
+    target_confidence: float = Field(default=0.85, ge=0.0, le=1.0, description="综合可信度达标线，达到即停止")
+
+
+@router.post("/projects/{project_id}/auto-iterate")
+def auto_iterate(project_id: str, req: AutoIterateRequest, background_tasks: BackgroundTasks, request: Request):
+    """启动自动闭环迭代（后台执行）。启动即返回，进度通过 GET /projects/{id} 轮询
+    iterations 列表增长 + history 中 auto_iterate 记录观察。"""
+    user = require_user(request)
+    _require_owned_project(project_id, user)
+    llm_config = _require_llm_config(request)
+
+    engine = get_workflow_engine()
+    project = engine.store.get(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="项目不存在")
+    if project.stages.get("3") is None or project.stages["3"].status.value not in ("completed", "awaiting_review"):
+        raise HTTPException(status_code=400, detail="请先完成研究设计阶段（V1），再启动自动迭代")
+
+    background_tasks.add_task(
+        engine.auto_iterate, project_id,
+        max_rounds=req.max_rounds, target_confidence=req.target_confidence,
+        llm_config=llm_config, owner_id=user["id"],
+    )
+    return {"started": True, "max_rounds": req.max_rounds, "target_confidence": req.target_confidence}
+
+
 @router.get("/hot-topics")
 def hot_topics(limit: int = 6):
     """今日科技热点（统一搜索召回；后端不可用时降级为空列表）"""

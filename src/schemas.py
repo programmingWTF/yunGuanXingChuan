@@ -813,7 +813,7 @@ class StageRecord(BaseModel):
 
 
 class IterationRecord(BaseModel):
-    """闭环迭代记录（issue #129）：数据分析页每完成一轮分析落盘一条
+    """闭环迭代记录（issue #129/#130 确认版）：数据分析页每完成一轮分析落盘一条
     记录该轮时间、来源阶段、对应设计版本、修改摘要、分析指标与 AI 诊断建议。"""
     iteration: int = 1                        # 第 N 轮迭代
     timestamp: str = ""
@@ -821,7 +821,11 @@ class IterationRecord(BaseModel):
     design_version: int = 1                   # 本轮对应的设计版本号（V1/V2…）
     summary: str = ""                         # 修改内容摘要
     metrics: Dict[str, float] = Field(default_factory=dict)  # 分析指标（编码类目数/证据覆盖率/平均置信度…）
-    suggestion: str = ""                      # AI 诊断与迭代建议
+    suggestion: str = ""                      # AI 诊断与迭代建议（汇总文字，兼容旧数据）
+    # —— 确认版方案新增（2026-08-30，均带默认值向后兼容旧项目 JSON）——
+    conclusion: str = ""                      # 结论可靠性一句话判断（第一层）
+    confidence: float = 0.0                   # 综合可信度 0~1
+    problems: List[Dict] = Field(default_factory=list)  # 结构化问题清单 [{text, target_stage}]（第二层）
 
 
 class ResearchProject(BaseModel):
