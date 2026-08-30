@@ -28,11 +28,11 @@ const BACKFLOW = [
   { from: 6, to: 1, label: '补充文献检索' },
 ]
 
-const W = 900
-const H = 360
+const W = 760
+const H = 300
 const CX = W / 2
-const CY = 158
-const R = 132
+const CY = 132
+const R = 108
 
 /** 节点在环上的坐标（第 0 个在正上方，顺时针排布） */
 function nodePos(i: number): { x: number; y: number } {
@@ -100,7 +100,7 @@ export default function ClosedLoopDiagram({ stages, currentStage = 1, iterations
           const dx = b.x - a.x
           const dy = b.y - a.y
           const len = Math.hypot(dx, dy) || 1
-          const pad = 34
+          const pad = 26
           const x1 = a.x + (dx / len) * pad
           const y1 = a.y + (dy / len) * pad
           const x2 = b.x - (dx / len) * (pad + 8)
@@ -118,27 +118,19 @@ export default function ClosedLoopDiagram({ stages, currentStage = 1, iterations
           const a = nodePos(from)
           const b = nodePos(to)
           // 回流弧线走环内空白区（中轴附近），控制点分上下两档避免两条线重叠
-          const midX = CX + (i === 0 ? 24 : -24)
-          const midY = CY + (i === 0 ? 10 : -34)
+          const midX = CX + (i === 0 ? 16 : -16)
+          const midY = CY + (i === 0 ? 8 : -26)
           const lit = iterationsCount > 0
           return (
             <g key={i}>
-              <path d={`M ${a.x} ${a.y + (i === 0 ? 26 : -26)} Q ${midX} ${midY} ${b.x} ${b.y + (i === 0 ? -26 : 26)}`}
+              <path d={`M ${a.x} ${a.y + (i === 0 ? 20 : -20)} Q ${midX} ${midY} ${b.x} ${b.y + (i === 0 ? -20 : 20)}`}
                 fill="none"
                 stroke={lit ? 'rgba(217,119,6,.75)' : 'rgba(217,119,6,.35)'}
-                strokeWidth={i === 0 ? 2.2 : 1.6} strokeDasharray="7 5"
+                strokeWidth={i === 0 ? 1.8 : 1.3} strokeDasharray="6 4"
                 markerEnd="url(#cl-arrow-dash)" />
             </g>
           )
         })}
-
-        {/* 回流标签：固定在图底部，不与节点/箭头重叠 */}
-        <text x={CX - 150} y={H - 30} textAnchor="middle" fontSize="10.5"
-          className="fill-amber-600" opacity={iterationsCount > 0 ? 1 : 0.75}>
-          ⤺ 按评审意见修改设计{iterationsCount > 0 ? `（已迭代 ${iterationsCount} 轮）` : ''}
-        </text>
-        <text x={CX - 24} y={H - 8} textAnchor="middle" fontSize="10"
-          className="fill-amber-500" opacity="0.75">补充文献检索</text>
 
         {/* 节点（可点击跳转；状态着色 + 角标） */}
         {NODES.map((n, i) => {
@@ -148,12 +140,12 @@ export default function ClosedLoopDiagram({ stages, currentStage = 1, iterations
           const locked = st === 'locked'
           const circle = (
             <>
-              <circle cx={x} cy={y} r="24" fill={style.fill} stroke={style.ring} strokeWidth="2" />
-              <text x={x} y={y + 6} textAnchor="middle" fontSize="16" style={{ pointerEvents: 'none' }}>{n.icon}</text>
-              {st === 'running' && <circle cx={x} cy={y} r="30" fill="none" stroke="rgba(245,158,11,.5)" strokeWidth="2" className="animate-pulse" />}
-              {/* 状态小圆点（右上角），文字角标简化——降低与相邻节点标签的拥挤 */}
-              <circle cx={x + 19} cy={y - 19} r="5" fill={style.color} stroke="white" strokeWidth="1.5" />
-              <text x={x} y={y + 43} textAnchor="middle" fontSize="11.5" className="fill-slate-600">{n.label}</text>
+              <circle cx={x} cy={y} r="18" fill={style.fill} stroke={style.ring} strokeWidth="1.6" />
+              <text x={x} y={y + 5} textAnchor="middle" fontSize="13" style={{ pointerEvents: 'none' }}>{n.icon}</text>
+              {st === 'running' && <circle cx={x} cy={y} r="23" fill="none" stroke="rgba(245,158,11,.5)" strokeWidth="1.6" className="animate-pulse" />}
+              {/* 状态小圆点（右上角） */}
+              <circle cx={x + 15} cy={y - 15} r="4" fill={style.color} stroke="white" strokeWidth="1.2" />
+              <text x={x} y={y + 34} textAnchor="middle" fontSize="10" className="fill-slate-600">{n.label}</text>
             </>
           )
           if (locked) {
@@ -168,11 +160,12 @@ export default function ClosedLoopDiagram({ stages, currentStage = 1, iterations
       </svg>
 
       {/* 状态图例 */}
-      <div className="flex items-center justify-center gap-4 mt-1 text-[10px] text-slate-500 flex-wrap">
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" /> 已完成</span>
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-indigo-400" /> 当前阶段（可点击进入）</span>
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400" /> 运行中</span>
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-300" /> 未解锁</span>
+      <div className="flex items-center justify-center gap-3 mt-1 text-[9.5px] text-slate-500 flex-wrap">
+        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> 已完成</span>
+        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-indigo-400" /> 当前阶段（可点击）</span>
+        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> 运行中</span>
+        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-300" /> 未解锁</span>
+        <span className="text-amber-500">⤺ 虚线 = 评审后回流（改设计 / 补文献）</span>
       </div>
     </div>
   )
