@@ -72,6 +72,13 @@ class RunAllRequest(BaseModel):
     use_user_style: bool = Field(default=True, description="是否注入用户论文库写作风格（issue #115，默认 True 保持现状）")
 
 
+class SaveDesignRequest(BaseModel):
+    """保存研究设计编辑（issue #129 闭环迭代：按 AI 诊断建议修改 RQ/H 后保存，design_version +1）"""
+    research_questions: list = Field(default_factory=list, description="修改后的 RQ 列表 [{id, text}]")
+    hypotheses: list = Field(default_factory=list, description="修改后的 H 列表 [{id, statement, hypothesis_type}]")
+    suggestion: str = Field(default="", max_length=2000, description="触发本次修改的 AI 诊断建议（溯源用）")
+
+
 @router.get("/stages")
 def get_stages():
     """阶段元数据（前端 Research Pipeline 渲染）"""
@@ -139,6 +146,27 @@ def run_stage(project_id: str, stage: int, req: RunStageRequest, request: Reques
         "output": record.output,
         "error": record.error,
     }
+
+
+@router.post("/projects/{project_id}/stages/3/save")
+def save_design_stage(project_id: str, req: SaveDesignRequest, request: Request):
+    """保存研究设计编辑（issue #129 闭环迭代）：更新 RQ/H 产出物，design_version +1"""
+    user = require_user(request)
+    _require_owned_project(project_id, user)
+    try:
+        project = get_workflow_engine().save_design(
+            project_id,
+            research_questions=req.research_questions,
+            hypotheses=req.hypotheses,
+            suggestion=req.suggestion,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception(f"设计保存异常（项目 {project_id}）")
+        raise HTTPException(status_code=500, detail="设计保存失败，请稍后重试")
+    return {"project": project.model_dump(), "design_version": project.design_version}
 
 
 @router.get("/projects/{project_id}/stages/{stage}/result")

@@ -5,7 +5,10 @@
  * 展示：词云（类目权重）/ 类目分布 / 研究发现 / 传播路径证据 / 初步解读
  */
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { StageLayout, StageSources, StatusBadge, NoProjectHint, useStageExec, StageActions, VerificationPanel, type VerificationReport, type StageInfo } from '../components/StageUI'
+import { useStore } from '../store'
+import type { IterationRecord } from '../api'
 
 const INFO: StageInfo = {
   stage: 5, icon: '📊', title: '数据分析', en: 'DATA ANALYSIS',
@@ -103,12 +106,102 @@ function HBar({ label, value, color = 'bg-indigo-500' }: { label: string; value:
   )
 }
 
+/* ═══════════ 闭环迭代（issue #129）：迭代计数器 + AI 诊断与迭代建议 ═══════════ */
+
+/** ISO 时间 → MM-DD HH:mm（前端展示用） */
+function fmtTime(iso: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso.slice(5, 16).replace('T', ' ')
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+/** 迭代指标小徽章（率/置信度 → 百分比，其余原值） */
+function MetricChip({ label, value }: { label: string; value: number }) {
+  const isRatio = label.includes('率') || label.includes('置信度')
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md bg-white border border-slate-200 px-2 py-0.5">
+      <span className="text-[9px] text-slate-400">{label}</span>
+      <span className="text-[10px] font-mono text-slate-700">{isRatio ? `${Math.round(value * 100)}%` : value}</span>
+    </span>
+  )
+}
+
+/** 顶部迭代计数器：已完成 N 轮迭代，可展开查看每轮修改内容与指标变化（issue #129） */
+function IterationCounter({ iterations, designVersion }: { iterations: IterationRecord[]; designVersion: number }) {
+  const [open, setOpen] = useState(false)
+  if (iterations.length === 0) return null
+  return (
+    <div className="card p-4 !border-amber-200/70">
+      <button onClick={() => setOpen(v => !v)} className="w-full flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <span className="text-base">🔄</span>
+          <p className="text-xs text-slate-700">
+            已完成 <span className="font-bold font-mono text-amber-600">{iterations.length}</span> 轮迭代
+            <span className="ml-2 text-[10px] text-slate-400">当前设计版本 <span className="font-mono text-indigo-600">V{designVersion}</span></span>
+          </p>
+        </div>
+        <span className="text-[10px] text-slate-400 shrink-0">{open ? '收起 ▲' : '展开每轮记录 ▼'}</span>
+      </button>
+      {open && (
+        <div className="mt-3 pt-3 border-t border-slate-100 space-y-2.5">
+          {iterations.map((it, i) => {
+            const prev = i > 0 ? iterations[i - 1] : null
+            return (
+              <div key={it.iteration} className="rounded-xl bg-slate-50/70 border border-slate-100 px-3.5 py-2.5">
+                <div className="flex items-center justify-between flex-wrap gap-1">
+                  <p className="text-[11px] font-medium text-slate-700">
+                    第 {it.iteration} 轮 <span className="text-slate-400 font-normal">· 设计 V{it.design_version}</span>
+                  </p>
+                  <span className="text-[9px] font-mono text-slate-400">{fmtTime(it.timestamp)}</span>
+                </div>
+                {Object.keys(it.metrics).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {Object.entries(it.metrics).map(([k, v]) => (
+                      <MetricChip key={k} label={k} value={v} />
+                    ))}
+                  </div>
+                )}
+                {prev && Object.keys(prev.metrics).length > 0 && Object.keys(it.metrics).length > 0 && (
+                  <p className="text-[9px] text-slate-400 mt-1">
+                    较上轮：
+                    {Object.entries(it.metrics).map(([k, v]) => {
+                      if (prev.metrics[k] === undefined) return null
+                      const diff = v - prev.metrics[k]
+                      const isRatio = k.includes('率') || k.includes('置信度')
+                      if (Math.abs(diff) < 0.001) return null
+                      const arrow = diff > 0 ? '↑' : '↓'
+                      const color = diff > 0 ? 'text-emerald-600' : 'text-red-500'
+                      const delta = isRatio ? `${Math.round(Math.abs(diff) * 100)}%` : Math.abs(diff)
+                      return <span key={k} className={`mr-2 ${color}`}>{k} {arrow}{delta}</span>
+                    })}
+                  </p>
+                )}
+                {it.suggestion && <p className="text-[10px] text-slate-500 mt-1 leading-snug">💡 {it.suggestion}</p>}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+
 export default function DataAnalysis() {
   const { projectId, status, rec, running, error, locked, exec, approve, confirmRerun, rerunConfirmEl } = useStageExec(5)
+  const { currentProject, setIterationSuggestion } = useStore()
+  const navigate = useNavigate()
   const [materials, setMaterials] = useState<Material[]>([])
   const [pasteText, setPasteText] = useState('')
   const [reading, setReading] = useState(false)
   const [actionMsg, setActionMsg] = useState('')
+
+  // issue #129 闭环迭代：迭代记录 + 设计版本号（后端持久化，随项目加载）
+  const iterations = currentProject?.iterations ?? []
+  const designVersion = currentProject?.design_version ?? 1
+  const latestIteration = iterations.length > 0 ? iterations[iterations.length - 1] : null
 
   const output = (rec?.output ?? null) as {
     coding_table?: { category: string; count: number }[]
@@ -159,6 +252,14 @@ export default function DataAnalysis() {
     }
   }
 
+  /** 闭环迭代：携带 AI 诊断建议跳转研究设计页（issue #129） */
+  const goFixDesign = () => {
+    if (latestIteration) {
+      setIterationSuggestion({ text: latestIteration.suggestion, iteration: latestIteration.iteration })
+    }
+    navigate('/design')
+  }
+
   return (
     <StageLayout info={INFO}>
       {!projectId ? <NoProjectHint /> : (
@@ -175,6 +276,9 @@ export default function DataAnalysis() {
             runLabel="开始分析"
           />
           </div>
+
+          {/* issue #129 闭环迭代：顶部迭代计数器（已完成 N 轮，可展开看每轮记录与指标对比） */}
+          <IterationCounter iterations={iterations} designVersion={designVersion} />
 
           {/* RAG + KG 双校验报告（产出物后置校验） */}
           <VerificationPanel verification={(rec?.output as { verification?: VerificationReport } | null)?.verification ?? null} />
@@ -280,6 +384,21 @@ export default function DataAnalysis() {
             <div className="card p-5 border-indigo-200">
               <h4 className="sec-label !mb-2">初步解读</h4>
               <p className="text-[13px] text-slate-600 leading-relaxed">{output.interpretation}</p>
+            </div>
+          )}
+
+          {/* issue #129 闭环迭代：底部 AI 诊断与迭代建议（分析完成后出现，一键去修改设计） */}
+          {latestIteration && latestIteration.suggestion && (
+            <div className="card p-5 !border-indigo-300/70 bg-gradient-to-br from-indigo-50/70 via-white to-white">
+              <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+                <h3 className="sec-label !mb-0">🤖 AI 诊断与迭代建议</h3>
+                <span className="text-[9px] text-slate-400">基于第 {latestIteration.iteration} 轮分析 · 设计 V{latestIteration.design_version}</span>
+              </div>
+              <p className="text-[12px] text-slate-600 leading-relaxed">{latestIteration.suggestion}</p>
+              <div className="flex items-center gap-3 mt-3 flex-wrap">
+                <button onClick={goFixDesign} className="btn-primary text-xs">✏️ 去修改设计 →</button>
+                <span className="text-[10px] text-slate-400">跳转研究设计页，按建议调整 RQ/假设后重新分析，指标将逐轮提升</span>
+              </div>
             </div>
           )}
         </div>
