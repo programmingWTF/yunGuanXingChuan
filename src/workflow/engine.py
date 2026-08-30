@@ -946,7 +946,8 @@ class WorkflowEngine:
         try:
             from src.search.unified_search import get_unified_search_service
             service = get_unified_search_service()
-            today = _dt.now()
+            from datetime import datetime as _dt_now
+            today = _dt_now.now()
             date_str = f"{today.month}月{today.day}日"
             extra_q = _random.sample(self._HOT_THEMES, 2)
 
