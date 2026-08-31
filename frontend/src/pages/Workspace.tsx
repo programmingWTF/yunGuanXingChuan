@@ -60,7 +60,7 @@ export default function Workspace() {
   const [error, setError] = useState('')
   // 「自动迭代」开关：一键生成完成后自动启动 闭环迭代循环（确认版，2026-08-31）
   const [autoIterateAfter, setAutoIterateAfter] = useState<boolean>(() => {
-    try { return localStorage.getItem('ygc_auto_iterate_after') === '1' } catch { return false }
+    try { return localStorage.getItem('ygc_auto_iterate_after') !== '0' } catch { return true }
   })
   const toggleAutoIterateAfter = (v: boolean) => {
     setAutoIterateAfter(v)
@@ -608,6 +608,11 @@ export default function Workspace() {
                 ✍️ 按我的风格写作（使用论文库风格）
               </label>
             )}
+            <label className="flex items-center gap-2 mt-2 text-[11px] text-slate-600 cursor-pointer select-none">
+              <input type="checkbox" checked={autoIterateAfter} onChange={e => toggleAutoIterateAfter(e.target.checked)}
+                className="w-3.5 h-3.5 accent-amber-500" />
+              🔄 生成完成后自动迭代（AI 分析→诊断→改设计→重跑，可信度达标停）
+            </label>
           </>
         }
         confirmText="继续生成"
