@@ -515,38 +515,244 @@ class WorkflowEngine:
                      target_confidence: float = 0.85,
                      llm_config: Optional[dict] = None, owner_id: Optional[str] = None,
                      use_user_style: bool = True) -> List[Dict[str, Any]]:
-        """自动闭环迭代：反复「数据分析 → 诊断 → LLM 修订研究设计 → 重跑分析」，
-        直到综合可信度达标或轮数用尽。每轮与手动迭代一样落盘 IterationRecord，
-        前端迭代计数器/对比简表自动可见。
+        """自动闭环迭代：反复「数据分析 → LLM 诊断 → 按问题路由修订 → 重跑分析」,
+        直到综合可信度达标或轮数用尽；结束后自动重新评审（重评估）并确认。
 
-        Returns: 每轮摘要 [{iteration, confidence, conclusion, problems, design_revised}]
+        修订路由（诊断 problems.target_stage）：
+        - 2 文献综述 → 按诊断补充检索方向并更新综述产出
+        - 3 研究设计 → 修订 RQ/假设（design_version +1）
+        - 4 方法推荐 → 按诊断调整方法方案
+        - 6 学术写作 → 按评审/诊断意见修订写作产出
+        - 5 数据分析 → 本阶段重跑即为修订（每轮必跑）
+        每轮每个受影响阶段 LLM 修订一次（失败单阶段跳过，全部失败提前终止）。
+
+        迭代期间 project.status = "iterating"（前端显示「迭代中」而非误判已完成），
+        结束时自动重跑 stage 7 同行评审（重新评估）并 approve（自动确认）后恢复 completed。
+
+        Returns: 每轮摘要 [{iteration, confidence, conclusion, problems, revised_stages}]
         """
+        self.store.set_status(project_id, "iterating", summary="自动迭代开始（分析→诊断→按问题修订→重跑→评审确认）")
         rounds: List[Dict[str, Any]] = []
-        for _ in range(max(1, min(int(max_rounds), 5))):
-            self.run_stage(project_id, 5, {}, llm_config=llm_config, owner_id=owner_id,
-                           use_user_style=use_user_style)
-            project = self.store.get(project_id)
-            it = project.iterations[-1] if project and project.iterations else None
-            if it is None:
-                break
-            rounds.append({
-                "iteration": it.iteration,
-                "confidence": it.confidence,
-                "conclusion": it.conclusion,
-                "problems": it.problems,
-                "design_revised": False,
-            })
-            if it.confidence >= target_confidence or not it.problems:
-                break  # 达标或无问题 → 停
-            # LLM 按问题清单修订研究设计 → 版本 +1（失败则终止循环，不让自动迭代卡死）
-            revised = self._revise_design_with_llm(project, it, llm_config)
-            if not revised:
-                logger.warning("[WorkflowEngine] 自动迭代：设计修订失败，提前终止")
-                break
-            self.save_design(project_id, revised["research_questions"], revised["hypotheses"],
-                             suggestion=f"自动迭代第 {it.iteration} 轮：按诊断问题修订设计")
-            rounds[-1]["design_revised"] = True
+        try:
+            for _ in range(max(1, min(int(max_rounds), 5))):
+                # 1) 重跑数据分析（内部落 IterationRecord）
+                self.run_stage(project_id, 5, {}, llm_config=llm_config, owner_id=owner_id,
+                               use_user_style=use_user_style)
+                project = self.store.get(project_id)
+                it = project.iterations[-1] if project and project.iterations else None
+                if it is None:
+                    break
+                rounds.append({
+                    "iteration": it.iteration,
+                    "confidence": it.confidence,
+                    "conclusion": it.conclusion,
+                    "problems": it.problems,
+                    "revised_stages": [],
+                })
+                if it.confidence >= target_confidence or not it.problems:
+                    break  # 达标或无问题 → 停
+                # 2) 按问题清单路由修订各阶段产出（2 文献/3 设计/4 方法/6 写作）
+                touched = self._revise_stage_by_problems(project, it, llm_config)
+                if not touched:
+                    logger.warning("[WorkflowEngine] 自动迭代：本轮无任何阶段修订成功，提前终止")
+                    break
+                rounds[-1]["revised_stages"] = touched
+            # 3) 自动重新评估 + 自动确认：重跑同行评审（最新设计/分析/写作产出），随即 approve
+            try:
+                self.run_stage(project_id, 7, {}, llm_config=llm_config, owner_id=owner_id,
+                               use_user_style=use_user_style)
+                p = self.store.get(project_id)
+                rec = p.stages.get(str(7)) if p else None
+                if rec and rec.status == StageStatus.AWAITING_REVIEW:
+                    self.approve_stage(project_id, 7)
+                    self.store.set_status(project_id, "completed", summary="自动迭代结束：重新评审通过并自动确认")
+                else:
+                    self.store.set_status(project_id, "completed", summary="自动迭代结束")
+            except Exception as e:
+                logger.warning(f"[WorkflowEngine] 自动迭代收尾重新评审失败（不影响已产出）: {e}")
+                self.store.set_status(project_id, "completed", summary="自动迭代结束（收尾重评降级跳过）")
+        except Exception as e:
+            logger.error(f"[WorkflowEngine] 自动迭代异常: {e}")
+            self.store.set_status(project_id, "completed", summary=f"自动迭代异常终止: {str(e)[:80]}")
+            raise
         return rounds
+
+    def _revise_stage_by_problems(self, project, it, llm_config: Optional[dict]) -> List[int]:
+        """按本轮诊断问题清单的 target_stage 路由，对受影响阶段做 LLM 修订。
+
+        返回实际修订成功的阶段号列表；单阶段失败仅跳过不中断。
+        """
+        touched: List[int] = []
+        stages_needed = sorted({int(p.get("target_stage") or 3) for p in it.problems})
+        for stage in stages_needed:
+            try:
+                if stage == 3:
+                    revised = self._revise_design_with_llm(project, it, llm_config)
+                    if revised:
+                        self.save_design(
+                            project.id, revised["research_questions"], revised["hypotheses"],
+                            suggestion=f"自动迭代第 {it.iteration} 轮：按诊断问题修订设计",
+                        )
+                        touched.append(3)
+                elif stage == 2:
+                    revised = self._revise_literature_with_llm(project, it, llm_config)
+                    if revised:
+                        self._overwrite_stage_output(project.id, 2, revised,
+                                                     f"自动迭代第 {it.iteration} 轮：按诊断补充文献检索方向")
+                        touched.append(2)
+                elif stage == 4:
+                    revised = self._revise_method_with_llm(project, it, llm_config)
+                    if revised:
+                        self._overwrite_stage_output(project.id, 4, revised,
+                                                     f"自动迭代第 {it.iteration} 轮：按诊断调整方法方案")
+                        touched.append(4)
+                elif stage == 6:
+                    revised = self._revise_writing_with_llm(project, it, llm_config)
+                    if revised:
+                        self._overwrite_stage_output(project.id, 6, revised,
+                                                     f"自动迭代第 {it.iteration} 轮：按评审意见修订写作")
+                        touched.append(6)
+                else:
+                    logger.info(f"[WorkflowEngine] 自动迭代：target_stage={stage} 无需修订（数据分析本轮已重跑）")
+            except Exception as e:
+                logger.warning(f"[WorkflowEngine] 自动迭代：阶段 {stage} 修订失败（跳过）: {e}")
+        return touched
+
+    def _overwrite_stage_output(self, project_id: str, stage: int, patch: Dict[str, Any],
+                                summary: str) -> bool:
+        """把 LLM 修订产出合并进指定阶段产出物并落盘（保留原字段，增量覆盖；不改阶段状态）。"""
+        project = self.store.get(project_id)
+        if project is None:
+            return False
+        record = project.stages.get(str(stage))
+        base = dict(record.output or {}) if record else {}
+        base.update(patch)
+        self.store.update_stage(
+            project_id, stage, output=base,
+            append_history={"stage": stage, "action": "auto_revise", "summary": summary},
+        )
+        return True
+
+    def _revise_literature_with_llm(self, project: ResearchProject, it,
+                                    llm_config: Optional[dict]) -> Optional[Dict[str, Any]]:
+        """按诊断问题（证据不足/检索不全等）补充文献综述：更新 sections/references/research_gap。"""
+        try:
+            from src.llm_client import get_llm_client
+            client = get_llm_client(llm_config) if llm_config else None
+            if client is None:
+                return None
+            record = project.stages.get("2")
+            output = (record.output or {}) if record else {}
+            sections = output.get("sections") or []
+            problems_text = "\n".join(f"- {p.get('text', '')}" for p in it.problems if int(p.get("target_stage") or 3) == 2)
+            if not sections or not problems_text:
+                return None
+            system = (
+                "你是文献综述专家。根据数据分析诊断发现的问题（证据不足/检索方向缺失等），"
+                "对文献综述做针对性补充与修订。保持原有主题结构，只做增量修订，不要推翻重来。"
+                '严格输出 JSON：{"sections":[{"theme":"...","content":"..."}],'
+                '"references":["..."],"research_gap":{"description":"..."},"revision_note":"..."}'
+            )
+            user = (
+                f"研究主题：{project.title}\n"
+                f"当前综述章节：{json.dumps(sections[:4], ensure_ascii=False)}\n"
+                f"诊断问题：\n{problems_text}\n"
+                "请输出补充修订后的完整章节与参考文献列表（沿用原 theme 名，内容按问题增补）。"
+            )
+            data = client.chat_json(system_prompt=system, user_prompt=user, temperature=0.3)
+            new_sections = data.get("sections") or []
+            if not new_sections:
+                return None
+            return {
+                "sections": new_sections,
+                "references": data.get("references") or output.get("references") or [],
+                "research_gap": data.get("research_gap") or output.get("research_gap") or {},
+                "revision_note": data.get("revision_note") or "",
+            }
+        except Exception as e:
+            logger.warning(f"[WorkflowEngine] 文献综述修订失败: {e}")
+            return None
+
+    def _revise_method_with_llm(self, project: ResearchProject, it,
+                                llm_config: Optional[dict]) -> Optional[Dict[str, Any]]:
+        """按诊断问题调整方法推荐：增补/替换方法并重评 fit_score 与操作步骤。"""
+        try:
+            from src.llm_client import get_llm_client
+            client = get_llm_client(llm_config) if llm_config else None
+            if client is None:
+                return None
+            record = project.stages.get("4")
+            output = (record.output or {}) if record else {}
+            methods = output.get("methods") or []
+            problems_text = "\n".join(f"- {p.get('text', '')}" for p in it.problems if int(p.get("target_stage") or 3) == 4)
+            if not methods or not problems_text:
+                return None
+            system = (
+                "你是社会科学研究方法专家。根据数据分析诊断发现的问题，调整研究方法推荐："
+                "可增补、替换或细化方法，重评 fit_score（0-100）与 rationale。保持 method_type/name 字段结构。"
+                '严格输出 JSON：{"methods":[{"name":"...","method_type":"qualitative|quantitative",'
+                '"fit_score":92,"operation_steps":["..."],"rationale":"...","representative_papers":["..."]}]}'
+            )
+            user = (
+                f"研究主题：{project.title}\n"
+                f"当前方法方案：{json.dumps(methods, ensure_ascii=False)[:3000]}\n"
+                f"诊断问题：\n{problems_text}\n"
+                "请输出修订后的完整方法列表（含原有合理方法与新增方法）。"
+            )
+            data = client.chat_json(system_prompt=system, user_prompt=user, temperature=0.3)
+            new_methods = data.get("methods") or []
+            if not new_methods:
+                return None
+            return {"methods": new_methods, "revision_note": data.get("revision_note") or ""}
+        except Exception as e:
+            logger.warning(f"[WorkflowEngine] 方法方案修订失败: {e}")
+            return None
+
+    def _revise_writing_with_llm(self, project: ResearchProject, it,
+                                 llm_config: Optional[dict]) -> Optional[Dict[str, Any]]:
+        """按评审意见/诊断问题修订学术写作产出：更新 sections 与风格备注。"""
+        try:
+            from src.llm_client import get_llm_client
+            client = get_llm_client(llm_config) if llm_config else None
+            if client is None:
+                return None
+            record = project.stages.get("6")
+            output = (record.output or {}) if record else {}
+            sections = output.get("sections") or []
+            if not sections:
+                return None
+            problems_text = "\n".join(f"- {p.get('text', '')}" for p in it.problems if int(p.get("target_stage") or 3) == 6)
+            if not problems_text:
+                return None
+            review_rec = project.stages.get("7")
+            review_out = (review_rec.output or {}) if review_rec else {}
+            reviewers = review_out.get("reviewers") or []
+            review_text = "\n".join(
+                f"- {r.get('perspective', '')}: {'；'.join(r.get('suggestions', []) or [])[:300]}" for r in reviewers[:3]
+            )
+            system = (
+                "你是学术写作专家。根据同行评审意见与诊断问题，修订论文写作产出："
+                "调整章节内容与结构、补充论证，保持学术严谨。只做针对性修订，不要推翻重来。"
+                '严格输出 JSON：{"sections":[{"heading":"...","content":"..."}],"revision_note":"..."}'
+            )
+            user = (
+                f"研究主题：{project.title}\n"
+                f"当前论文章节：{json.dumps(sections[:3], ensure_ascii=False)[:2500]}\n"
+                f"评审意见：\n{review_text[:1500]}\n"
+                f"诊断问题：\n{problems_text}\n"
+                "请输出修订后的完整章节列表（沿用原 heading 名）。"
+            )
+            data = client.chat_json(system_prompt=system, user_prompt=user, temperature=0.3)
+            new_sections = data.get("sections") or []
+            if not new_sections:
+                return None
+            patch = {"sections": new_sections, "revision_note": data.get("revision_note") or ""}
+            if output.get("style_notes"):
+                patch.setdefault("style_notes", output["style_notes"])
+            return patch
+        except Exception as e:
+            logger.warning(f"[WorkflowEngine] 写作修订失败: {e}")
+            return None
 
     def _revise_design_with_llm(self, project: ResearchProject, it, llm_config: Optional[dict]) -> Optional[Dict[str, Any]]:
         """按本轮诊断问题清单，用 LLM 修订 RQ/假设（返回 {research_questions, hypotheses} 或 None）"""
