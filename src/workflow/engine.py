@@ -589,10 +589,12 @@ class WorkflowEngine:
                 if stage == 3:
                     revised = self._revise_design_with_llm(project, it, llm_config)
                     if revised:
-                        self.save_design(
-                            project.id, revised["research_questions"], revised["hypotheses"],
-                            suggestion=f"自动迭代第 {it.iteration} 轮：按诊断问题修订设计",
+                        # 按 id 增量合并（不能全量替换：防模型只输出部分 RQ 顶掉其余）
+                        self._overwrite_stage_output(
+                            project.id, 3, revised,
+                            f"自动迭代第 {it.iteration} 轮：按诊断问题修订设计",
                         )
+                        self.store.bump_design_version(project.id, summary="自动迭代修订研究设计")
                         touched.append(3)
                 elif stage == 2:
                     revised = self._revise_literature_with_llm(project, it, llm_config)
@@ -618,17 +620,75 @@ class WorkflowEngine:
                 logger.warning(f"[WorkflowEngine] 自动迭代：阶段 {stage} 修订失败（跳过）: {e}")
         return touched
 
+    @staticmethod
+    def _merge_stage_patch(base: Dict[str, Any], patch: Dict[str, Any]) -> Dict[str, Any]:
+        """增量合并 LLM 修订产出（2026-09-01 桂鱼提出防顶掉）：
+
+        列表字段（sections/methods/research_questions/hypotheses）按标识 key
+        （theme/heading/name/id）合并——patch 中出现的 key 替换/追加，未出现的
+        原条目保留；references 去重追加；其余字段 patch 有则替换。
+
+        防止「模型只输出评审意见相关条目，把该步骤其余信息顶掉」。
+        """
+        KEY_FIELDS = ("theme", "heading", "name", "id")
+
+        def _key_of(item):
+            if isinstance(item, dict):
+                for k in KEY_FIELDS:
+                    v = item.get(k)
+                    if v:
+                        return (k, v)
+            return None
+
+        def _merge_list(base_items, patch_items):
+            base_items = list(base_items or [])
+            order: List[tuple] = []
+            by_key: Dict[tuple, Any] = {}
+            for it in base_items:
+                k = _key_of(it)
+                if k is None:
+                    continue
+                order.append(k)
+                by_key[k] = it
+            extras = []
+            for it in patch_items:
+                k = _key_of(it)
+                if k is None:
+                    extras.append(it)
+                else:
+                    if k not in by_key:
+                        order.append(k)
+                    by_key[k] = it
+            return [by_key[k] for k in order] + extras
+
+        result = dict(base)
+        for k, v in patch.items():
+            if k in ("sections", "methods", "research_questions", "hypotheses"):
+                result[k] = _merge_list(base.get(k) or [], v)
+            elif k == "references":
+                seen = {str(x) for x in (base.get(k) or [])}
+                merged = list(base.get(k) or [])
+                for ref in (v or []):
+                    if str(ref) not in seen:
+                        seen.add(str(ref))
+                        merged.append(ref)
+                result[k] = merged
+            else:
+                result[k] = v
+        return result
+
     def _overwrite_stage_output(self, project_id: str, stage: int, patch: Dict[str, Any],
                                 summary: str) -> bool:
-        """把 LLM 修订产出合并进指定阶段产出物并落盘（保留原字段，增量覆盖；不改阶段状态）。"""
+        """把 LLM 修订产出合并进指定阶段产出物并落盘（按标识增量合并，保留未提及条目；
+        不改阶段状态）。"""
         project = self.store.get(project_id)
         if project is None:
             return False
         record = project.stages.get(str(stage))
         base = dict(record.output or {}) if record else {}
-        base.update(patch)
+        merged = self._merge_stage_patch(base, patch)
         self.store.update_stage(
-            project_id, stage, output=base,
+            project_id, stage, output=merged,
             append_history={"stage": stage, "action": "auto_revise", "summary": summary},
         )
         return True
@@ -650,25 +710,35 @@ class WorkflowEngine:
             system = (
                 "你是文献综述专家。根据数据分析诊断发现的问题（证据不足/检索方向缺失等），"
                 "对文献综述做针对性补充与修订。保持原有主题结构，只做增量修订，不要推翻重来。"
+                "重要：只输出需要补充或修订的章节条目，每条必须保留原 theme 名；"
+                "未涉及的章节不要输出（后端会按 theme 合并，保留未提及章节）。"
                 '严格输出 JSON：{"sections":[{"theme":"...","content":"..."}],'
                 '"references":["..."],"research_gap":{"description":"..."},"revision_note":"..."}'
             )
+            # 完整清单输入：所有章节的 theme + 内容摘要（不截断条目，只压单条长度）
+            sections_summary = [
+                {"theme": s.get("theme", ""), "content": (s.get("content") or "")[:150]}
+                for s in sections
+            ]
             user = (
                 f"研究主题：{project.title}\n"
-                f"当前综述章节：{json.dumps(sections[:4], ensure_ascii=False)}\n"
+                f"当前全部综述章节（theme + 摘要）：\n{json.dumps(sections_summary, ensure_ascii=False)}\n"
                 f"诊断问题：\n{problems_text}\n"
-                "请输出补充修订后的完整章节与参考文献列表（沿用原 theme 名，内容按问题增补）。"
+                "请输出需要补充/修订的章节条目（保留原 theme 名，内容按问题增补）。"
             )
             data = client.chat_json(system_prompt=system, user_prompt=user, temperature=0.3)
             new_sections = data.get("sections") or []
             if not new_sections:
                 return None
-            return {
-                "sections": new_sections,
-                "references": data.get("references") or output.get("references") or [],
-                "research_gap": data.get("research_gap") or output.get("research_gap") or {},
-                "revision_note": data.get("revision_note") or "",
-            }
+            # 只返回模型确给的字段：缺失字段 merge 时自然保留原值
+            patch: Dict[str, Any] = {"sections": new_sections}
+            if data.get("references"):
+                patch["references"] = data["references"]
+            if data.get("research_gap"):
+                patch["research_gap"] = data["research_gap"]
+            if data.get("revision_note"):
+                patch["revision_note"] = data["revision_note"]
+            return patch
         except Exception as e:
             logger.warning(f"[WorkflowEngine] 文献综述修订失败: {e}")
             return None
@@ -690,20 +760,31 @@ class WorkflowEngine:
             system = (
                 "你是社会科学研究方法专家。根据数据分析诊断发现的问题，调整研究方法推荐："
                 "可增补、替换或细化方法，重评 fit_score（0-100）与 rationale。保持 method_type/name 字段结构。"
+                "重要：只输出需要调整或新增的方法条目，每条必须保留原 name；未调整的方法不要输出"
+                "（后端会按 name 合并，保留未提及方法）。"
                 '严格输出 JSON：{"methods":[{"name":"...","method_type":"qualitative|quantitative",'
                 '"fit_score":92,"operation_steps":["..."],"rationale":"...","representative_papers":["..."]}]}'
             )
+            # 完整清单输入：所有方法 name + 类型 + 评分 + 理由摘要
+            methods_summary = [
+                {"name": m.get("name", ""), "method_type": m.get("method_type", ""),
+                 "fit_score": m.get("fit_score"), "rationale": (m.get("rationale") or "")[:80]}
+                for m in methods
+            ]
             user = (
                 f"研究主题：{project.title}\n"
-                f"当前方法方案：{json.dumps(methods, ensure_ascii=False)[:3000]}\n"
+                f"当前全部方法清单（name + 摘要）：\n{json.dumps(methods_summary, ensure_ascii=False)}\n"
                 f"诊断问题：\n{problems_text}\n"
-                "请输出修订后的完整方法列表（含原有合理方法与新增方法）。"
+                "请输出需要调整/新增的方法条目（保留原 name）。"
             )
             data = client.chat_json(system_prompt=system, user_prompt=user, temperature=0.3)
             new_methods = data.get("methods") or []
             if not new_methods:
                 return None
-            return {"methods": new_methods, "revision_note": data.get("revision_note") or ""}
+            patch: Dict[str, Any] = {"methods": new_methods}
+            if data.get("revision_note"):
+                patch["revision_note"] = data["revision_note"]
+            return patch
         except Exception as e:
             logger.warning(f"[WorkflowEngine] 方法方案修订失败: {e}")
             return None
@@ -733,22 +814,29 @@ class WorkflowEngine:
             system = (
                 "你是学术写作专家。根据同行评审意见与诊断问题，修订论文写作产出："
                 "调整章节内容与结构、补充论证，保持学术严谨。只做针对性修订，不要推翻重来。"
+                "重要：只输出需要修订的章节条目，每条必须保留原 heading；未修订章节不要输出"
+                "（后端会按 heading 合并，保留未提及章节）。"
                 '严格输出 JSON：{"sections":[{"heading":"...","content":"..."}],"revision_note":"..."}'
             )
+            # 完整清单输入：所有章节 heading + 内容摘要（不截断条目）
+            sections_summary = [
+                {"heading": s.get("heading", ""), "content": (s.get("content") or "")[:150]}
+                for s in sections
+            ]
             user = (
                 f"研究主题：{project.title}\n"
-                f"当前论文章节：{json.dumps(sections[:3], ensure_ascii=False)[:2500]}\n"
+                f"当前全部论文章节（heading + 摘要）：\n{json.dumps(sections_summary, ensure_ascii=False)}\n"
                 f"评审意见：\n{review_text[:1500]}\n"
                 f"诊断问题：\n{problems_text}\n"
-                "请输出修订后的完整章节列表（沿用原 heading 名）。"
+                "请输出需要修订的章节条目（保留原 heading 名）。"
             )
             data = client.chat_json(system_prompt=system, user_prompt=user, temperature=0.3)
             new_sections = data.get("sections") or []
             if not new_sections:
                 return None
-            patch = {"sections": new_sections, "revision_note": data.get("revision_note") or ""}
-            if output.get("style_notes"):
-                patch.setdefault("style_notes", output["style_notes"])
+            patch: Dict[str, Any] = {"sections": new_sections}
+            if data.get("revision_note"):
+                patch["revision_note"] = data["revision_note"]
             return patch
         except Exception as e:
             logger.warning(f"[WorkflowEngine] 写作修订失败: {e}")
@@ -772,6 +860,8 @@ class WorkflowEngine:
             system = (
                 "你是社会科学研究方法专家。根据数据分析诊断发现的问题，修订研究设计与假设。"
                 "只做针对性小修订（增加编码维度/细化RQ/扩展抽样视角），不要推翻重来。"
+                "重要：只输出需要修订的 RQ/H 条目，每条必须保留原 id；可新增带新 id 的条目；"
+                "未修订的条目不要输出（后端会按 id 合并，保留未提及条目）。"
                 '严格输出 JSON：{"research_questions":[{"id":"RQ1","text":"..."}],'
                 '"hypotheses":[{"id":"H1","statement":"...","hypothesis_type":"qualitative"}]}'
             )
@@ -780,7 +870,7 @@ class WorkflowEngine:
                 f"当前研究问题：{json.dumps(rq, ensure_ascii=False)}\n"
                 f"当前假设：{json.dumps(hy, ensure_ascii=False)}\n"
                 f"本轮诊断问题：\n{problems_text}\n"
-                "请输出修订后的完整 RQ 与假设列表。"
+                "请输出需要修订的 RQ/H 条目（保留原 id，可新增带新 id 的条目）。"
             )
             data = client.chat_json(system_prompt=system, user_prompt=user, temperature=0.3)
             rq2 = data.get("research_questions") or []
