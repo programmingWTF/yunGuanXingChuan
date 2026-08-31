@@ -699,6 +699,34 @@ class TestWorkflowAPI:
             assert r2.status_code == 200
             assert r2.json()["project"]["interest"] == "朱雀2号"
 
+    def test_run_all_passes_auto_iterate_to_engine(self, api_engine):
+        """回归：RunAllRequest.auto_iterate 必须透传给 engine.run_all。
+        曾漏传 auto_iterate=req.auto_iterate → 服务端永远收到默认 False →
+        7 阶段完成后永不接棒自动迭代（用户反馈「自动迭代不生效」根因）。"""
+        import secrets as _secrets
+        from unittest.mock import patch
+        from api.main import app
+        _, client = _make_auth_client(app)
+        with client:
+            r = client.post("/api/workflow/projects", json={"title": "迭代透传", "interest": "朱雀2号"})
+            assert r.status_code == 200
+            pid = r.json()["project"]["id"]
+            captured = {}
+
+            def spy(*args, **kwargs):
+                captured.update(kwargs)
+                return {"project": {}, "stages": {}}
+
+            with patch.object(api_engine, "run_all", side_effect=spy):
+                # 勾选自动迭代 → 请求体带 auto_iterate=true
+                r2 = client.post(f"/api/workflow/projects/{pid}/run-all", json={"auto_iterate": True})
+                assert r2.status_code == 200
+                assert captured.get("auto_iterate") is True, "auto_iterate=True 必须透传给 engine.run_all"
+                # 未勾选 → 默认 False 也照常透传（保持现状）
+                r3 = client.post(f"/api/workflow/projects/{pid}/run-all", json={})
+                assert r3.status_code == 200
+                assert captured.get("auto_iterate") is False
+
     def test_unauthenticated_401(self, api_engine):
         """用户系统上线后：未登录访问项目接口一律 401"""
         from fastapi.testclient import TestClient
