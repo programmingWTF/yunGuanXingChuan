@@ -146,7 +146,7 @@ export default function Workspace() {
     setError('')
     setCreating(false)
     try {
-      await runAllWorkflow(id, { use_user_style: useUserStyle })
+      await runAllWorkflow(id, { use_user_style: useUserStyle, auto_iterate: autoIterateAfter })
     } catch (err: unknown) {
       const status = axios.isAxiosError(err) ? err.response?.status : null
       setError(status === 400 ? '该项目已全部生成完成' : '启动全流程失败，请确认后端已启动')
@@ -162,13 +162,8 @@ export default function Workspace() {
         if (project.status === 'completed') {
           if (pollRef.current) clearInterval(pollRef.current)
           setGeneratingAll(false)
-          // 自动迭代：全流程生成完成后自动启动闭环迭代（分析→诊断→改设计→重跑）
-          if (autoIterateAfter && project.stages?.['3']?.status === 'completed') {
-            try {
-              await startAutoIterate(id, { max_rounds: 3, target_confidence: 0.85 })
-              setAutoMsg('🔄 自动迭代已接棒启动（分析→诊断→改设计→重跑，可信度 ≥85% 停）')
-            } catch { /* 启动失败静默，可在数据分析页手动启动 */ }
-          }
+          // 自动迭代已改为服务端接棒（run-all 请求参数 auto_iterate），前端只提示
+          if (autoIterateAfter) setAutoMsg('🔄 自动迭代将在生成完成后由服务端接棒（分析→诊断→改设计→重跑）')
         }
       } catch { /* 网络抖动忽略 */ }
     }, 2500)

@@ -28,11 +28,11 @@ const BACKFLOW = [
   { from: 6, to: 1, label: '补充文献检索' },
 ]
 
-const W = 760
-const H = 300
+const W = 640
+const H = 240
 const CX = W / 2
-const CY = 132
-const R = 108
+const CY = 112
+const R = 92
 
 /** 节点在环上的坐标（第 0 个在正上方，顺时针排布） */
 function nodePos(i: number): { x: number; y: number } {
@@ -67,8 +67,8 @@ interface ClosedLoopDiagramProps {
 export default function ClosedLoopDiagram({ stages, currentStage = 1, iterationsCount = 0 }: ClosedLoopDiagramProps) {
   const hasProject = !!stages && Object.keys(stages).length > 0
   return (
-    <div className="card p-5">
-      <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+    <div className="card p-4">
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-0">
         <h3 className="sec-label !mb-0">🔄 闭环迭代流程</h3>
         <div className="flex items-center gap-3 flex-wrap">
           {iterationsCount > 0 && (
@@ -100,7 +100,7 @@ export default function ClosedLoopDiagram({ stages, currentStage = 1, iterations
           const dx = b.x - a.x
           const dy = b.y - a.y
           const len = Math.hypot(dx, dy) || 1
-          const pad = 26
+          const pad = 21
           const x1 = a.x + (dx / len) * pad
           const y1 = a.y + (dy / len) * pad
           const x2 = b.x - (dx / len) * (pad + 8)
@@ -118,15 +118,15 @@ export default function ClosedLoopDiagram({ stages, currentStage = 1, iterations
           const a = nodePos(from)
           const b = nodePos(to)
           // 回流弧线走环内空白区（中轴附近），控制点分上下两档避免两条线重叠
-          const midX = CX + (i === 0 ? 16 : -16)
-          const midY = CY + (i === 0 ? 8 : -26)
+          const midX = CX + (i === 0 ? 12 : -12)
+          const midY = CY + (i === 0 ? 6 : -22)
           const lit = iterationsCount > 0
           return (
             <g key={i}>
-              <path d={`M ${a.x} ${a.y + (i === 0 ? 20 : -20)} Q ${midX} ${midY} ${b.x} ${b.y + (i === 0 ? -20 : 20)}`}
+              <path d={`M ${a.x} ${a.y + (i === 0 ? 17 : -17)} Q ${midX} ${midY} ${b.x} ${b.y + (i === 0 ? -17 : 17)}`}
                 fill="none"
-                stroke={lit ? 'rgba(217,119,6,.75)' : 'rgba(217,119,6,.35)'}
-                strokeWidth={i === 0 ? 1.8 : 1.3} strokeDasharray="6 4"
+                stroke={lit ? 'rgba(217,119,6,.7)' : 'rgba(217,119,6,.3)'}
+                strokeWidth={i === 0 ? 1.4 : 1} strokeDasharray="5 4"
                 markerEnd="url(#cl-arrow-dash)" />
             </g>
           )
@@ -140,12 +140,12 @@ export default function ClosedLoopDiagram({ stages, currentStage = 1, iterations
           const locked = st === 'locked'
           const circle = (
             <>
-              <circle cx={x} cy={y} r="18" fill={style.fill} stroke={style.ring} strokeWidth="1.6" />
-              <text x={x} y={y + 5} textAnchor="middle" fontSize="13" style={{ pointerEvents: 'none' }}>{n.icon}</text>
-              {st === 'running' && <circle cx={x} cy={y} r="23" fill="none" stroke="rgba(245,158,11,.5)" strokeWidth="1.6" className="animate-pulse" />}
+              <circle cx={x} cy={y} r="15" fill={style.fill} stroke={style.ring} strokeWidth="1.2" />
+              <text x={x} y={y + 4.5} textAnchor="middle" fontSize="11" style={{ pointerEvents: 'none' }}>{n.icon}</text>
+              {st === 'running' && <circle cx={x} cy={y} r="19" fill="none" stroke="rgba(245,158,11,.5)" strokeWidth="1.3" className="animate-pulse" />}
               {/* 状态小圆点（右上角） */}
-              <circle cx={x + 15} cy={y - 15} r="4" fill={style.color} stroke="white" strokeWidth="1.2" />
-              <text x={x} y={y + 34} textAnchor="middle" fontSize="10" className="fill-slate-600">{n.label}</text>
+              <circle cx={x + 13} cy={y - 13} r="3.5" fill={style.color} stroke="white" strokeWidth="1" />
+              <text x={x} y={y + 29} textAnchor="middle" fontSize="9" className="fill-slate-500">{n.label}</text>
             </>
           )
           if (locked) {

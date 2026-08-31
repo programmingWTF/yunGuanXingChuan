@@ -70,6 +70,7 @@ class RunAllRequest(BaseModel):
     style_sample: Optional[str] = Field(default=None, max_length=5000, description="论文写作风格蒸馏样本")
     topic: Optional[str] = Field(default=None, max_length=200, description="研究主题覆盖（默认项目兴趣）")
     use_user_style: bool = Field(default=True, description="是否注入用户论文库写作风格（issue #115，默认 True 保持现状）")
+    auto_iterate: bool = Field(default=False, description="7 阶段完成后自动接棒闭环迭代（确认版 2026-08-31）")
 
 
 class RQItem(BaseModel):
