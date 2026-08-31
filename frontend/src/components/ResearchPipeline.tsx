@@ -21,7 +21,6 @@ export const PIPELINE_NODES: PipelineNode[] = [
   { key: 'inspiration', label: '研究灵感', en: 'IDEATION', icon: '✦', stage: null, route: '/inspiration' },
   { key: 'topic', label: '选题孵化', en: 'TOPIC', icon: '💡', stage: 1, route: '/inspiration' },
   { key: 'literature', label: '文献综述', en: 'LITERATURE', icon: '📚', stage: 2, route: '/literature' },
-  { key: 'gap', label: 'Gap 识别', en: 'GAP', icon: '🔍', stage: 2, route: '/literature' },
   { key: 'rq', label: 'RQ 设计', en: 'RESEARCH Q', icon: '🎯', stage: 3, route: '/design' },
   { key: 'method', label: '方法推荐', en: 'METHOD', icon: '🧪', stage: 4, route: '/method' },
   { key: 'data', label: '数据分析', en: 'ANALYSIS', icon: '📊', stage: 5, route: '/data-analysis' },

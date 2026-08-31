@@ -118,12 +118,14 @@ export default function ClosedLoopDiagram({ stages, currentStage = 1, iterations
           const a = nodePos(from)
           const b = nodePos(to)
           // 回流弧线走环内空白区（中轴附近），控制点分上下两档避免两条线重叠
-          const midX = CX + (i === 0 ? 12 : -12)
-          const midY = CY + (i === 0 ? 6 : -22)
+          // 起点都从评审节点底部附近出发（靠得近），终点在文献综述/研究设计两侧拉远
+          const endOff = i === 0 ? -26 : 26
+          const midX = CX + (i === 0 ? 30 : -30)
+          const midY = CY + (i === 0 ? 26 : -46)
           const lit = iterationsCount > 0
           return (
             <g key={i}>
-              <path d={`M ${a.x} ${a.y + (i === 0 ? 17 : -17)} Q ${midX} ${midY} ${b.x} ${b.y + (i === 0 ? -17 : 17)}`}
+              <path d={`M ${a.x} ${a.y + 8} Q ${midX} ${midY} ${b.x} ${b.y + endOff}`}
                 fill="none"
                 stroke={lit ? 'rgba(217,119,6,.7)' : 'rgba(217,119,6,.3)'}
                 strokeWidth={i === 0 ? 1.4 : 1} strokeDasharray="5 4"
