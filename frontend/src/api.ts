@@ -538,7 +538,7 @@ export interface ResearchProject {
   title: string
   interest: string
   current_stage: number
-  status: 'active' | 'completed'
+  status: 'active' | 'completed' | 'iterating'
   created_at: string
   updated_at: string
   stages: Record<string, WorkflowStageRecord>
