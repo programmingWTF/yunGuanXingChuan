@@ -223,7 +223,9 @@ class WorkflowEngine:
         self._inject_user_style(stage, full_inputs, owner_id, use_user_style=use_user_style)
 
         try:
-            output = self._run_with_timeout(lambda: agent.run(full_inputs), 240.0, None, "智能体生成", swallow_exc=False)
+            # 评审 Agent（stage 7）生成 3 审稿人意见 + 校验，240s 常超时 → 放宽到 480s；其余阶段 240s
+            stage_timeout = 480.0 if stage == 7 else 240.0
+            output = self._run_with_timeout(lambda: agent.run(full_inputs), stage_timeout, None, "智能体生成", swallow_exc=False)
             if output is None:
                 raise TimeoutError(f"阶段 {stage} AI 生成超时（>240 秒），请重试")
             # 服务端兜底：LLM 漏填/空填 topic 时补全，保证产出物完整
@@ -562,20 +564,54 @@ class WorkflowEngine:
                     logger.warning("[WorkflowEngine] 自动迭代：本轮无任何阶段修订成功，提前终止")
                     break
                 rounds[-1]["revised_stages"] = touched
-            # 3) 自动重新评估 + 自动确认：重跑同行评审（最新设计/分析/写作产出），随即 approve
+            # 3) 自动重新评估 + 自动确认：重跑同行评审（最新设计/分析/写作产出），随即 approve。
+            #    评审 Agent 生成 3 审稿人 + 校验，单次常超 240s，故：放宽超时 + 失败重试 1 次 + 备份恢复旧评审。
+            review_backup = None
             try:
-                self.run_stage(project_id, 7, {}, llm_config=llm_config, owner_id=owner_id,
-                               use_user_style=use_user_style)
-                p = self.store.get(project_id)
-                rec = p.stages.get(str(7)) if p else None
-                if rec and rec.status == StageStatus.AWAITING_REVIEW:
-                    self.approve_stage(project_id, 7)
-                    self.store.set_status(project_id, "completed", summary="自动迭代结束：重新评审通过并自动确认")
-                else:
-                    self.store.set_status(project_id, "completed", summary="自动迭代结束")
-            except Exception as e:
-                logger.warning(f"[WorkflowEngine] 自动迭代收尾重新评审失败（不影响已产出）: {e}")
-                self.store.set_status(project_id, "completed", summary="自动迭代结束（收尾重评降级跳过）")
+                p0 = self.store.get(project_id)
+                review_rec = p0.stages.get(str(7)) if p0 else None
+                if review_rec:
+                    review_backup = {"status": review_rec.status.value,
+                                     "output": dict(review_rec.output or {}),
+                                     "error": review_rec.error}
+            except Exception:
+                pass
+            final_review_ok = False
+            for attempt in range(2):
+                try:
+                    self.run_stage(project_id, 7, {}, llm_config=llm_config, owner_id=owner_id,
+                                   use_user_style=use_user_style)
+                    p = self.store.get(project_id)
+                    rec = p.stages.get(str(7)) if p else None
+                    if rec and rec.status == StageStatus.AWAITING_REVIEW:
+                        self.approve_stage(project_id, 7)
+                        self.store.set_status(project_id, "completed", summary="自动迭代结束：重新评审通过并自动确认")
+                    else:
+                        self.store.set_status(project_id, "completed", summary="自动迭代结束")
+                    final_review_ok = True
+                    break
+                except Exception as e:
+                    logger.warning(f"[WorkflowEngine] 自动迭代收尾评审第 {attempt+1} 次失败: {e}")
+                    if attempt == 0:
+                        self.store.set_status(project_id, "iterating", summary="收尾评审重试中")
+            if not final_review_ok:
+                # 恢复旧评审产出（避免清空后显示 failed / 数据丢失），项目保持 completed
+                try:
+                    if review_backup and review_backup.get("output"):
+                        self.store.update_stage(
+                            project_id, 7,
+                            status=StageStatus.COMPLETED,
+                            output=review_backup["output"],
+                            append_history={"stage": 7, "action": "auto_revise",
+                                            "summary": "收尾重评失败，已恢复原评审产出（可手动重跑评审）"},
+                        )
+                    else:
+                        self.store.update_stage(project_id, 7, status=StageStatus.COMPLETED,
+                                                append_history={"stage": 7, "action": "auto_revise",
+                                                                "summary": "收尾重评失败，无原评审可恢复"})
+                except Exception as e2:
+                    logger.warning(f"[WorkflowEngine] 恢复旧评审失败: {e2}")
+                self.store.set_status(project_id, "completed", summary="自动迭代结束（收尾重评两次失败，保留原评审）")
         except Exception as e:
             logger.error(f"[WorkflowEngine] 自动迭代异常: {e}")
             self.store.set_status(project_id, "completed", summary=f"自动迭代异常终止: {str(e)[:80]}")
@@ -954,7 +990,7 @@ class WorkflowEngine:
             try:
                 output = self._run_with_timeout(
                     lambda a=agent, i=dict(inputs): a.run(i),
-                    240.0, None, f"全流程·{stage_name}", swallow_exc=False,
+                    480.0 if stage == 7 else 240.0, None, f"全流程·{stage_name}", swallow_exc=False,
                 )
                 if output is None:
                     raise TimeoutError(f"{stage_name}生成超时（>240 秒）")
