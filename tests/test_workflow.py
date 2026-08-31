@@ -1436,6 +1436,43 @@ class TestAutoIterateLoop:
 
 
 
+    def test_auto_iterate_review_fail_restores_backup(self, engine):
+        """收尾重评失败两次 → 恢复旧评审产出（不丢数据、不显示 failed），项目保持 completed"""
+        from src.schemas import IterationRecord
+        p = engine.create_project(interest="i")
+        for s in range(1, 8):
+            engine.store.update_stage(p.id, s, status=StageStatus.COMPLETED,
+                                      output={"topic": "t", "sections": [{"heading": "h", "content": "c"}]})
+        # 旧评审产出（会被收尾重评的 run_stage 清掉）
+        engine.store.update_stage(p.id, 7, status=StageStatus.COMPLETED,
+                                  output={"reviewers": [{"reviewer_id": "Reviewer 1", "perspective": "方法专家", "scores": {}, "suggestions": ["旧建议"]}], "revision_notes": "旧说明"})
+        # 数据分析产出 + 迭代记录：让首轮走完且诊断出问题（触发修订失败→终止→收尾）
+        from src.schemas import IterationRecord as IR
+        it = IR(iteration=1, timestamp="", source_stage=5, design_version=1,
+                problems=[{"text": "改进", "target_stage": 3}])
+        engine.store.add_iteration(p.id, it)
+        # 数据分析 mock 可跑（engine fixture 已 mock agents）
+        with patch.object(engine, "_revise_design_with_llm", return_value={
+            "research_questions": [{"id": "RQ1", "text": "新"}],
+            "hypotheses": [],
+        }), patch.object(engine, "_revise_literature_with_llm", return_value=None), \
+             patch.object(engine, "_revise_method_with_llm", return_value=None), \
+             patch.object(engine, "_revise_writing_with_llm", return_value=None):
+            real_run = engine.run_stage
+            def fake_run(project_id, stage, inputs=None, **kw):
+                if stage == 7:
+                    raise RuntimeError("评审超时")  # 收尾重评两次都失败
+                return real_run(project_id, stage, inputs or {}, **kw)  # 首轮分析走真实
+            with patch.object(engine, "run_stage", side_effect=fake_run):
+                rounds = engine.auto_iterate(p.id, max_rounds=1)
+        p2 = engine.store.get(p.id)
+        assert p2.status == "completed"
+        s7 = p2.stages["7"]
+        assert s7.status == StageStatus.COMPLETED, "收尾重评失败后应恢复 completed（不显示 failed）"
+        out = s7.output or {}
+        assert out.get("reviewers") and out["reviewers"][0]["suggestions"] == ["旧建议"], "旧评审产出必须被恢复"
+        assert any("恢复原评审" in str(h.get("summary", "")) for h in p2.history), "history 应记录恢复动作"
+
     def test_merge_stage_patch_preserves_untouched_items(self):
         """_merge_stage_patch：模型只输出部分条目时，未提及条目必须保留（防顶掉）"""
         base = {
