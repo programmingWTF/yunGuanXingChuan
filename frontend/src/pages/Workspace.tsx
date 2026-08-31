@@ -163,7 +163,11 @@ export default function Workspace() {
           if (pollRef.current) clearInterval(pollRef.current)
           setGeneratingAll(false)
           // 自动迭代已改为服务端接棒（run-all 请求参数 auto_iterate），前端只提示
-          if (autoIterateAfter) setAutoMsg('🔄 自动迭代将在生成完成后由服务端接棒（分析→诊断→改设计→重跑）')
+          if (autoIterateAfter) setAutoMsg('✅ 全流程生成完成，自动迭代已结束（服务端接棒执行）')
+        } else if (project.status === 'iterating') {
+          // 自动迭代进行中：保持轮询直到回到 completed（识别后端新状态）
+          setGeneratingAll(false)
+          setAutoMsg('🔄 自动迭代进行中：分析 → 诊断 → 按问题修订（文献/设计/方法/写作）→ 重跑分析 → 评审确认')
         }
       } catch { /* 网络抖动忽略 */ }
     }, 2500)
@@ -362,7 +366,7 @@ export default function Workspace() {
             <label className="flex items-center gap-2 mt-2 text-[11px] text-slate-600 cursor-pointer select-none">
               <input type="checkbox" checked={autoIterateAfter} onChange={e => toggleAutoIterateAfter(e.target.checked)}
                 className="w-3.5 h-3.5 accent-amber-500" />
-              🔄 自动迭代（生成完成后 AI 自动 分析→诊断→改设计→重跑，可信度达标停）
+              🔄 自动迭代（生成完成后 AI 自动闭环：分析→诊断→按问题修订文献/设计/方法/写作→重跑→评审确认，可信度达标停）
             </label>
             {autoMsg && <p className="text-[10px] text-amber-600 mt-1.5">{autoMsg}</p>}
             {generatingAll && (
@@ -401,9 +405,9 @@ export default function Workspace() {
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[13px] font-medium text-slate-700 truncate">{p.title}</p>
                     <span className="flex items-center gap-1.5 shrink-0">
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded border ${p.status === 'completed' ? 'text-emerald-600 border-emerald-200' : 'text-indigo-600 border-indigo-200'
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded border ${p.status === 'completed' ? 'text-emerald-600 border-emerald-200' : p.status === 'iterating' ? 'text-amber-600 border-amber-200 bg-amber-50 animate-pulse' : 'text-indigo-600 border-indigo-200'
                         }`}>
-                        {p.status === 'completed' ? '已完成' : '进行中'}
+                        {p.status === 'completed' ? '已完成' : p.status === 'iterating' ? '🔄 迭代中' : '进行中'}
                       </span>
                       {/* 删除（hover 显示防误触；第一击进确认态 → 第二击真正删除） */}
                       <span
@@ -454,7 +458,7 @@ export default function Workspace() {
                   <p className="text-[10px] text-slate-400 mt-0.5">创建于 {detail.created_at?.slice(0, 19).replace('T', ' ')}</p>
                 </div>
                 <div className="flex gap-2 flex-wrap shrink-0">
-                  {detail.status !== 'completed' && (
+                  {detail.status !== 'completed' && detail.status !== 'iterating' && (
                     <button onClick={() => setConfirmingAll(true)} disabled={generatingAll}
                       className="text-xs px-3 py-1.5 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-40 transition-all">
                       {generatingAll ? '⏳ 生成中…' : '🚀 一键生成全部'}
@@ -481,7 +485,8 @@ export default function Workspace() {
 
               {/* 闭环迭代流程示意图（issue #130：评审第一眼能看到闭环能力） */}
               <div className="border-t border-slate-100 pt-4">
-                <ClosedLoopDiagram stages={detail.stages} currentStage={detail.current_stage} iterationsCount={detail.iterations?.length ?? 0} />
+                <ClosedLoopDiagram stages={detail.stages} currentStage={detail.current_stage}
+                  iterationsCount={detail.iterations?.length ?? 0} iterating={detail.status === 'iterating'} />
               </div>
 
               {/* Research Pipeline 进度 */}
@@ -611,7 +616,7 @@ export default function Workspace() {
             <label className="flex items-center gap-2 mt-2 text-[11px] text-slate-600 cursor-pointer select-none">
               <input type="checkbox" checked={autoIterateAfter} onChange={e => toggleAutoIterateAfter(e.target.checked)}
                 className="w-3.5 h-3.5 accent-amber-500" />
-              🔄 生成完成后自动迭代（AI 分析→诊断→改设计→重跑，可信度达标停）
+              🔄 生成完成后自动迭代（AI 闭环：分析→诊断→按问题修订→重跑→评审确认，可信度达标停）
             </label>
           </>
         }
