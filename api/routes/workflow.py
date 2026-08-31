@@ -225,6 +225,7 @@ def run_all(project_id: str, req: RunAllRequest, request: Request, background_ta
         materials=req.materials, style_sample=req.style_sample, topic=req.topic,
         llm_config=llm_config, owner_id=user["id"],
         use_user_style=req.use_user_style,
+        auto_iterate=req.auto_iterate,
     )
     return {"status": "running", "message": "全流程生成已启动，请通过 GET /projects/{id} 查看各阶段进度"}
 

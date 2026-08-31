@@ -22,10 +22,14 @@ const NODES = [
   { label: '同行评审', icon: '👨‍⚖️', stage: 7, route: '/review' },
 ]
 
-/** 回流虚线：同行评审 → 研究设计（主回流），同行评审 → 文献综述（分支回流） */
+/** 回流虚线：评审/诊断后按问题路由回改（与后端 auto_iterate 的 target_stage 路由一致）
+ *  评审 → 研究设计（修订 RQ/假设）｜评审 → 文献综述（补检索）｜
+ *  评审 → 学术写作（按意见修订）｜数据分析 → 方法推荐（按诊断调整方法） */
 const BACKFLOW = [
   { from: 6, to: 2, label: '按评审意见修改设计' },
   { from: 6, to: 1, label: '补充文献检索' },
+  { from: 6, to: 5, label: '按评审意见修订写作' },
+  { from: 4, to: 3, label: '按诊断调整方法' },
 ]
 
 const W = 640
@@ -62,9 +66,11 @@ interface ClosedLoopDiagramProps {
   currentStage?: number
   /** 已完成迭代轮数（>0 时回流虚线加亮并标注轮数） */
   iterationsCount?: number
+  /** 自动迭代进行中（后端 status=iterating）：回流虚线脉冲动画 + 强调 */
+  iterating?: boolean
 }
 
-export default function ClosedLoopDiagram({ stages, currentStage = 1, iterationsCount = 0 }: ClosedLoopDiagramProps) {
+export default function ClosedLoopDiagram({ stages, currentStage = 1, iterationsCount = 0, iterating = false }: ClosedLoopDiagramProps) {
   const hasProject = !!stages && Object.keys(stages).length > 0
   return (
     <div className="card p-4">
@@ -113,11 +119,11 @@ export default function ClosedLoopDiagram({ stages, currentStage = 1, iterations
           )
         })}
 
-        {/* 回流虚线（同行评审 → 研究设计 / 文献综述） */}
+        {/* 回流虚线（评审→设计/文献/写作；数据分析→方法；与后端 target_stage 路由一致） */}
         {BACKFLOW.map(({ from, to, label }, i) => {
           const a = nodePos(from)
           const b = nodePos(to)
-          // 回流弧线走环内空白区（中轴附近），控制点分上下两档避免两条线重叠
+          // 回流弧线走环内空白区（中轴附近），控制点分档错开避免多条线重叠
           // 端点精确落在两节点圆边缘（沿 a→b 方向投影），箭头保证指到目标圆上
           const dx = b.x - a.x, dy = b.y - a.y
           const len = Math.hypot(dx, dy) || 1
@@ -125,18 +131,22 @@ export default function ClosedLoopDiagram({ stages, currentStage = 1, iterations
           const rN = 15
           const x1 = a.x + ux * (rN + 2), y1 = a.y + uy * (rN + 2)
           const x2 = b.x - ux * (rN + 8), y2 = b.y - uy * (rN + 8)
-          // 控制点取中点并向环心方向偏移，两条回流线上下错开不重叠
+          // 控制点取中点并向环心方向偏移；多条回流线按索引分档上下错开不重叠
           const mx = (x1 + x2) / 2, my = (y1 + y2) / 2
-          const cxq = mx + (CX - mx) * 0.6
-          const cyq = my + (CY - my) * 0.6 + (i === 0 ? 10 : -10)
-          const lit = iterationsCount > 0
+          const cxq = mx + (CX - mx) * 0.55
+          const cyq = my + (CY - my) * 0.65 + (i - 1.5) * 8
+          const lit = iterationsCount > 0 || iterating
           return (
             <g key={i}>
               <path d={`M ${x1} ${y1} Q ${cxq} ${cyq} ${x2} ${y2}`}
                 fill="none"
                 stroke={lit ? 'rgba(217,119,6,.7)' : 'rgba(217,119,6,.3)'}
-                strokeWidth={i === 0 ? 1.4 : 1} strokeDasharray="5 4"
+                strokeWidth={lit ? 1.6 : 1} strokeDasharray="5 4"
+                className={iterating ? 'gx-iter-pulse' : undefined}
                 markerEnd="url(#cl-arrow-dash)" />
+              <text x={cxq} y={cyq - 3} textAnchor="middle" fontSize="6.5"
+                fill={lit ? 'rgba(180,83,9,.85)' : 'rgba(180,83,9,.45)'}
+                style={{ pointerEvents: 'none' }} fontFamily="inherit">{label}</text>
             </g>
           )
         })}
@@ -174,8 +184,12 @@ export default function ClosedLoopDiagram({ stages, currentStage = 1, iterations
         <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-indigo-400" /> 当前阶段（可点击）</span>
         <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> 运行中</span>
         <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-300" /> 未解锁</span>
-        <span className="text-amber-500">⤺ 虚线 = 评审后回流（改设计 / 补文献）</span>
+        <span className="text-amber-500">⤺ 虚线 = 自动闭环回流（改设计 / 补文献 / 修写作 / 调方法）</span>
       </div>
+      {iterating && (
+        <p className="text-center text-[9.5px] text-amber-600 mt-1 animate-pulse">🔄 自动迭代进行中：分析 → 诊断 → 按问题修订 → 重跑 → 评审确认</p>
+      )}
+      <style>{`.gx-iter-pulse { animation: gxDashPulse 1.6s ease-in-out infinite; } @keyframes gxDashPulse { 0%,100% { stroke-dashoffset: 0; opacity: .75; } 50% { stroke-dashoffset: -18; opacity: 1; } }`}</style>
     </div>
   )
 }

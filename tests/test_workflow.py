@@ -1325,6 +1325,96 @@ class TestClosedLoopIteration:
 
 
 # ---------------------------------------------------------------------------
+# 自动闭环迭代完整回路（2026-09-01 桂鱼反馈修复）
+# ---------------------------------------------------------------------------
+
+
+class TestAutoIterateLoop:
+    """自动迭代：iterating 状态标记 + 多阶段路由修订 + 结束自动评审确认"""
+
+    def _completed_project(self, engine):
+        """构造已跑完全流程的项目（current_stage=7, status=completed）"""
+        p = engine.create_project(interest="朱雀2号火箭")
+        for s in range(1, 8):
+            engine.store.update_stage(p.id, s, status=StageStatus.COMPLETED, output={"topic": "t"})
+        return engine.store.get(p.id)
+
+    def test_auto_iterate_marks_iterating_then_completed_and_finalizes_review(self, engine):
+        """迭代中 status=iterating（前端显示「迭代中」而非「已完成」），
+        结束后自动重跑评审并 approve（自动确认 + 重新评估）"""
+        p = self._completed_project(engine)
+        called = []
+        with patch.object(engine.store, "set_status", wraps=engine.store.set_status) as spy:
+            rounds = engine.auto_iterate(p.id, max_rounds=1)
+            called = [c.args[1] for c in spy.call_args_list if c.args[1] in ("iterating", "completed")]
+        assert called[0] == "iterating", "迭代开始应置 iterating"
+        assert called[-1] == "completed", "迭代结束应恢复 completed"
+        assert len(rounds) == 1
+        # 迭代记录已落盘；评审已重新跑并自动确认
+        p2 = engine.store.get(p.id)
+        assert len(p2.iterations) >= 1
+        assert p2.stages["7"].status == StageStatus.COMPLETED, "收尾应自动评审并确认"
+        assert p2.status == "completed"
+
+    def test_auto_iterate_revises_stages_by_target_stage(self, engine):
+        """诊断问题 target_stage 2/3/4/6 → 分别修订文献/设计/方法/写作产出"""
+        p = engine.create_project(interest="i")
+        engine.store.update_stage(p.id, 2, status=StageStatus.COMPLETED, output={"sections": [{"theme": "A", "content": "旧"}]})
+        engine.store.update_stage(p.id, 3, status=StageStatus.COMPLETED, output={
+            "research_questions": [{"id": "RQ1", "text": "旧"}],
+            "hypotheses": [{"id": "H1", "statement": "旧", "hypothesis_type": "qualitative"}],
+        })
+        engine.store.update_stage(p.id, 4, status=StageStatus.COMPLETED, output={"methods": [{"name": "M1", "method_type": "qualitative"}]})
+        engine.store.update_stage(p.id, 6, status=StageStatus.COMPLETED, output={"sections": [{"heading": "a", "content": "旧"}]})
+        from src.schemas import IterationRecord
+        it = IterationRecord(
+            iteration=1, timestamp="", source_stage=5, design_version=1,
+            problems=[
+                {"text": "补文献", "target_stage": 2},
+                {"text": "改设计", "target_stage": 3},
+                {"text": "调方法", "target_stage": 4},
+                {"text": "改写作", "target_stage": 6},
+            ],
+        )
+        with patch.object(engine, "_revise_literature_with_llm", return_value={"sections": [{"theme": "A", "content": "新"}], "references": [], "research_gap": {}}), \
+             patch.object(engine, "_revise_design_with_llm", return_value={
+                 "research_questions": [{"id": "RQ1", "text": "新"}],
+                 "hypotheses": [{"id": "H1", "statement": "新", "hypothesis_type": "quantitative"}],
+             }), \
+             patch.object(engine, "_revise_method_with_llm", return_value={"methods": [{"name": "M2", "method_type": "quantitative", "fit_score": 90}]}), \
+             patch.object(engine, "_revise_writing_with_llm", return_value={"sections": [{"heading": "a", "content": "新"}]}):
+            proj = engine.store.get(p.id)
+            touched = engine._revise_stage_by_problems(proj, it, None)
+        assert touched == [2, 3, 4, 6]
+        proj = engine.store.get(p.id)
+        assert proj.design_version == 2, "修订设计应使版本号 +1"
+        assert proj.stages["2"].output["sections"][0]["content"] == "新"
+        assert proj.stages["3"].output["research_questions"][0]["text"] == "新"
+        assert proj.stages["4"].output["methods"][0]["name"] == "M2"
+        assert proj.stages["6"].output["sections"][0]["content"] == "新"
+
+    def test_auto_iterate_stops_when_no_revision_possible(self, engine):
+        """本轮所有修订失败（如无 LLM）→ 提前终止且不崩，状态仍回 completed"""
+        p = self._completed_project(engine)
+        rounds = engine.auto_iterate(p.id, max_rounds=3)
+        assert len(rounds) == 1  # 首轮分析后修订失败即终止
+        p2 = engine.store.get(p.id)
+        assert p2.status == "completed"
+        assert p2.stages["7"].status == StageStatus.COMPLETED
+
+    def test_auto_iterate_reaches_target_confidence_stops_early(self, engine):
+        """可信度达标（无问题）→ 直接停，不再浪费轮数"""
+        p = self._completed_project(engine)
+        it = None
+        with patch.object(engine, "_llm_diagnose", return_value=("达标", 0.95, [])):
+            rounds = engine.auto_iterate(p.id, max_rounds=3)
+            it = engine.store.get(p.id).iterations
+        assert len(rounds) == 1
+        assert rounds[0]["confidence"] == 0.95
+
+
+
+# ---------------------------------------------------------------------------
 # LLM 退化输出容错清洗（2026-08-31 线上故障回归）
 # ---------------------------------------------------------------------------
 

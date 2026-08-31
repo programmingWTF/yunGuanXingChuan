@@ -229,6 +229,24 @@ class ProjectStore:
             self._write(project)
             return project
 
+    def set_status(self, project_id: str, status: str, summary: str = "") -> Optional[ResearchProject]:
+        """直接设置项目总体状态（active/completed/iterating 等），自动迭代期间置为 iterating，
+        避免 7 阶段跑完后 project.status 仍是 completed，前端误判「已完成」而停止轮询。"""
+        with self._lock:
+            project = self.get(project_id)
+            if project is None:
+                return None
+            project.status = status
+            if summary:
+                project.history.append({
+                    "stage": 0,
+                    "action": "status",
+                    "summary": summary,
+                    "timestamp": datetime.now().isoformat(timespec="microseconds"),
+                })
+            self._write(project)
+            return project
+
 
 # 单例
 _store: Optional[ProjectStore] = None
