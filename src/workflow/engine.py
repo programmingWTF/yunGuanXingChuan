@@ -538,6 +538,11 @@ class WorkflowEngine:
                 # 1) 重跑数据分析（内部落 IterationRecord）
                 self.run_stage(project_id, 5, {}, llm_config=llm_config, owner_id=owner_id,
                                use_user_style=use_user_style)
+                # 自动迭代 = 全自动闭环：数据分析产出即自动确认，不留给前端「待确认」
+                try:
+                    self.approve_stage(project_id, 5)
+                except Exception as e:
+                    logger.warning(f"[WorkflowEngine] 自动迭代：第 {len(rounds)+1} 轮数据分析自动确认失败（不影响流程）: {e}")
                 project = self.store.get(project_id)
                 it = project.iterations[-1] if project and project.iterations else None
                 if it is None:

@@ -1350,9 +1350,10 @@ class TestAutoIterateLoop:
         assert called[0] == "iterating", "迭代开始应置 iterating"
         assert called[-1] == "completed", "迭代结束应恢复 completed"
         assert len(rounds) == 1
-        # 迭代记录已落盘；评审已重新跑并自动确认
+        # 迭代记录已落盘；评审已重新跑并自动确认；每轮数据分析产出也已自动确认
         p2 = engine.store.get(p.id)
         assert len(p2.iterations) >= 1
+        assert p2.stages["5"].status == StageStatus.COMPLETED, "迭代中数据分析产出应自动确认（不留给前端待确认）"
         assert p2.stages["7"].status == StageStatus.COMPLETED, "收尾应自动评审并确认"
         assert p2.status == "completed"
 
