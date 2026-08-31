@@ -1359,13 +1359,13 @@ class TestAutoIterateLoop:
     def test_auto_iterate_revises_stages_by_target_stage(self, engine):
         """诊断问题 target_stage 2/3/4/6 → 分别修订文献/设计/方法/写作产出"""
         p = engine.create_project(interest="i")
-        engine.store.update_stage(p.id, 2, status=StageStatus.COMPLETED, output={"sections": [{"theme": "A", "content": "旧"}]})
+        engine.store.update_stage(p.id, 2, status=StageStatus.COMPLETED, output={"sections": [{"theme": "A", "content": "旧A"}, {"theme": "B", "content": "旧B"}]})
         engine.store.update_stage(p.id, 3, status=StageStatus.COMPLETED, output={
-            "research_questions": [{"id": "RQ1", "text": "旧"}],
-            "hypotheses": [{"id": "H1", "statement": "旧", "hypothesis_type": "qualitative"}],
+            "research_questions": [{"id": "RQ1", "text": "旧1"}, {"id": "RQ2", "text": "旧2"}],
+            "hypotheses": [{"id": "H1", "statement": "旧H", "hypothesis_type": "qualitative"}, {"id": "H2", "statement": "旧H2", "hypothesis_type": "quantitative"}],
         })
-        engine.store.update_stage(p.id, 4, status=StageStatus.COMPLETED, output={"methods": [{"name": "M1", "method_type": "qualitative"}]})
-        engine.store.update_stage(p.id, 6, status=StageStatus.COMPLETED, output={"sections": [{"heading": "a", "content": "旧"}]})
+        engine.store.update_stage(p.id, 4, status=StageStatus.COMPLETED, output={"methods": [{"name": "M1", "method_type": "qualitative"}, {"name": "M2", "method_type": "quantitative"}]})
+        engine.store.update_stage(p.id, 6, status=StageStatus.COMPLETED, output={"sections": [{"heading": "a", "content": "旧a"}, {"heading": "b", "content": "旧b"}]})
         from src.schemas import IterationRecord
         it = IterationRecord(
             iteration=1, timestamp="", source_stage=5, design_version=1,
@@ -1376,22 +1376,43 @@ class TestAutoIterateLoop:
                 {"text": "改写作", "target_stage": 6},
             ],
         )
-        with patch.object(engine, "_revise_literature_with_llm", return_value={"sections": [{"theme": "A", "content": "新"}], "references": [], "research_gap": {}}), \
+        # mock 修订只返回「部分条目」——验证未提及条目被保留（防顶掉）
+        with patch.object(engine, "_revise_literature_with_llm", return_value={"sections": [{"theme": "A", "content": "新A"}], "references": ["ref-new"]}), \
              patch.object(engine, "_revise_design_with_llm", return_value={
-                 "research_questions": [{"id": "RQ1", "text": "新"}],
-                 "hypotheses": [{"id": "H1", "statement": "新", "hypothesis_type": "quantitative"}],
+                 "research_questions": [{"id": "RQ1", "text": "新1"}],
+                 "hypotheses": [{"id": "H2", "statement": "新H2", "hypothesis_type": "quantitative"}],
              }), \
-             patch.object(engine, "_revise_method_with_llm", return_value={"methods": [{"name": "M2", "method_type": "quantitative", "fit_score": 90}]}), \
-             patch.object(engine, "_revise_writing_with_llm", return_value={"sections": [{"heading": "a", "content": "新"}]}):
+             patch.object(engine, "_revise_method_with_llm", return_value={"methods": [{"name": "M1", "method_type": "quantitative", "fit_score": 90}]}), \
+             patch.object(engine, "_revise_writing_with_llm", return_value={"sections": [{"heading": "b", "content": "新b"}]}):
             proj = engine.store.get(p.id)
             touched = engine._revise_stage_by_problems(proj, it, None)
         assert touched == [2, 3, 4, 6]
         proj = engine.store.get(p.id)
         assert proj.design_version == 2, "修订设计应使版本号 +1"
-        assert proj.stages["2"].output["sections"][0]["content"] == "新"
-        assert proj.stages["3"].output["research_questions"][0]["text"] == "新"
-        assert proj.stages["4"].output["methods"][0]["name"] == "M2"
-        assert proj.stages["6"].output["sections"][0]["content"] == "新"
+        # 文献：A 被替换、B 保留（未提及不被顶掉）
+        s2 = proj.stages["2"].output["sections"]
+        assert {x["theme"] for x in s2} == {"A", "B"}
+        assert next(x for x in s2 if x["theme"] == "A")["content"] == "新A"
+        assert next(x for x in s2 if x["theme"] == "B")["content"] == "旧B"
+        assert "ref-new" in proj.stages["2"].output["references"]
+        # 设计：RQ1 替换、RQ2 保留；H2 替换、H1 保留
+        rqs = proj.stages["3"].output["research_questions"]
+        assert {x["id"] for x in rqs} == {"RQ1", "RQ2"}
+        assert next(x for x in rqs if x["id"] == "RQ1")["text"] == "新1"
+        assert next(x for x in rqs if x["id"] == "RQ2")["text"] == "旧2"
+        hys = proj.stages["3"].output["hypotheses"]
+        assert {x["id"] for x in hys} == {"H1", "H2"}
+        assert next(x for x in hys if x["id"] == "H2")["statement"] == "新H2"
+        assert next(x for x in hys if x["id"] == "H1")["statement"] == "旧H"
+        # 方法：M1 替换、M2 保留
+        ms = proj.stages["4"].output["methods"]
+        assert {x["name"] for x in ms} == {"M1", "M2"}
+        assert next(x for x in ms if x["name"] == "M2")["method_type"] == "quantitative"
+        # 写作：b 替换、a 保留
+        w6 = proj.stages["6"].output["sections"]
+        assert {x["heading"] for x in w6} == {"a", "b"}
+        assert next(x for x in w6 if x["heading"] == "a")["content"] == "旧a"
+        assert next(x for x in w6 if x["heading"] == "b")["content"] == "新b"
 
     def test_auto_iterate_stops_when_no_revision_possible(self, engine):
         """本轮所有修订失败（如无 LLM）→ 提前终止且不崩，状态仍回 completed"""
@@ -1411,6 +1432,38 @@ class TestAutoIterateLoop:
             it = engine.store.get(p.id).iterations
         assert len(rounds) == 1
         assert rounds[0]["confidence"] == 0.95
+
+
+
+    def test_merge_stage_patch_preserves_untouched_items(self):
+        """_merge_stage_patch：模型只输出部分条目时，未提及条目必须保留（防顶掉）"""
+        base = {
+            "sections": [{"theme": "A", "content": "旧A"}, {"theme": "B", "content": "旧B"}, {"theme": "C", "content": "旧C"}],
+            "references": ["r1", "r2"],
+            "research_gap": {"description": "旧gap"},
+        }
+        patch = {"sections": [{"theme": "B", "content": "新B"}]}
+        merged = WorkflowEngine._merge_stage_patch(base, patch)
+        themes = [s["theme"] for s in merged["sections"]]
+        assert themes == ["A", "B", "C"], "未提及章节必须保留且顺序不变"
+        assert merged["sections"][1]["content"] == "新B"
+        assert merged["sections"][0]["content"] == "旧A"
+        assert merged["references"] == ["r1", "r2"], "未提供 references 时保留原值"
+        assert merged["research_gap"] == {"description": "旧gap"}, "未提供 research_gap 时保留原值"
+
+    def test_merge_stage_patch_append_and_dedup(self):
+        """_merge_stage_patch：新增条目追加；references 去重追加"""
+        base = {
+            "methods": [{"name": "M1", "method_type": "qualitative"}],
+            "references": ["r1"],
+        }
+        patch = {
+            "methods": [{"name": "M2", "method_type": "quantitative"}],
+            "references": ["r1", "r-new"],
+        }
+        merged = WorkflowEngine._merge_stage_patch(base, patch)
+        assert [m["name"] for m in merged["methods"]] == ["M1", "M2"]
+        assert merged["references"] == ["r1", "r-new"]
 
 
 
