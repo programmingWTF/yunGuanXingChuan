@@ -23,8 +23,12 @@ from src.search.tavily_search import SearchSource
 
 logger = logging.getLogger(__name__)
 
-# 他山世界 API 基础地址
+# 他山世界 API 基地址（2026-09-01 修正）
+# 主站（AMiner/近期学术等）：world.tashan.chat/api/v1
+# WorldWeave 世界脉络/信源（signals/source-knowledge/source-feed）：
+#   必须用 /worldweave/api/v1 前缀（官方 openclaw skill 入口，匿名可用）
 TASHAN_BASE_URL = "https://world.tashan.chat/api/v1"
+WORLDWEAVE_BASE_URL = "https://world.tashan.chat/worldweave/api/v1"
 
 # 来源标识（与 issue #42 约定一致，新增 literature/signals 两路）
 SOURCE_AMINER = "TashanAminer"
@@ -121,13 +125,16 @@ class TashanSearchService:
     # ------------------------------------------------------------------
     # source-feed（多页抓取）
     # ------------------------------------------------------------------
-    def _search_source_feed(self, topic: str, page: int = 1) -> List[SearchSource]:
-        """信源文章浏览式发现（支持分页）"""
-        url = f"{TASHAN_BASE_URL}/source-feed/articles"
-        data = self._safe_get(url, params={"page": page, "page_size": 20})
+    def _search_source_feed(self, topic: str, page: int = 1, query_terms: Optional[List[str]] = None) -> List[SearchSource]:
+        """信源文章浏览式发现（支持分页）+ 查询词过滤；走 WorldWeave 正牌路径
+        过滤放宽：任一查询词（中英文变体）命中标题/摘要即可，不再要求整段含 topic。"""
+        url = f"{WORLDWEAVE_BASE_URL}/topiclab/source-feed/articles"
+        # 正牌接口支持 scene：tech-ai=AI 日报 / geo-politics=地缘 / global=通用
+        data = self._safe_get(url, params={"page": page, "page_size": 20, "scene": "tech-ai"})
         if not data:
             return []
 
+        terms = [t for t in (query_terms or [topic]) if t]
         articles = data.get("list") or data.get("data", {}).get("list") or []
         results: List[SearchSource] = []
         for a in articles:
@@ -135,9 +142,9 @@ class TashanSearchService:
                 continue
             title = a.get("title") or ""
             url = a.get("url") or ""
-            if topic and title:
-                lowered = (title + " " + (a.get("description") or "")).lower()
-                if topic.lower() not in lowered:
+            if terms and title:
+                haystack = (title + " " + (a.get("description") or "")).lower()
+                if not any(t.lower() in haystack for t in terms):
                     continue
             content = a.get("description") or ""
             feed = a.get("source_feed_name") or ""
@@ -158,7 +165,7 @@ class TashanSearchService:
         注意：该接口为"热点信号流"，query 仅作弱约束（fallback 时返回场景热点），
         因此按 query_terms 做相关性过滤，不相关信号不混入上下文（避免污染 LLM）。
         """
-        url = f"{TASHAN_BASE_URL}/world/source-knowledge/recall"
+        url = f"{WORLDWEAVE_BASE_URL}/world/source-knowledge/recall"
         data = self._safe_get(url, params={"scene": scene, "query": topic, "limit": 10})
         if not data:
             return []
@@ -229,7 +236,7 @@ class TashanSearchService:
 
     def _search_world_signals(self, query_terms: Optional[List[str]] = None) -> List[SearchSource]:
         """WorldWeave 最近信号流（GET /api/v1/world/signals），按主题词过滤"""
-        url = f"{TASHAN_BASE_URL}/world/signals"
+        url = f"{WORLDWEAVE_BASE_URL}/world/signals"
         data = self._safe_get(url, params={"scene": "global", "limit": 20})
         if not data:
             return []
@@ -307,9 +314,9 @@ class TashanSearchService:
         _merge(self._safe_call(self._search_literature_recent, queries))
         _merge(self._safe_call(self._search_world_signals, queries))
 
-        # source-feed：前 2 页 × 主题过滤
+        # source-feed：前 2 页 × 查询词过滤（tech-ai scene，AI/科技热点信源）
         for page in (1, 2):
-            _merge(self._safe_call(self._search_source_feed, topic, page=page))
+            _merge(self._safe_call(self._search_source_feed, topic, page=page, query_terms=queries))
 
         # AMiner（配置 token 后启用）：每个查询词
         if self.token:
