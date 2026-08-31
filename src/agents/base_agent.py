@@ -19,6 +19,39 @@ from src.llm_client import LLMClient, get_llm_client
 logger = logging.getLogger(__name__)
 
 
+def sanitize_for_schema(data: Any, model: Type[BaseModel], max_list_len: int = 12) -> Dict[str, Any]:
+    """按目标 Pydantic 模型递归清洗 LLM 输出（容错 salvage）：
+
+    - List[BaseModel] 字段：丢弃非 dict 项（LLM 重复循环的空行/字符串），截断到 max_list_len
+    - List[dict/str] 字段：同样丢弃非预期类型项并截断
+    - 必填标量字段缺失/类型错误：保持原样交回校验（真缺失就让它失败）
+    - 未知字段：丢弃
+    """
+    from typing import get_origin, get_args
+    if not isinstance(data, dict):
+        return {}
+    cleaned: Dict[str, Any] = {}
+    for name, field in model.model_fields.items():
+        if name not in data:
+            continue
+        v = data[name]
+        ann = field.annotation
+        origin = get_origin(ann)
+        args = get_args(ann)
+        # 只对 List[...] 字段做容错（线上故障的爆炸点），其余字段原样交回校验
+        if origin is list and isinstance(v, list):
+            item_t = args[0] if args else None
+            if isinstance(item_t, type) and issubclass(item_t, BaseModel):
+                v = [sanitize_for_schema(i, item_t, max_list_len) for i in v if isinstance(i, dict)]
+            elif item_t is str:
+                v = [i for i in v if isinstance(i, str)]
+            elif item_t is dict:
+                v = [i for i in v if isinstance(i, dict)]
+            v = v[:max_list_len]
+        cleaned[name] = v
+    return cleaned
+
+
 class BaseAgent(ABC):
     """
     Agent 基类
@@ -191,20 +224,25 @@ class BaseAgent(ABC):
 
     def _validate_output(self, parsed: Dict) -> Dict:
         """
-        用 Pydantic Schema 校验输出
+        用 Pydantic Schema 校验输出；失败时先做一次容错清洗再重试。
 
-        Args:
-            parsed: 解析后的字典
-
-        Returns:
-            校验通过的字典
+        背景（2026-08-31 线上故障）：LLM 偶发退化输出（重复循环生成几百条
+        "id: /statement:/hypothesis_type:" 空字段行），直接 model_validate
+        抛出数百条 ValidationError 导致整个阶段失败。清洗策略可把这类输出
+        salvage 成合法结构（丢弃非 dict 项 + 截断超长列表）。
         """
         if self.output_schema is None:
             return parsed
-
-        # 尝试用 Pydantic 模型校验
-        validated = self.output_schema.model_validate(parsed)
-        return validated.model_dump()
+        try:
+            validated = self.output_schema.model_validate(parsed)
+            return validated.model_dump()
+        except ValidationError as e:
+            logger.warning(
+                f"[{self.agent_name}] 输出校验失败（{len(e.errors())} 条错误），尝试容错清洗后重试"
+            )
+            cleaned = sanitize_for_schema(parsed, self.output_schema)
+            validated = self.output_schema.model_validate(cleaned)
+            return validated.model_dump()
 
     def _build_retry_prompt(
         self, original_prompt: str, failed_output: str, error_msg: str

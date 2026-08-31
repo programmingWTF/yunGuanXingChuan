@@ -1322,3 +1322,42 @@ class TestClosedLoopIteration:
             hypotheses=[{"id": "H1", "statement": "合法", "hypothesis_type": "quantitative"}],
         )
         assert ok.research_questions[0].id == "RQ1"
+
+
+# ---------------------------------------------------------------------------
+# LLM 退化输出容错清洗（2026-08-31 线上故障回归）
+# ---------------------------------------------------------------------------
+
+
+class TestOutputSanitize:
+    def test_sanitize_drops_repetition_loop_strings(self):
+        """LLM 重复循环产生的 484 条 'id: ' 空字符串项应被清洗为空列表，阶段不崩"""
+        from src.agents.base_agent import sanitize_for_schema
+        bad = {"research_questions": [{"id": "RQ1", "text": "ok"}],
+               "hypotheses": ["id: ", "statement: ", "hypothesis_type: "] * 200,
+               "quality_report": {"clarity": 80, "innovativeness": 70, "operability": 75,
+                                  "comments": ["评语"]}}
+        cleaned = sanitize_for_schema(bad, ResearchDesignResult)
+        out = ResearchDesignResult.model_validate(cleaned)
+        assert out.hypotheses == []
+        assert out.research_questions[0].id == "RQ1"
+
+    def test_sanitize_caps_absurd_list_length(self):
+        """合法但超长列表应截断（防 LLM 失控生成）"""
+        from src.agents.base_agent import sanitize_for_schema
+        bad = {"research_questions": [{"id": f"RQ{i}", "text": f"问题{i}"} for i in range(50)],
+               "hypotheses": []}
+        cleaned = sanitize_for_schema(bad, ResearchDesignResult)
+        out = ResearchDesignResult.model_validate(cleaned)
+        assert len(out.research_questions) <= 12
+
+    def test_validate_output_recovers_via_sanitize(self):
+        """BaseAgent._validate_output 对退化输出应清洗后成功而非抛 ValidationError"""
+        from src.agents.research_question_agent import ResearchQuestionAgent
+        agent = ResearchQuestionAgent.__new__(ResearchQuestionAgent)  # 不走 __init__（避免依赖注入）
+        agent.output_schema = ResearchDesignResult
+        agent.agent_name = "research_question_agent"
+        bad = {"research_questions": [{"id": "RQ1", "text": "ok"}],
+               "hypotheses": ["id: ", "statement: "] * 100}
+        out = agent._validate_output(bad)  # 不应抛异常
+        assert out["research_questions"][0]["id"] == "RQ1"
