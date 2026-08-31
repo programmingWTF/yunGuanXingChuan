@@ -118,14 +118,21 @@ export default function ClosedLoopDiagram({ stages, currentStage = 1, iterations
           const a = nodePos(from)
           const b = nodePos(to)
           // 回流弧线走环内空白区（中轴附近），控制点分上下两档避免两条线重叠
-          // 起点都从评审节点底部附近出发（靠得近），终点在文献综述/研究设计两侧拉远
-          const endOff = i === 0 ? -26 : 26
-          const midX = CX + (i === 0 ? 30 : -30)
-          const midY = CY + (i === 0 ? 26 : -46)
+          // 端点精确落在两节点圆边缘（沿 a→b 方向投影），箭头保证指到目标圆上
+          const dx = b.x - a.x, dy = b.y - a.y
+          const len = Math.hypot(dx, dy) || 1
+          const ux = dx / len, uy = dy / len
+          const rN = 15
+          const x1 = a.x + ux * (rN + 2), y1 = a.y + uy * (rN + 2)
+          const x2 = b.x - ux * (rN + 8), y2 = b.y - uy * (rN + 8)
+          // 控制点取中点并向环心方向偏移，两条回流线上下错开不重叠
+          const mx = (x1 + x2) / 2, my = (y1 + y2) / 2
+          const cxq = mx + (CX - mx) * 0.6
+          const cyq = my + (CY - my) * 0.6 + (i === 0 ? 10 : -10)
           const lit = iterationsCount > 0
           return (
             <g key={i}>
-              <path d={`M ${a.x} ${a.y + 8} Q ${midX} ${midY} ${b.x} ${b.y + endOff}`}
+              <path d={`M ${x1} ${y1} Q ${cxq} ${cyq} ${x2} ${y2}`}
                 fill="none"
                 stroke={lit ? 'rgba(217,119,6,.7)' : 'rgba(217,119,6,.3)'}
                 strokeWidth={i === 0 ? 1.4 : 1} strokeDasharray="5 4"
