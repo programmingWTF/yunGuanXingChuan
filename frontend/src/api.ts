@@ -626,7 +626,7 @@ export async function saveDesignStage(
  * use_user_style: 写作阶段是否注入用户论文库风格（issue #115，默认 true 保持现状） */
 export async function runAllWorkflow(
   id: string,
-  opts: { materials?: { name: string; content: string }[]; style_sample?: string; topic?: string; use_user_style?: boolean } = {},
+  opts: { materials?: { name: string; content: string }[]; style_sample?: string; topic?: string; use_user_style?: boolean; auto_iterate?: boolean } = {},
 ) {
   const res = await api.post(`/workflow/projects/${id}/run-all`, opts)
   return res.data as { status: string; message: string }

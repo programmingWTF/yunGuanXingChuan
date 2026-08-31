@@ -594,7 +594,8 @@ class WorkflowEngine:
                 topic: Optional[str] = None,
                 llm_config: Optional[dict] = None,
                 owner_id: Optional[str] = None,
-                use_user_style: bool = True) -> Dict[str, Any]:
+                use_user_style: bool = True,
+                auto_iterate: bool = False) -> Dict[str, Any]:
         """
         一键跑通全部 7 个科研阶段（选题→文献→设计→方法→数据→写作→评审）。
 
@@ -604,6 +605,8 @@ class WorkflowEngine:
         - 所有阶段直接置 COMPLETED，项目 status=completed
         - 多租户：llm_config 为当前用户模型配置（None 用全局默认）
         - use_user_style=False：写作阶段跳过用户论文库风格注入（issue #115）
+        - auto_iterate=True：7 阶段完成后自动接棒闭环迭代（2026-08-31 桂鱼定，
+          服务端执行，不依赖前端轮询回调，杜绝闭包/旧 bundle 导致的不生效）
         """
         from src.llm_client import get_llm_client
         # 多租户：仅当调用方提供用户配置时才构造 per-user client（
@@ -683,6 +686,21 @@ class WorkflowEngine:
                 break  # 前序失败则停止后续
 
         final = self.store.get(project_id)
+        # auto_iterate：全流程成功完成后自动接棒闭环迭代（服务端保证执行）
+        if auto_iterate and final and all(
+            r.get("status") == "completed" for r in results.values()
+        ):
+            try:
+                self.store.update_stage(project_id, 3, append_history={
+                    "stage": 3, "action": "auto_iterate_start",
+                    "summary": "自动迭代接棒启动（全流程完成后）",
+                })
+                rounds = self.auto_iterate(project_id, max_rounds=3, target_confidence=0.85,
+                                           llm_config=llm_config, owner_id=owner_id,
+                                           use_user_style=use_user_style)
+                logger.info(f"[WorkflowEngine] 自动迭代完成：{len(rounds)} 轮")
+            except Exception as e:
+                logger.error(f"[WorkflowEngine] 自动迭代失败（不影响生成结果）: {e}")
         return {"project": final.model_dump() if final else None, "stages": results}
 
     # ------------------------------------------------------------------
