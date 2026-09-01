@@ -40,6 +40,7 @@ data/kg/vectors.meta.json
 # Frontend
 frontend/node_modules/
 frontend/dist/
+frontend/dist-admin/
 frontend/.vite/
 
 # OS
@@ -67,3 +68,7 @@ htmlcov/
 data/projects
 data/users.db
 data/.jwt_secret
+data/experience.db
+
+# 临时还原文件（已废弃）
+temp_app_restore.tsx
