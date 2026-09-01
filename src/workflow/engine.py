@@ -1281,20 +1281,65 @@ class WorkflowEngine:
         return claims[:3]
 
     def _extract_entities(self, output: Dict[str, Any], topic: str) -> List[str]:
-        """从产出物中收集实体候选（结构化关键词 + 主题），供 KG 校验"""
+        """从产出物中收集实体候选（供 KG/Wikidata/Wikipedia 校验）
+
+        2026-09-01 修复：原实现只取 topic 30 字截断 + directions.keywords +
+        research_questions.id——stage 3/6 产出没有这些字段，只剩 topic 截断碎片
+        （如「国际月球科研站（ILRS）对比美国阿耳忒弥斯（Art…」），导致 KG=0、
+        External≈0.01。现在改为：
+        1. 保留完整 topic（不再截 30 字）
+        2. 从产出物全文本中匹配本地 KG 实体库（280 实体）——真正命中图节点的实体
+        3. 各阶段结构化字段补充（keywords/findings/hypotheses title 等）
+        """
         entities: List[str] = []
-        if topic:
-            entities.append(str(topic)[:30])
+        if topic and len(str(topic)) >= 2:
+            entities.append(str(topic)[:60])
         if not isinstance(output, dict):
-            return entities[:4]
+            return [e for e in entities if e][:4]
+
+        # 结构化字段候选（过滤 RQ1/H1 等短标识——不是可校验实体名）
+        def _add(v: Any):
+            s = str(v or "").strip()
+            if len(s) >= 5 and s not in entities:
+                entities.append(s[:40])
+
         for d in self._as_list(output.get("directions"))[:3]:
             if isinstance(d, dict):
                 for kw in self._as_list(d.get("keywords"))[:3]:
-                    entities.append(str(kw)[:30])
+                    _add(kw)
         for rq in self._as_list(output.get("research_questions"))[:3]:
             if isinstance(rq, dict):
-                entities.append(str(rq.get("id") or rq.get("text"))[:30])
-        return [e for e in entities if e][:4]
+                _add(rq.get("text"))
+        for h in self._as_list(output.get("hypotheses"))[:3]:
+            if isinstance(h, dict):
+                _add(h.get("statement"))
+        for f in self._as_list(output.get("findings"))[:3]:
+            if isinstance(f, dict):
+                _add(f.get("finding"))
+        for s in self._as_list(output.get("sections"))[:3]:
+            if isinstance(s, dict):
+                _add(s.get("theme"))
+
+        # 产出物全文本 × KG 实体库匹配（核心：提取图中真实存在的实体名，
+        # 优先级最高——这些才能真正命中 KG 节点）
+        try:
+            from config.settings import KG_DIR
+            kg_path = KG_DIR / "entities.json"
+            if kg_path.exists():
+                kg_names = json.loads(kg_path.read_text(encoding="utf-8"))
+                kg_names = [e.get("name", "") for e in kg_names if e.get("name")]
+                text = json.dumps(output, ensure_ascii=False)[:12000]
+                matched_kg = []
+                for name in kg_names:
+                    if name and len(name) >= 2 and name in text and name not in entities:
+                        matched_kg.append(name)
+                    if len(matched_kg) >= 5:
+                        break
+                entities = matched_kg + [e for e in entities if e not in matched_kg]
+        except Exception as e:
+            logger.debug(f"[WorkflowEngine] KG 实体匹配失败（忽略）: {e}")
+
+        return [e for e in entities if e][:6]
 
     @staticmethod
     def _attach_search_sources(output: Dict[str, Any], search_context: List[Any], query: str = "") -> None:
