@@ -395,3 +395,95 @@ class TestSubjectiveClaimFilter:
         }
         claims = engine._extract_claims(WorkflowStage.INSPIRATION, output)
         assert len(claims) > 0
+
+class TestExternalValidatorMultiSource:
+    """多数据源校验增强测试（2026-09-01 数据扩充）"""
+
+    def _make_validator(self):
+        """构造不触发网络的校验器（方法级纯逻辑测试）"""
+        from src.verification.external_validator import ExternalValidator
+        v = ExternalValidator.__new__(ExternalValidator)
+        v._kg_entities = ["嫦娥六号", "月球", "AlphaGo", "DeepMind", "南极-艾特肯盆地"]
+        return v
+
+    def test_weak_meta_relation_rejected(self):
+        """弱元数据关系（得名自/所在天体）不能作为断言证据"""
+        v = self._make_validator()
+        assert v._check_claim_relation_match(
+            "嫦娥六号采集样品2000克",
+            {"subject": "嫦娥六号", "predicate": "得名自", "object": "嫦娥"},
+        ) == 0.0
+        assert v._check_claim_relation_match(
+            "着陆点位于月球背面南极-艾特肯盆地",
+            {"subject": "南极-艾特肯盆地", "predicate": "所在天体", "object": "月球"},
+        ) == 0.0
+
+    def test_substring_object_not_strong_match(self):
+        """对象是 claim 内更长词的子串（嫦娥 ⊂ 嫦娥六号）不算独立命中"""
+        v = self._make_validator()
+        # claim 无「嫦娥」独立出现，只是「嫦娥六号」的一部分
+        score = v._check_claim_relation_match(
+            "嫦娥六号于2015年发射",
+            {"subject": "嫦娥六号", "predicate": "得名自", "object": "嫦娥"},
+        )
+        # 弱关系已被过滤为 0；即便不过滤，子串也不该强匹配
+        assert score < 0.5
+
+    def test_year_conflict_suppressed(self):
+        """年份矛盾：claim 说 2015 发射，Wikidata 记录 2024 → 矛盾压制为 0"""
+        v = self._make_validator()
+        score = v._check_claim_relation_match(
+            "嫦娥六号于2015年发射",
+            {"subject": "嫦娥六号", "predicate": "launch date", "object": "2024-05-03"},
+        )
+        assert score == 0.0
+
+    def test_year_match_strong(self):
+        """年份一致：Wikidata launch date 2024 → claim 2024 → 强证据"""
+        v = self._make_validator()
+        score = v._check_claim_relation_match(
+            "嫦娥六号于2024年5月3日发射",
+            {"subject": "嫦娥六号", "predicate": "launch date", "object": "2024-05-03T00:00:00Z"},
+        )
+        assert score >= 0.8
+
+    def test_entity_extraction_uses_provided_entities(self):
+        """调用方提供的实体即使不在 claim 字面也要采纳（任务历时53天 → 嫦娥六号）"""
+        v = self._make_validator()
+        matched = v._extract_entities_from_claim("任务历时53天", ["嫦娥六号"])
+        assert "嫦娥六号" in matched
+
+    def test_combine_signals_single_academic_no_wiki(self):
+        """单路 academic 强证据 + wd/wp 全 unverified → 低置信 partial（荒谬断言防护）"""
+        from src.verification.external_validator import ExternalValidator
+        v = ExternalValidator.__new__(ExternalValidator)
+        wd = {"status": "unverified", "confidence": 0.0, "evidence": ""}
+        wp = {"status": "unverified", "confidence": 0.0, "evidence": ""}
+        ac = {"status": "verified", "confidence": 0.76, "evidence": "学术(title): 中国月球探测促进月球与行星科学创新发展"}
+        status, conf, _ = v._combine_signals(wd, wp, ac)
+        assert status == "partial"
+        assert conf <= 0.5
+
+    def test_combine_signals_wiki_plus_academic_verified(self):
+        """wd+academic 双路强证据 → verified 高置信"""
+        from src.verification.external_validator import ExternalValidator
+        v = ExternalValidator.__new__(ExternalValidator)
+        wd = {"status": "verified", "confidence": 0.88, "evidence": "wd evidence"}
+        wp = {"status": "unverified", "confidence": 0.0, "evidence": ""}
+        ac = {"status": "verified", "confidence": 0.83, "evidence": "ac evidence"}
+        status, conf, _ = v._combine_signals(wd, wp, ac)
+        assert status == "verified"
+        assert conf >= 0.9
+
+    def test_numbers_overlap(self):
+        """数值断言重合检测：1935.3 精确命中"""
+        from src.verification.external_validator import _numbers_overlap
+        r = _numbers_overlap("采集月球背面样品约1935.3克", "嫦娥六号采集了1935.3克月球样品")
+        assert r["hit"] is True
+        assert "1935.3" in r["matched"]
+
+    def test_numbers_no_overlap(self):
+        """数值不一致（2000 vs 1935.3）不命中"""
+        from src.verification.external_validator import _numbers_overlap
+        r = _numbers_overlap("采集样品约2000克", "嫦娥六号采集了1935.3克月球样品")
+        assert r["hit"] is False
