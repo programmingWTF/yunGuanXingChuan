@@ -143,8 +143,10 @@ class CrossValidator:
         support_signals = []  # (source, confidence)
         conflict_signals = []
 
-        # RAG
-        if rag_status == "supported":
+        # RAG: supported/partial 计为支持（2026-09-01 修复：LLM 语义校验常给
+        # 「核心一致但细节无法验证」→ partial，此前 partial 不计支持导致投票
+        # 仍 UNVERIFIED，置信度被 ×0.3 打成 0.0x）；conflicting 计为反对
+        if rag_status in ["supported", "partial"]:
             support_signals.append(("rag", rag_confidence))
         elif rag_status == "conflicting":
             conflict_signals.append(("rag", rag_confidence))

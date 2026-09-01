@@ -99,9 +99,12 @@ class RAGChecker:
         consistent = result.get("consistent", False)
         confidence = result.get("confidence", 0.5)
 
+        # 判定（2026-09-01 修复）：LLM 常输出「核心观点一致但细节无法验证」的
+        # 情况——consistent=false 但 confidence 很高（0.7+）。此时不应判 unverified，
+        # 而应判 partial（部分支持）：核心逻辑有依据，只是细节分类未被语料覆盖。
         if consistent and confidence >= 0.7:
             s = "supported"
-        elif consistent:
+        elif consistent or confidence >= 0.6:
             s = "partial"
         else:
             s = "unverified"
