@@ -714,6 +714,18 @@ class PaperDraft(BaseModel):
     def _coerce_list_root(cls, data):
         """LLM 格式漂移容错：结果直接输出为数组时自动包装"""
         return _wrap_list_root(data, "sections")
+
+    @model_validator(mode="after")
+    @classmethod
+    def _require_complete_sections(cls, m):
+        """论文截断防线：残缺章节必须拒绝（缺摘要或结论 = LLM 输出被截断），绝不静默保存。
+        约定自 eb51f1d 的测试用例，本节校验当时未随提交落地，2026-09-02 补上。"""
+        names = [s.section.strip() for s in m.sections]
+        required = ("摘要", "结论")
+        missing = [r for r in required if r not in names]
+        if missing:
+            raise ValueError(f"论文章节不完整，缺失: {'、'.join(missing)}（LLM 输出可能被截断）")
+        return m
 class ReviewerScores(BaseModel):
     """审稿人评分（⑦评审模拟器输出项）"""
     innovation: int = Field(ge=0, le=100, default=0)      # 创新性
