@@ -366,10 +366,10 @@ class TestFourWayVoteAdaptive:
 
 
 class TestSubjectiveClaimFilter:
-    """主观性断言过滤测试（Issue #116 修复验证）"""
+    """断言抽取语义测试（2026-09-01 修复：问题/建议/方向不当作事实断言校验）"""
 
-    def test_subjective_claims_filtered(self):
-        """主观性断言应被过滤"""
+    def test_inspiration_directions_not_claims(self):
+        """选题方向（title/summary）是研究建议而非事实结论 → 不提取校验"""
         from src.workflow.engine import WorkflowEngine
         from src.workflow.stages import WorkflowStage
         engine = WorkflowEngine.__new__(WorkflowEngine)
@@ -380,20 +380,28 @@ class TestSubjectiveClaimFilter:
             ]
         }
         claims = engine._extract_claims(WorkflowStage.INSPIRATION, output)
-        assert "具有重要意义" not in claims
-        assert any("嫦娥六号" in c for c in claims)
+        assert claims == []
 
-    def test_factual_claims_kept(self):
-        """事实性断言应保留"""
+    def test_review_suggestions_not_claims(self):
+        """评审建议（suggestions）是指令性修改意见 → 不提取校验"""
         from src.workflow.engine import WorkflowEngine
         from src.workflow.stages import WorkflowStage
         engine = WorkflowEngine.__new__(WorkflowEngine)
         output = {
-            "directions": [
-                {"title": "嫦娥六号月背采样返回", "summary": "嫦娥六号于2024年实现人类首次月球背面采样返回"},
-            ]
+            "reviewers": [{"reviewer_id": "R1", "suggestions": ["建议补充样本量论证与信度检验"]}],
         }
-        claims = engine._extract_claims(WorkflowStage.INSPIRATION, output)
+        claims = engine._extract_claims(WorkflowStage.REVIEW, output)
+        assert claims == []
+
+    def test_writing_sections_kept(self):
+        """论文章节内容（结论性断言）应保留"""
+        from src.workflow.engine import WorkflowEngine
+        from src.workflow.stages import WorkflowStage
+        engine = WorkflowEngine.__new__(WorkflowEngine)
+        output = {
+            "sections": [{"section": "摘要", "content": "嫦娥六号于2024年实现人类首次月球背面采样返回并带回样品。"}],
+        }
+        claims = engine._extract_claims(WorkflowStage.WRITING, output)
         assert len(claims) > 0
 
 class TestExternalValidatorMultiSource:

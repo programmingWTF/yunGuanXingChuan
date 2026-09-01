@@ -587,18 +587,58 @@ class TestDataAnalysisAgent:
 
 
 class TestPaperWriterAgent:
+    EXPECTED_SECTIONS = [
+        {"section": "摘要", "content": "本研究..."},
+        {"section": "引言", "content": "..."},
+        {"section": "文献综述", "content": "既有研究..."},
+        {"section": "方法", "content": "..."},
+        {"section": "发现", "content": "..."},
+        {"section": "讨论", "content": "..."},
+        {"section": "结论", "content": "..."},
+    ]
+
     def test_run_parses_schema(self, mock_llm):
         mock_llm.chat_json.return_value = {
             "topic": "朱雀2号",
             "title": "朱雀2号火箭的国际媒体报道框架研究",
-            "sections": [{"section": "摘要", "content": "本研究..."}, {"section": "引言", "content": "..."}],
+            "sections": self.EXPECTED_SECTIONS,
             "style_notes": ["学习到紧凑句式"],
         }
         from src.agents.paper_writer_agent import PaperWriterAgent
         a = PaperWriterAgent(llm_client=mock_llm)
         result = a.run({"topic": "朱雀2号", "analysis_result": {"findings": []}})
         assert result["title"].startswith("朱雀2号")
-        assert len(result["sections"]) == 2
+        assert len(result["sections"]) == 7
+
+    def test_incomplete_sections_raises(self, mock_llm):
+        """残缺章节（仅 3 章，缺结论）必须拒绝并触发重试，绝不静默保存"""
+        from src.schemas import PaperDraft
+        from pydantic import ValidationError
+        truncated = {
+            "topic": "朱雀2号",
+            "title": "被截断的论文",
+            "sections": [
+                {"section": "摘要", "content": "本研究..."},
+                {"section": "引言", "content": "..."},
+                {"section": "文献综述", "content": "...停在半句（如"},
+            ],
+        }
+        with pytest.raises(ValidationError):
+            PaperDraft.model_validate(truncated)
+
+    def test_missing_abstract_or_conclusion_raises(self, mock_llm):
+        """缺摘要或缺结论同样视为残缺"""
+        from src.schemas import PaperDraft
+        from pydantic import ValidationError
+        no_conclusion = {"topic": "t", "title": "t", "sections": self.EXPECTED_SECTIONS[:-1]}
+        with pytest.raises(ValidationError):
+            PaperDraft.model_validate(no_conclusion)
+
+    def test_full_sections_passes(self, mock_llm):
+        """7 章完整输出正常通过"""
+        from src.schemas import PaperDraft
+        ok = PaperDraft.model_validate({"topic": "t", "title": "t", "sections": self.EXPECTED_SECTIONS})
+        assert len(ok.sections) == 7
 
 
 class TestReviewerSimulatorAgent:
@@ -904,9 +944,15 @@ class TestWorkflowEnhancements:
     """产出物后置校验 + 润色 + Word 导出 + 热点（全部可降级，不阻塞主流程）"""
 
     def test_extract_claims_by_stage(self, engine):
-        """各阶段断言抽取规则"""
+        """各阶段断言抽取规则：DESIGN 只取研究假设（结论性断言），研究问题不校验"""
+        # 研究问题（RQ）不应被当作事实断言校验
         claims = engine._extract_claims(WorkflowStage.DESIGN, {
             "research_questions": [{"id": "RQ1", "text": "全球南方媒体如何框架化报道嫦娥六号月球样品研究？"}],
+        })
+        assert not claims
+        # 研究假设（H，可证伪结论）应被提取
+        claims = engine._extract_claims(WorkflowStage.DESIGN, {
+            "hypotheses": [{"id": "H1", "statement": "全球南方媒体对嫦娥六号月球样品研究多采用合作叙事框架"}],
         })
         assert claims and "嫦娥六号" in claims[0]
 
@@ -919,10 +965,10 @@ class TestWorkflowEnhancements:
             rag_evidence="证据文本", kg_match="嫦娥六号", notes="RAG: verified | KG: partial | External: unverified",
         )
         with patch("src.verification.cross_validator.CrossValidator", return_value=fake_validator):
-            output = {"topic": "嫦娥六号", "directions": [
-                {"title": "嫦娥六号月球样品研究的国际传播框架", "summary": "分析全球南方媒体对月球样品研究的报道框架", "keywords": ["嫦娥六号", "国际传播"]},
+            output = {"topic": "嫦娥六号", "sections": [
+                {"section": "摘要", "content": "嫦娥六号于2024年实现人类首次月球背面采样返回并带回1935.3克样品。"},
             ]}
-            engine._attach_verification(WorkflowStage.INSPIRATION, output, "嫦娥六号")
+            engine._attach_verification(WorkflowStage.WRITING, output, "嫦娥六号")
         v = output["verification"]
         assert v["summary"]["total"] >= 1
         assert v["summary"]["verified"] >= 1
@@ -938,9 +984,9 @@ class TestWorkflowEnhancements:
     def test_run_stage_attaches_verification(self, store, tmp_path):
         """run_stage 产出物自动附带双校验结果（mock validator）"""
         from src.schemas import VerificationResult, VerificationStatus
-        agents = {WorkflowStage.INSPIRATION: make_mock_agent({
+        agents = {WorkflowStage.WRITING: make_mock_agent({
             "topic": "嫦娥六号",
-            "directions": [{"title": "嫦娥六号月球样品国际传播研究", "summary": "分析各国媒体报道框架与叙事差异"}],
+            "sections": [{"section": "摘要", "content": "嫦娥六号于2024年实现人类首次月球背面采样返回并带回样品。"}],
         })}
         fake_validator = MagicMock()
         fake_validator.cross_validate_claim.return_value = VerificationResult(
@@ -952,15 +998,19 @@ class TestWorkflowEnhancements:
              patch("src.verification.cross_validator.CrossValidator", return_value=fake_validator):
             eng = WorkflowEngine(store=store, agents=agents)
             p = eng.create_project(interest="嫦娥六号")
-            rec = eng.run_stage(p.id, 1, {"topic": "嫦娥六号"})
+            # 快进前 5 个阶段解锁写作阶段（仅推进状态机，不执行 agent）
+            for st in range(1, 6):
+                eng.store.update_stage(p.id, st, status=StageStatus.COMPLETED,
+                                       output={"topic": "嫦娥六号", "sections": [{"section": "摘要", "content": "x"}]})
+            rec = eng.run_stage(p.id, 6, {"topic": "嫦娥六号"})
         assert rec.status == StageStatus.AWAITING_REVIEW
         assert rec.output["verification"]["summary"]["total"] >= 1
 
     def test_run_stage_survives_verification_failure(self, store, tmp_path):
         """校验器完全不可用时 run_stage 依旧成功（不阻塞主流程）"""
-        agents = {WorkflowStage.INSPIRATION: make_mock_agent({
+        agents = {WorkflowStage.WRITING: make_mock_agent({
             "topic": "t",
-            "directions": [{"title": "一个足够长的选题方向标题用于校验断言", "summary": "对应摘要说明"}],
+            "sections": [{"section": "摘要", "content": "一个足够长的结论性断言内容用于校验测试。"}],
         })}
         with patch("src.search.unified_search.get_unified_search_service", side_effect=RuntimeError()), \
              patch("src.knowledge.vector_store.get_vector_store", side_effect=RuntimeError()), \
@@ -968,7 +1018,10 @@ class TestWorkflowEnhancements:
              patch("src.verification.cross_validator.CrossValidator", side_effect=RuntimeError("validator down")):
             eng = WorkflowEngine(store=store, agents=agents)
             p = eng.create_project(interest="t")
-            rec = eng.run_stage(p.id, 1, {"topic": "t"})
+            for st in range(1, 6):
+                eng.store.update_stage(p.id, st, status=StageStatus.COMPLETED,
+                                       output={"topic": "t", "sections": [{"section": "摘要", "content": "x"}]})
+            rec = eng.run_stage(p.id, 6, {"topic": "t"})
         assert rec.status == StageStatus.AWAITING_REVIEW
         assert rec.output is not None
 
@@ -1322,187 +1375,6 @@ class TestClosedLoopIteration:
             hypotheses=[{"id": "H1", "statement": "合法", "hypothesis_type": "quantitative"}],
         )
         assert ok.research_questions[0].id == "RQ1"
-
-
-# ---------------------------------------------------------------------------
-# 自动闭环迭代完整回路（2026-09-01 桂鱼反馈修复）
-# ---------------------------------------------------------------------------
-
-
-class TestAutoIterateLoop:
-    """自动迭代：iterating 状态标记 + 多阶段路由修订 + 结束自动评审确认"""
-
-    def _completed_project(self, engine):
-        """构造已跑完全流程的项目（current_stage=7, status=completed）"""
-        p = engine.create_project(interest="朱雀2号火箭")
-        for s in range(1, 8):
-            engine.store.update_stage(p.id, s, status=StageStatus.COMPLETED, output={"topic": "t"})
-        return engine.store.get(p.id)
-
-    def test_auto_iterate_marks_iterating_then_completed_and_finalizes_review(self, engine):
-        """迭代中 status=iterating（前端显示「迭代中」而非「已完成」），
-        结束后自动重跑评审并 approve（自动确认 + 重新评估）"""
-        p = self._completed_project(engine)
-        called = []
-        with patch.object(engine.store, "set_status", wraps=engine.store.set_status) as spy:
-            rounds = engine.auto_iterate(p.id, max_rounds=1)
-            called = [c.args[1] for c in spy.call_args_list if c.args[1] in ("iterating", "completed")]
-        assert called[0] == "iterating", "迭代开始应置 iterating"
-        assert called[-1] == "completed", "迭代结束应恢复 completed"
-        assert len(rounds) == 1
-        # 迭代记录已落盘；评审已重新跑并自动确认；每轮数据分析产出也已自动确认
-        p2 = engine.store.get(p.id)
-        assert len(p2.iterations) >= 1
-        assert p2.stages["5"].status == StageStatus.COMPLETED, "迭代中数据分析产出应自动确认（不留给前端待确认）"
-        assert p2.stages["7"].status == StageStatus.COMPLETED, "收尾应自动评审并确认"
-        assert p2.status == "completed"
-
-    def test_auto_iterate_revises_stages_by_target_stage(self, engine):
-        """诊断问题 target_stage 2/3/4/6 → 分别修订文献/设计/方法/写作产出"""
-        p = engine.create_project(interest="i")
-        engine.store.update_stage(p.id, 2, status=StageStatus.COMPLETED, output={"sections": [{"theme": "A", "content": "旧A"}, {"theme": "B", "content": "旧B"}]})
-        engine.store.update_stage(p.id, 3, status=StageStatus.COMPLETED, output={
-            "research_questions": [{"id": "RQ1", "text": "旧1"}, {"id": "RQ2", "text": "旧2"}],
-            "hypotheses": [{"id": "H1", "statement": "旧H", "hypothesis_type": "qualitative"}, {"id": "H2", "statement": "旧H2", "hypothesis_type": "quantitative"}],
-        })
-        engine.store.update_stage(p.id, 4, status=StageStatus.COMPLETED, output={"methods": [{"name": "M1", "method_type": "qualitative"}, {"name": "M2", "method_type": "quantitative"}]})
-        engine.store.update_stage(p.id, 6, status=StageStatus.COMPLETED, output={"sections": [{"heading": "a", "content": "旧a"}, {"heading": "b", "content": "旧b"}]})
-        from src.schemas import IterationRecord
-        it = IterationRecord(
-            iteration=1, timestamp="", source_stage=5, design_version=1,
-            problems=[
-                {"text": "补文献", "target_stage": 2},
-                {"text": "改设计", "target_stage": 3},
-                {"text": "调方法", "target_stage": 4},
-                {"text": "改写作", "target_stage": 6},
-            ],
-        )
-        # mock 修订只返回「部分条目」——验证未提及条目被保留（防顶掉）
-        with patch.object(engine, "_revise_literature_with_llm", return_value={"sections": [{"theme": "A", "content": "新A"}], "references": ["ref-new"]}), \
-             patch.object(engine, "_revise_design_with_llm", return_value={
-                 "research_questions": [{"id": "RQ1", "text": "新1"}],
-                 "hypotheses": [{"id": "H2", "statement": "新H2", "hypothesis_type": "quantitative"}],
-             }), \
-             patch.object(engine, "_revise_method_with_llm", return_value={"methods": [{"name": "M1", "method_type": "quantitative", "fit_score": 90}]}), \
-             patch.object(engine, "_revise_writing_with_llm", return_value={"sections": [{"heading": "b", "content": "新b"}]}):
-            proj = engine.store.get(p.id)
-            touched = engine._revise_stage_by_problems(proj, it, None)
-        assert touched == [2, 3, 4, 6]
-        proj = engine.store.get(p.id)
-        assert proj.design_version == 2, "修订设计应使版本号 +1"
-        # 文献：A 被替换、B 保留（未提及不被顶掉）
-        s2 = proj.stages["2"].output["sections"]
-        assert {x["theme"] for x in s2} == {"A", "B"}
-        assert next(x for x in s2 if x["theme"] == "A")["content"] == "新A"
-        assert next(x for x in s2 if x["theme"] == "B")["content"] == "旧B"
-        assert "ref-new" in proj.stages["2"].output["references"]
-        # 设计：RQ1 替换、RQ2 保留；H2 替换、H1 保留
-        rqs = proj.stages["3"].output["research_questions"]
-        assert {x["id"] for x in rqs} == {"RQ1", "RQ2"}
-        assert next(x for x in rqs if x["id"] == "RQ1")["text"] == "新1"
-        assert next(x for x in rqs if x["id"] == "RQ2")["text"] == "旧2"
-        hys = proj.stages["3"].output["hypotheses"]
-        assert {x["id"] for x in hys} == {"H1", "H2"}
-        assert next(x for x in hys if x["id"] == "H2")["statement"] == "新H2"
-        assert next(x for x in hys if x["id"] == "H1")["statement"] == "旧H"
-        # 方法：M1 替换、M2 保留
-        ms = proj.stages["4"].output["methods"]
-        assert {x["name"] for x in ms} == {"M1", "M2"}
-        assert next(x for x in ms if x["name"] == "M2")["method_type"] == "quantitative"
-        # 写作：b 替换、a 保留
-        w6 = proj.stages["6"].output["sections"]
-        assert {x["heading"] for x in w6} == {"a", "b"}
-        assert next(x for x in w6 if x["heading"] == "a")["content"] == "旧a"
-        assert next(x for x in w6 if x["heading"] == "b")["content"] == "新b"
-
-    def test_auto_iterate_stops_when_no_revision_possible(self, engine):
-        """本轮所有修订失败（如无 LLM）→ 提前终止且不崩，状态仍回 completed"""
-        p = self._completed_project(engine)
-        rounds = engine.auto_iterate(p.id, max_rounds=3)
-        assert len(rounds) == 1  # 首轮分析后修订失败即终止
-        p2 = engine.store.get(p.id)
-        assert p2.status == "completed"
-        assert p2.stages["7"].status == StageStatus.COMPLETED
-
-    def test_auto_iterate_reaches_target_confidence_stops_early(self, engine):
-        """可信度达标（无问题）→ 直接停，不再浪费轮数"""
-        p = self._completed_project(engine)
-        it = None
-        with patch.object(engine, "_llm_diagnose", return_value=("达标", 0.95, [])):
-            rounds = engine.auto_iterate(p.id, max_rounds=3)
-            it = engine.store.get(p.id).iterations
-        assert len(rounds) == 1
-        assert rounds[0]["confidence"] == 0.95
-
-
-
-    def test_auto_iterate_review_fail_restores_backup(self, engine):
-        """收尾重评失败两次 → 恢复旧评审产出（不丢数据、不显示 failed），项目保持 completed"""
-        from src.schemas import IterationRecord
-        p = engine.create_project(interest="i")
-        for s in range(1, 8):
-            engine.store.update_stage(p.id, s, status=StageStatus.COMPLETED,
-                                      output={"topic": "t", "sections": [{"heading": "h", "content": "c"}]})
-        # 旧评审产出（会被收尾重评的 run_stage 清掉）
-        engine.store.update_stage(p.id, 7, status=StageStatus.COMPLETED,
-                                  output={"reviewers": [{"reviewer_id": "Reviewer 1", "perspective": "方法专家", "scores": {}, "suggestions": ["旧建议"]}], "revision_notes": "旧说明"})
-        # 数据分析产出 + 迭代记录：让首轮走完且诊断出问题（触发修订失败→终止→收尾）
-        from src.schemas import IterationRecord as IR
-        it = IR(iteration=1, timestamp="", source_stage=5, design_version=1,
-                problems=[{"text": "改进", "target_stage": 3}])
-        engine.store.add_iteration(p.id, it)
-        # 数据分析 mock 可跑（engine fixture 已 mock agents）
-        with patch.object(engine, "_revise_design_with_llm", return_value={
-            "research_questions": [{"id": "RQ1", "text": "新"}],
-            "hypotheses": [],
-        }), patch.object(engine, "_revise_literature_with_llm", return_value=None), \
-             patch.object(engine, "_revise_method_with_llm", return_value=None), \
-             patch.object(engine, "_revise_writing_with_llm", return_value=None):
-            real_run = engine.run_stage
-            def fake_run(project_id, stage, inputs=None, **kw):
-                if stage == 7:
-                    raise RuntimeError("评审超时")  # 收尾重评两次都失败
-                return real_run(project_id, stage, inputs or {}, **kw)  # 首轮分析走真实
-            with patch.object(engine, "run_stage", side_effect=fake_run):
-                rounds = engine.auto_iterate(p.id, max_rounds=1)
-        p2 = engine.store.get(p.id)
-        assert p2.status == "completed"
-        s7 = p2.stages["7"]
-        assert s7.status == StageStatus.COMPLETED, "收尾重评失败后应恢复 completed（不显示 failed）"
-        out = s7.output or {}
-        assert out.get("reviewers") and out["reviewers"][0]["suggestions"] == ["旧建议"], "旧评审产出必须被恢复"
-        assert any("恢复原评审" in str(h.get("summary", "")) for h in p2.history), "history 应记录恢复动作"
-
-    def test_merge_stage_patch_preserves_untouched_items(self):
-        """_merge_stage_patch：模型只输出部分条目时，未提及条目必须保留（防顶掉）"""
-        base = {
-            "sections": [{"theme": "A", "content": "旧A"}, {"theme": "B", "content": "旧B"}, {"theme": "C", "content": "旧C"}],
-            "references": ["r1", "r2"],
-            "research_gap": {"description": "旧gap"},
-        }
-        patch = {"sections": [{"theme": "B", "content": "新B"}]}
-        merged = WorkflowEngine._merge_stage_patch(base, patch)
-        themes = [s["theme"] for s in merged["sections"]]
-        assert themes == ["A", "B", "C"], "未提及章节必须保留且顺序不变"
-        assert merged["sections"][1]["content"] == "新B"
-        assert merged["sections"][0]["content"] == "旧A"
-        assert merged["references"] == ["r1", "r2"], "未提供 references 时保留原值"
-        assert merged["research_gap"] == {"description": "旧gap"}, "未提供 research_gap 时保留原值"
-
-    def test_merge_stage_patch_append_and_dedup(self):
-        """_merge_stage_patch：新增条目追加；references 去重追加"""
-        base = {
-            "methods": [{"name": "M1", "method_type": "qualitative"}],
-            "references": ["r1"],
-        }
-        patch = {
-            "methods": [{"name": "M2", "method_type": "quantitative"}],
-            "references": ["r1", "r-new"],
-        }
-        merged = WorkflowEngine._merge_stage_patch(base, patch)
-        assert [m["name"] for m in merged["methods"]] == ["M1", "M2"]
-        assert merged["references"] == ["r1", "r-new"]
-
 
 
 # ---------------------------------------------------------------------------

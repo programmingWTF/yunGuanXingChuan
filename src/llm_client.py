@@ -96,6 +96,7 @@ class LLMClient:
         json_mode: bool = True,
         enable_search: bool = False,
         max_tokens: Optional[int] = None,
+        strict_truncation: bool = False,
     ) -> str:
         """
         发送聊天请求，返回文本响应
@@ -108,6 +109,10 @@ class LLMClient:
             json_mode: 是否要求 JSON 输出
             enable_search: 是否启用联网搜索（百炼平台原生支持，同一API Key）
             max_tokens: 输出 token 上限（None 时由服务端默认决定，不显式传参）
+            strict_truncation: 严格截断检测。为 True 时，若模型输出因 max_tokens
+                上限被截断（finish_reason=length），直接抛 ValueError 而非返回
+                残缺文本（残缺 JSON 会被下游 _fix_truncated_json 静默修复成
+                "看似合法实为残缺"的数据——线上故障：论文写作仅 3 章且断句）
 
         Returns:
             模型响应文本
@@ -124,6 +129,7 @@ class LLMClient:
             return self._chat_with_search(
                 system_prompt, user_prompt, model,
                 json_mode=json_mode, temperature=temperature, max_tokens=max_tokens,
+                strict_truncation=strict_truncation,
             )
 
         if json_mode:
@@ -152,6 +158,9 @@ class LLMClient:
         for attempt in range(self.max_retries):
             try:
                 response = self.client.chat.completions.create(**kwargs)
+                # 严格截断检测：输出因 max_tokens 被截断时立刻报错，让上层重试
+                if strict_truncation and getattr(response.choices[0], "finish_reason", None) == "length":
+                    raise ValueError("LLM 输出因 max_tokens 上限被截断 (finish_reason=length)")
                 content = response.choices[0].message.content
                 if content:
                     return content
@@ -160,12 +169,30 @@ class LLMClient:
                 logger.warning(
                     f"LLM 调用失败 (尝试 {attempt + 1}/{self.max_retries}): {e}"
                 )
+                # 永久性错误（鉴权/未开通/额度）重试无意义，直接抛——
+                # 线上：校验链路 LLM 403 重试 3 次浪费 ~15s → 交叉校验超时降级
+                if self._is_permanent_llm_error(e):
+                    raise
                 if attempt < self.max_retries - 1:
                     time.sleep(self.retry_delay * (attempt + 1))
                 else:
                     raise
 
         return ""
+
+    @staticmethod
+    def _is_permanent_llm_error(e: Exception) -> bool:
+        """判断 LLM 调用错误是否为永久性（重试也不会成功）
+        - 403/401 鉴权失败、模型未开通（AccessDenied.Unpurchased / InvalidApiKey 等）
+        - 重试浪费时间，直接抛出让上层快速降级
+        """
+        s = str(e)
+        code_hit = any(k in s.upper() for k in (
+            "ACCESSDENIED", "INVALIDAPIKEY", "UNAUTHORIZED", "PERMISSIONDENIED",
+            "ACCESS_DENIED", "INVALID_API_KEY", "401", "FORBIDDEN", "NOTFOUND",
+        ))
+        unpurchased = "UNPURCHASED" in s.upper() or "未开通" in s or "Access to model denied" in s
+        return code_hit or unpurchased
 
     def _chat_with_search(
         self,
@@ -175,6 +202,7 @@ class LLMClient:
         json_mode: bool = False,
         temperature: float = 0.3,
         max_tokens: Optional[int] = None,
+        strict_truncation: bool = False,
     ) -> str:
         """
         使用联网搜索调用 LLM
@@ -206,6 +234,12 @@ class LLMClient:
             for attempt in range(self.max_retries):
                 try:
                     response = self.client.responses.create(**responses_kwargs)
+                    # 严格截断检测：Responses API 输出被 max_output_tokens 截断时
+                    # （response.incomplete_details.reason == "max_output_tokens"）立刻报错重试
+                    if strict_truncation:
+                        incomplete = getattr(response, "incomplete_details", None)
+                        if incomplete and getattr(incomplete, "reason", None) == "max_output_tokens":
+                            raise ValueError("LLM 输出因 max_output_tokens 上限被截断 (incomplete_details=max_output_tokens)")
                     content = getattr(response, 'output_text', None)
                     if not content:
                         parts = []
@@ -251,6 +285,9 @@ class LLMClient:
         for attempt in range(self.max_retries):
             try:
                 response = self.client.chat.completions.create(**kwargs)
+                # 严格截断检测：输出因 max_tokens 被截断时立刻报错，让上层重试
+                if strict_truncation and getattr(response.choices[0], "finish_reason", None) == "length":
+                    raise ValueError("LLM 输出因 max_tokens 上限被截断 (finish_reason=length)")
                 content = response.choices[0].message.content
                 if content:
                     return content
@@ -274,6 +311,7 @@ class LLMClient:
         temperature: float = 0.3,
         enable_search: bool = False,
         max_tokens: Optional[int] = None,
+        strict_truncation: bool = False,
     ) -> dict:
         """
         发送聊天请求，返回解析后的 JSON 字典
@@ -284,6 +322,8 @@ class LLMClient:
             model: 使用的模型
             temperature: 温度参数
             enable_search: 是否启用联网搜索
+            max_tokens: 输出 token 上限
+            strict_truncation: 严格截断检测（透传给 chat()；截断立即抛错而非静默修复）
 
         Returns:
             解析后的 JSON 字典
@@ -296,6 +336,7 @@ class LLMClient:
             json_mode=True,
             enable_search=enable_search,
             max_tokens=max_tokens,
+            strict_truncation=strict_truncation,
         )
 
         # 尝试解析 JSON

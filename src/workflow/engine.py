@@ -57,7 +57,7 @@ class WorkflowEngine:
             WorkflowStage.DESIGN: ResearchQuestionAgent(llm_client=llm_client, max_retries=1, max_tokens=5000),
             WorkflowStage.METHOD: MethodAdvisorAgent(llm_client=llm_client, max_retries=1, max_tokens=5000),
             WorkflowStage.DATA_ANALYSIS: DataAnalysisAgent(llm_client=llm_client, max_retries=1, max_tokens=6000),
-            WorkflowStage.WRITING: PaperWriterAgent(llm_client=llm_client, max_retries=1, max_tokens=8000),
+            WorkflowStage.WRITING: PaperWriterAgent(llm_client=llm_client, max_retries=1, max_tokens=16000),
             WorkflowStage.REVIEW: ReviewerSimulatorAgent(llm_client=llm_client, max_retries=1, max_tokens=6000),
         }
 
@@ -1248,10 +1248,8 @@ class WorkflowEngine:
                 claims.append(text[:80])
 
         if stage == WorkflowStage.INSPIRATION:
-            for d in self._as_list(output.get("directions"))[:3]:
-                if isinstance(d, dict):
-                    add(d.get("title"))
-                    add(d.get("summary"))
+            # 选题方向（title/summary）是研究建议/目标，不是事实结论——不校验
+            pass
         elif stage == WorkflowStage.LITERATURE:
             gap = output.get("research_gap") or {}
             if isinstance(gap, dict):
@@ -1260,14 +1258,13 @@ class WorkflowEngine:
                 if isinstance(s, dict):
                     add(s.get("theme"))
         elif stage == WorkflowStage.DESIGN:
-            for q in self._as_list(output.get("research_questions"))[:3]:
-                if isinstance(q, dict):
-                    add(q.get("text"))
+            # 只校验研究假设（可证伪的结论性断言）；research_questions 是问题不校验
+            for h in self._as_list(output.get("hypotheses"))[:3]:
+                if isinstance(h, dict):
+                    add(h.get("statement"))
         elif stage == WorkflowStage.METHOD:
-            for m in self._as_list(output.get("methods"))[:3]:
-                if isinstance(m, dict):
-                    add(m.get("name"))
-                    add(m.get("rationale"))
+            # 方法推荐（名称/理由）是建议性质，非事实断言——不校验
+            pass
         elif stage == WorkflowStage.DATA_ANALYSIS:
             for f in self._as_list(output.get("findings"))[:3]:
                 if isinstance(f, dict):
@@ -1279,10 +1276,8 @@ class WorkflowEngine:
                     if content:
                         add(content.split("。")[0] or content[:80])
         elif stage == WorkflowStage.REVIEW:
-            for r in self._as_list(output.get("reviewers"))[:3]:
-                if isinstance(r, dict):
-                    for sug in self._as_list(r.get("suggestions"))[:1]:
-                        add(sug)
+            # 评审建议（suggestions）是指令性修改意见，非事实断言——不校验
+            pass
         return claims[:3]
 
     def _extract_entities(self, output: Dict[str, Any], topic: str) -> List[str]:
@@ -1388,7 +1383,7 @@ class WorkflowEngine:
         for claim in claims:
             result = self._run_with_timeout(
                 lambda c=claim, ents=entities: validator.cross_validate_claim(c, entities=ents),
-                25.0, None, "交叉校验",
+                45.0, None, "交叉校验",
             )
             if result is None:
                 items.append({
