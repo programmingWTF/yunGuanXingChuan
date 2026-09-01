@@ -495,3 +495,33 @@ class TestExternalValidatorMultiSource:
         from src.verification.external_validator import _numbers_overlap
         r = _numbers_overlap("采集样品约2000克", "嫦娥六号采集了1935.3克月球样品")
         assert r["hit"] is False
+
+
+class TestRagPartialCountsAsSupport:
+    """RAG partial 计为支持信号（2026-09-01 修复：置信度 0.85 的 partial 不再被投票打成 UNVERIFIED）"""
+
+    def test_rag_partial_single_support(self):
+        """RAG partial 高置信 + KG/External unverified → PARTIALLY_VERIFIED 非 UNVERIFIED"""
+        from src.verification.cross_validator import CrossValidator
+        from src.schemas import VerificationStatus
+        v = CrossValidator.__new__(CrossValidator)
+        status, conf = v._four_way_vote("partial", 0.85, "unverified", 0.0, "unverified", 0.0)
+        assert status == VerificationStatus.PARTIALLY_VERIFIED
+        assert conf >= 0.6
+
+    def test_rag_partial_with_external_partial(self):
+        """RAG partial + External partial 双路支持 → VERIFIED（两路独立信号）"""
+        from src.verification.cross_validator import CrossValidator
+        from src.schemas import VerificationStatus
+        v = CrossValidator.__new__(CrossValidator)
+        status, conf = v._four_way_vote("partial", 0.7, "unverified", 0.0, "partial", 0.5)
+        assert status == VerificationStatus.VERIFIED
+        assert conf >= 0.6
+
+    def test_rag_unverified_still_unverified(self):
+        """RAG 真 unverified 仍保持 UNVERIFIED（不虚增）"""
+        from src.verification.cross_validator import CrossValidator
+        from src.schemas import VerificationStatus
+        v = CrossValidator.__new__(CrossValidator)
+        status, conf = v._four_way_vote("unverified", 0.1, "unverified", 0.0, "unverified", 0.0)
+        assert status == VerificationStatus.UNVERIFIED
