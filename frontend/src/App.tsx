@@ -106,11 +106,14 @@ function TopNav() {
     >
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-4">
-          {/* Logo：渐变方块 + 双行标题（设计稿原样） */}
+          {/* Logo：品牌图标 + 双行标题 */}
           <NavLink to="/" className="flex items-center gap-3 shrink-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-700 flex items-center justify-center shadow-lg shadow-indigo-200">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
+            <img
+              src="/logo-64.png"
+              alt="云观星传"
+              className="h-10 w-auto object-contain"
+              draggable={false}
+            />
             <div className="flex flex-col">
               <span className="text-lg font-bold text-slate-800 tracking-tight">
                 云观星传
