@@ -2,8 +2,8 @@
  * 云观星传 — 首页 Hero（对齐效果图：国风星象 × 水墨山水 × AI 科研平台）
  *
  * 结构（自上而下）：
- *   ✣ AI驱动的科学传播分析平台（eyebrow 胶囊标签）
- *   云观星传 / 科学话题传播分析系统（深靛蓝大标题）
+ *   ✣ AI 驱动的智能科研工作台（eyebrow 胶囊标签）
+ *   云观星传 / 面向科技议题国际传播的智能科研工作台（深靛蓝大标题）
  *   副标题（基于多智能体架构……）
  *   [开始分析] [了解更多]（胶囊 CTA）
  *   四张 KPI 卡（处理速度 / 准确率 / 并发数 / 吞吐量）
@@ -28,7 +28,7 @@ export default function HomeHero() {
         <div className="flex justify-center">
           <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#eef2f7]/80 border border-slate-200/60 text-xs sm:text-[13px] text-[#5E7392] tracking-wide shadow-sm">
             <Sparkles className="w-3.5 h-3.5 text-[#C8B37A]" strokeWidth={1.5} />
-            AI驱动的科学传播分析平台
+            AI 驱动的智能科研工作台
           </span>
         </div>
 
@@ -38,14 +38,14 @@ export default function HomeHero() {
             云观星传
           </h1>
           <p className="font-display mt-3 sm:mt-4 text-2xl sm:text-3xl lg:text-4xl font-semibold text-[#1C315B] tracking-wider">
-            科学话题传播分析系统
+            面向科技议题国际传播的智能科研工作台
           </p>
         </div>
 
         {/* 副标题 */}
         <p className="mt-6 sm:mt-8 mx-auto max-w-2xl text-center text-sm sm:text-base text-[#5E7392] leading-relaxed">
           基于多智能体架构，融合科学事实提取、语境分析与传播策略生成，
-          为科学话题提供全方位的传播洞察与决策支持
+          为科技议题国际传播提供全流程的科研与传播支持
         </p>
 
         {/* CTA 按钮（效果图：胶囊按钮） */}
