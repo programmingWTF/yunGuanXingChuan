@@ -1,4 +1,4 @@
-# 云观星传 — AI Scientist 科技议题研究与国际传播辅助平台
+# 云观星传 — 面向科技议题国际传播的智能科研工作台
 
 > ![CI](https://github.com/programmingWTF/yunGuanXingChuan/actions/workflows/test.yml/badge.svg) · ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
@@ -24,7 +24,7 @@
 
 ## 📖 项目简介（给所有人看）
 
-“云观星传”是一个 **AI Scientist 科技议题研究与国际传播辅助平台**，围绕 **『助研（Research Assistant）＋助传（Communication Assistant）』** 双主线：既帮助研究者完成科研（选题、文献、研究设计、方法推荐、数据分析、写作、评审），也服务传播工作（国际传播策略、新闻建议稿、科普脚本）。
+“云观星传”是一个 **面向科技议题国际传播的智能科研工作台**，围绕 **『助研（Research Assistant）＋助传（Communication Assistant）』** 双主线：既帮助研究者完成科研（选题、文献、研究设计、方法推荐、数据分析、写作、评审），也服务传播工作（国际传播策略、新闻建议稿、科普脚本）。
 
 ### 它做什么？
 
