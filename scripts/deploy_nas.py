@@ -13,12 +13,16 @@ except ImportError:
     import paramiko
 
 # 凭据通过环境变量注入，避免明文入库（建议在 shell profile 中 export）：
-#   NAS_HOST       NAS 地址，默认 192.168.0.150
-#   NAS_USER       登录用户名，默认 LiGuiyu
+#   NAS_HOST       NAS 地址（必填，例：192.168.1.10）
+#   NAS_USER       登录用户名（必填）
 #   NAS_PASSWORD   登录密码，未设置则运行时交互式输入
-HOST = os.getenv("NAS_HOST", "192.168.0.150")
-USER = os.getenv("NAS_USER", "LiGuiyu")
+HOST = os.getenv("NAS_HOST", "")
+USER = os.getenv("NAS_USER", "")
 PASSWORD = os.getenv("NAS_PASSWORD", "")
+
+if not HOST or not USER:
+    print("[错误] 请先设置环境变量 NAS_HOST 与 NAS_USER（如 export NAS_HOST=192.168.1.10 NAS_USER=yourname）")
+    sys.exit(1)
 
 DOCKER_DIR = "/vol1/1000/Docker/yunguanxingchuan"
 LOCAL_DIR = Path(__file__).parent.parent  # yunGuanXingChuan 项目根目录
@@ -174,7 +178,7 @@ def main():
     run_cmd(ssh, "docker ps --filter name=yunguanxingchuan", sudo=True)
 
     ssh.close()
-    print("\n[OK] 部署完成! 访问 http://192.168.0.150:8123")
+    print(f"\n[OK] 部署完成! 访问 http://{HOST}:8123")
 
 
 if __name__ == "__main__":
