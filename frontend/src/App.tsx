@@ -27,7 +27,7 @@ import Register from './pages/Register'
 import UIShowcase from './pages/UIShowcase'
 import Admin from './pages/Admin'
 import Settings from './pages/Settings'
-import { Sparkles, Search, Lightbulb, BookOpen, Target, FlaskConical, BarChart3, PenLine, Users, Library, Menu, X } from 'lucide-react'
+import { Search, Lightbulb, BookOpen, Target, FlaskConical, BarChart3, PenLine, Users, Library, Menu, X } from 'lucide-react'
 import { cn } from './lib/utils'
 
 /* ── 导航定义：科研工作台 + 科研流程 ── */
@@ -254,17 +254,20 @@ function Footer() {
         <div className="grid lg:grid-cols-4 gap-8 mb-12">
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
+              <img
+                src="/logo-64.png"
+                alt="云观星传"
+                className="h-10 w-auto object-contain"
+                draggable={false}
+              />
               <div>
                 <span className="text-lg font-bold">云观星传</span>
                 <span className="text-xs text-slate-400 ml-2">Cloud Star Legacy</span>
               </div>
             </div>
             <p className="text-slate-400 text-sm max-w-md leading-relaxed">
-              面向科技议题研究与国际传播的智能辅助平台，
-              基于 AI Scientist 范式，提供从信息搜集到成果产出的完整闭环。
+              面向科技议题国际传播的智能科研工作台，
+              基于多智能体架构，提供从信息搜集到成果产出的完整闭环。
             </p>
           </div>
           <div>
