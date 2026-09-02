@@ -287,7 +287,7 @@ function Footer() {
 
         <div className="pt-8 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-slate-500">
-            © 2026 云观星传 · 挑战杯「揭榜挂帅」科技议题传播分析与表达系统
+            © 2026 云观星传 · 面向科技议题国际传播的智能科研工作台
           </p>
           <div className="flex items-center gap-4">
             <LiveClock />
