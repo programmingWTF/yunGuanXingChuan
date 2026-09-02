@@ -10,16 +10,19 @@ services:
     restart: unless-stopped
     environment:
       - TZ=Asia/Shanghai
-      # 走宿主机 mihomo 代理出境外（External 校验需访问 Wikidata/Wikipedia，
-      #   bridge 网络直连境外 TLS 握手超时；mihomo 为 host 网络，监听 127.0.0.1:7890）
-      - HTTP_PROXY=http://172.17.0.1:7890
-      - HTTPS_PROXY=http://172.17.0.1:7890
-      - NO_PROXY=localhost,127.0.0.1,172.17.0.1,192.168.0.150,.aliyuncs.com,.myqcloud.com
+      # 可选：出境外网代理（External 校验需访问 Wikidata/Wikipedia，部分网络直连会 TLS 超时）。
+      # 默认不设置；如你的环境需要代理，在 .env 中配置（compose 自动读取同目录 .env）：
+      #   HTTP_PROXY=http://<宿主机IP>:<端口>   # 例：HTTP_PROXY=http://172.17.0.1:7890（Docker 默认网关，代理在宿主机时常用）
+      #   HTTPS_PROXY=http://<宿主机IP>:<端口>
+      #   NO_PROXY=localhost,127.0.0.1,.aliyuncs.com,.myqcloud.com
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+      - NO_PROXY=${NO_PROXY:-localhost,127.0.0.1,.aliyuncs.com,.myqcloud.com}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
 
-  # ── 管理后台（端口 8124）：tzb-admin.liguiyu.com ──
-  # 模仿 liguiyu-home 的 admin.liguiyu.com：应用层无鉴权，身份认证由 Cloudflare Access 完成
+  # ── 管理后台（端口 8124）──
+  # 应用层无鉴权，身份认证建议由外部反代（如 Cloudflare Access）完成
   admin:
     build:
       context: .
@@ -35,8 +38,9 @@ services:
     environment:
       - TZ=Asia/Shanghai
       - ADMIN_MODE=true
-      - HTTP_PROXY=http://172.17.0.1:7890
-      - HTTPS_PROXY=http://172.17.0.1:7890
-      - NO_PROXY=localhost,127.0.0.1,172.17.0.1,192.168.0.150,.aliyuncs.com,.myqcloud.com
+      # 代理配置与 app 服务一致（见上；不配置则直连）
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+      - NO_PROXY=${NO_PROXY:-localhost,127.0.0.1,.aliyuncs.com,.myqcloud.com}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
