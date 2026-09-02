@@ -1,5 +1,7 @@
 # 云观星传 — AI Scientist 科技议题研究与国际传播辅助平台
 
+> ![CI](https://github.com/programmingWTF/yunGuanXingChuan/actions/workflows/test.yml/badge.svg) · ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
 > ✨ **让 AI 帮助科研，而不是替代科研；让知识不仅能被发现，更能被理解、验证与传播。**
 
 > 🌟 **AI Scientist 范式**：假设生成 → 验证 → 迭代
