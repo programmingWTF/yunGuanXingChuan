@@ -1,11 +1,11 @@
-# 自动化测试 — PR 与 main 变更时运行全部测试（379 项，不依赖外部 API）
-# 测试均为自包含用例（conftest.py 提供示例数据，不调用 LLM/网络）；含 v8 覆盖率门槛
+# 自动化测试 — PR 与 main 变更时运行全部自包含测试（不依赖外部 API / LLM）
+# 测试均为自包含用例（conftest.py 提供示例数据，不调用 LLM/网络）；含覆盖率门槛
 
 name: 自动化测试
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopen]
   push:
     branches: [main]
 
@@ -18,6 +18,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
+          cache: pip
 
       - name: 安装中文字体（PDF 导出测试需要）
         run: |
@@ -30,9 +31,30 @@ jobs:
           pip install pytest pytest-cov
 
       - name: 运行测试并检查覆盖率
-        run: pytest tests/ -v --cov=src --cov=api --cov-report=term-missing --cov-fail-under=55
+        run: |
+          pytest tests/ -q --cov=src --cov=api --cov-report=term-missing \
+            --cov-fail-under=55 --junitxml=test-results.xml
 
-      - name: 统计结果
+      - name: 汇总测试结果
         if: always()
         run: |
-          echo "测试运行完成，详见上方 pytest 输出"
+          python - <<'PYEOF' >> "$GITHUB_STEP_SUMMARY"
+          import xml.etree.ElementTree as ET
+
+          root = ET.parse("test-results.xml").getroot()
+          tests = int(root.get("tests", 0))
+          fails = int(root.get("failures", 0))
+          errs = int(root.get("errors", 0))
+          passed = tests - fails - errs
+
+          state = "✅ 全部通过" if fails == 0 and errs == 0 else "❌ 存在失败"
+          print(f"## 测试结果：{state}")
+          print(f"- 用例：**{passed}/{tests}** 通过" +
+                (f"，失败 {fails}、错误 {errs}" if fails or errs else ""))
+          if fails or errs:
+              print()
+              print("### 失败用例")
+              for tc in root.iter("testcase"):
+                  if tc.find("failure") is not None or tc.find("error") is not None:
+                      print(f"- `{tc.get('classname')}::{tc.get('name')}`")
+          PYEOF
