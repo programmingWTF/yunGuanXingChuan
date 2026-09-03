@@ -1042,3 +1042,33 @@ class TestHotTopics:
         engine._hot_cache = {"at": 0, "items": []}
         with patch('src.search.unified_search.get_unified_search_service', side_effect=RuntimeError("net")):
             assert engine.get_hot_topics() == []
+
+
+class TestStageContextSuccess:
+    """阶段上下文成功注入路径测试（mock 服务正常返回）"""
+
+    def test_search_and_vector_injected(self, engine):
+        """文献阶段应注入 search_context 与 knowledge_hits"""
+        svc = MagicMock()
+        svc.search_for_topic.return_value = [
+            type("S", (), {"url": "https://n.com", "title": "新闻", "content": "内容", "source": "T"})()]
+        vs = MagicMock()
+        vs.search.return_value = [{"text": "知识片段" * 30, "score": 0.8, "metadata": {"source": "lib"}}]
+        with patch('src.search.unified_search.get_unified_search_service', return_value=svc), \
+             patch('src.knowledge.vector_store.get_vector_store', return_value=vs):
+            ctx = engine._build_stage_context(WorkflowStage.LITERATURE, {"topic": "嫦娥六号"})
+        assert ctx["search_context"][0]["url"] == "https://n.com"
+        assert ctx["search_context"][0]["content"]  # 内容截断 400
+        assert "search_query" in ctx
+        assert ctx["knowledge_hits"][0]["score"] == 0.8
+
+    def test_kg_entities_injected_for_inspiration(self, engine):
+        kg = MagicMock()
+        kg.find_related_entities.return_value = [{"entity": f"实体{i}"} for i in range(12)]
+        with patch('src.knowledge.kg_builder.get_knowledge_graph', return_value=kg):
+            ctx = engine._build_stage_context(WorkflowStage.INSPIRATION, {"topic": "嫦娥六号"})
+        assert len(ctx["kg_entities"]) == 10  # 限制 10
+
+    def test_empty_topic_returns_empty(self, engine):
+        ctx = engine._build_stage_context(WorkflowStage.WRITING, {})
+        assert "search_context" not in ctx  # 无 topic → 无查询
