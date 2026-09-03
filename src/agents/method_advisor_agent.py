@@ -26,8 +26,9 @@ class MethodAdvisorAgent(BaseAgent):
 
     def _build_user_prompt(self, input_data: Dict[str, Any]) -> str:
         topic = input_data.get("topic", "")
-        questions = input_data.get("research_questions", [])
-        hypotheses = input_data.get("hypotheses", [])
+        research_design = input_data.get("research_design") or {}
+        questions = input_data.get("research_questions") or research_design.get("research_questions") or []
+        hypotheses = input_data.get("hypotheses") or research_design.get("hypotheses") or []
         knowledge_hits = input_data.get("knowledge_hits", [])
 
         prompt = f"""研究主题：{topic}
