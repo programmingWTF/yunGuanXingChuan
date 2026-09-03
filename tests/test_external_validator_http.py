@@ -463,3 +463,69 @@ class TestLifecycle:
         v2 = get_external_validator()
         assert v1 is v2
         assert isinstance(v1, ExternalValidator)
+
+
+class TestCheckClaimRelationMatch:
+    """断言-关系匹配度测试（全分支纯逻辑）"""
+
+    def _m(self, validator, claim, obj="", pred=""):
+        return validator._check_claim_relation_match(claim, {"object": obj, "predicate": pred})
+
+    def test_weak_metadata_relation_zero(self, validator):
+        """弱元数据关系不得作为断言证据"""
+        assert self._m(validator, "嫦娥六号任务", obj="嫦娥六号", pred="得名自") == 0.0
+        assert self._m(validator, "任务", obj="x", pred="instance of") == 0.0
+        assert self._m(validator, "任务", obj="x", pred="位于") == 0.0
+
+    def test_object_independent_hit(self, validator):
+        """对象独立出现在 claim（英文边界）→ 强匹配"""
+        assert self._m(validator, "The mission used Long March 5 rocket", obj="Long March 5", pred="x") == 0.88
+
+    def test_substring_object_not_hit(self, validator):
+        """「嫦娥」⊂「嫦娥六号」不算独立命中"""
+        assert self._m(validator, "嫦娥六号任务", obj="嫦娥") == 0.0
+        # 中文对象前后紧贴中文（无空格/标点）同样视为子串包裹
+        assert self._m(validator, "任务着陆于月球背面", obj="月球背面", pred="x") == 0.0
+
+    def test_year_exact_strong(self, validator):
+        """年份精确一致 → 0.95"""
+        assert self._m(validator, "任务历时53天 2024年返回", obj="2024", pred="返回日期") == 0.95
+
+    def test_year_conflict_zero(self, validator):
+        """claim 含其他年份且对象年份不同 → 矛盾压制"""
+        assert self._m(validator, "2023年发射的任务", obj="2024", pred="发射日期") == 0.0
+
+    def test_year_no_claim_year(self, validator):
+        """对象为年份但 claim 无年份 → 0.7"""
+        assert self._m(validator, "某次发射任务", obj="2024", pred="launch date") == 0.7
+
+    def test_date_object_normalized(self, validator):
+        """日期对象归一化为年份再比对"""
+        assert self._m(validator, "2024年5月发射", obj="2024-05-03T00:00:00Z", pred="launch") == 0.95
+
+    def test_numeric_exact_hit(self, validator):
+        """数值精确命中 → 0.85"""
+        assert self._m(validator, "采集样品1935.3克", obj="1935.3", pred="质量") == 0.85
+
+    def test_numeric_mismatch_zero(self, validator):
+        assert self._m(validator, "采集样品1935.3克", obj="888.8", pred="质量") == 0.0
+
+    def test_en_predicate_keyword_match(self, validator):
+        """英文谓词关键词出现在 claim → 中匹配"""
+        score = self._m(validator, "嫦娥六号 successfully landed on 月球", obj="x", pred="landed on")
+        assert score > 0.5
+
+    def test_zh_predicate_hint_match(self, validator):
+        """英文谓词词干映射到中文关键词命中"""
+        # returns → 词干 return → 中文映射 返回
+        score = self._m(validator, "嫦娥六号返回地球", obj="x", pred="returns")
+        assert score == 0.6
+
+    def test_en_object_word_overlap(self, validator):
+        """英文对象词覆盖 → 0.5"""
+        score = self._m(validator, "Chang e 6 carried out sample return mission",
+                        obj="Chang e 6", pred="something")
+        assert score >= 0.5
+
+    def test_no_match_zero(self, validator):
+        assert self._m(validator, "完全无关的断言文本", obj="另一个实体", pred="other_pred") == 0.0
