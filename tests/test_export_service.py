@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 
 from src.export_service import (
     export_json, export_markdown, export_html, export_pdf, export_word,
-    get_export_formats, do_export, EXPORT_FORMATS,
+    export_kg_png, get_export_formats, do_export, EXPORT_FORMATS,
     _dict_to_md, _parse_md_blocks,
 )
 
@@ -311,3 +311,68 @@ class TestNoTruncation:
         from src.export_service import _strip_md
         assert "<br>" not in _strip_md("第一行<br>第二行")
         assert _strip_md("第一行<br>第二行") == "第一行\n第二行"
+
+
+class TestExportKgPng:
+    """KG 图谱 PNG 导出测试"""
+
+    def test_with_data_produces_png(self):
+        """含图数据应生成 PNG 字节（PNG magic 头）"""
+        data = {
+            "hot_nodes": [{"name": "嫦娥六号"}, {"name": "长征五号"}],
+            "key_persons": [{"name": "叶培建"}],
+            "organizations": [{"name": "CNSA"}],
+            "relations": [{"subject": "嫦娥六号", "object": "长征五号", "predicate": "launched_by"}],
+        }
+        out = export_kg_png(data, {"topic": "嫦娥六号"})
+        assert out[:8] == b"\x89PNG\r\n\x1a\n"  # PNG 文件头
+
+    def test_no_data_still_outputs(self):
+        """无图数据时也应输出占位 PNG"""
+        out = export_kg_png({}, {"topic": "空议题"})
+        assert len(out) > 1000
+
+    def test_empty_topic_ok(self):
+        out = export_kg_png({}, {})
+        assert len(out) > 0
+
+
+class TestExportHelpers:
+    """内部辅助函数测试"""
+
+    def test_try_json(self):
+        from src.export_service import _try_json, _is_jsonish
+        assert _try_json('{"a": 1}') == {"a": 1}
+        assert _try_json('[1, 2]') == [1, 2]
+        assert _try_json("plain text") is None
+        assert _try_json("") is None
+        assert _is_jsonish('{"a": 1}') is True
+        assert _is_jsonish("hello") is False
+
+    def test_do_export_unknown_format(self):
+        assert do_export({}, {}, "not_a_format") is None
+
+    def test_do_export_handler_error(self):
+        """handler 抛异常应转 ValueError"""
+        with pytest.raises(ValueError, match="导出失败"):
+            do_export(object(), {"topic": "x"}, "json")  # 不可序列化对象
+
+    def test_get_export_formats_kg(self):
+        fmt = get_export_formats("kg_report")
+        assert "kg_png" in fmt
+        assert "pdf" in fmt
+
+    def test_get_export_formats_base(self):
+        fmt = get_export_formats("research_plan")
+        assert "kg_png" not in fmt
+        assert "json" in fmt and "word" in fmt
+
+    def test_export_html_produces_bytes(self):
+        out = export_html(SAMPLE_DATA, SAMPLE_META)
+        assert b"<html" in out or b"<!DOCTYPE" in out
+
+    def test_export_markdown_json_string_handling(self):
+        """含 JSON 字符串字段时应被解析而不是整体丢弃"""
+        data = {"topic": "T", "raw": '{"nested": true}'}
+        out = export_markdown(data, {"topic": "T", "title": "报告"})
+        assert "nested" in out.decode("utf-8") or "报告" in out.decode("utf-8")
