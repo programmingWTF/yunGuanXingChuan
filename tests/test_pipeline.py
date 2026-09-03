@@ -354,3 +354,116 @@ class TestPipelineRunFlow:
         assert "hypothesis" in reported_steps
         assert "verification" in reported_steps
         assert "evaluation" in reported_steps
+
+
+class TestSubAgentRunners:
+    """pipeline 子 Agent 执行方法测试（mock_pipeline fixture）"""
+
+    def test_science_agent_tools_on(self, mock_pipeline):
+        """启用工具时应走 run_with_tools 并透传搜索上下文"""
+        mock_pipeline.science_agent.run_with_tools.return_value = {"topic": "t", "key_facts": ["f"]}
+        with patch('src.pipeline.ENABLE_AGENT_TOOLS', True):
+            result = mock_pipeline._run_science_agent("嫦娥六号", search_context="搜索内容")
+        assert result["key_facts"] == ["f"]
+        input_data = mock_pipeline.science_agent.run_with_tools.call_args.args[0]
+        assert input_data["search_context"] == "搜索内容"
+
+    def test_science_agent_tools_off(self, mock_pipeline):
+        mock_pipeline.science_agent.run.return_value = {"topic": "t"}
+        with patch('src.pipeline.ENABLE_AGENT_TOOLS', False):
+            result = mock_pipeline._run_science_agent("嫦娥六号")
+        assert result["topic"] == "t"
+        mock_pipeline.science_agent.run.assert_called_once()
+        mock_pipeline.science_agent.run_with_tools.assert_not_called()
+
+    def test_science_agent_exception_degrades(self, mock_pipeline):
+        mock_pipeline.science_agent.run_with_tools.side_effect = RuntimeError("down")
+        with patch('src.pipeline.ENABLE_AGENT_TOOLS', True):
+            result = mock_pipeline._run_science_agent("嫦娥六号")
+        assert result["topic"] == "嫦娥六号"
+        assert result["key_facts"] == []
+
+    def test_context_agent_with_search(self, mock_pipeline):
+        mock_pipeline.context_agent.run_with_tools.return_value = {"country_analysis": []}
+        with patch('src.pipeline.ENABLE_AGENT_TOOLS', True):
+            mock_pipeline._run_context_agent("嫦娥六号", {"topic": "t"}, "search")
+        args = mock_pipeline.context_agent.run_with_tools.call_args.args[0]
+        assert args["science_facts"]["topic"] == "t"
+        assert "search" in args["search_context"]
+
+    def test_context_agent_exception_degrades(self, mock_pipeline):
+        mock_pipeline.context_agent.run_with_tools.side_effect = RuntimeError("down")
+        with patch('src.pipeline.ENABLE_AGENT_TOOLS', True):
+            result = mock_pipeline._run_context_agent("嫦娥六号", {})
+        assert result["country_analysis"] == []
+        assert result["topic"] == "嫦娥六号"
+
+    def test_hypothesis_agent_inputs(self, mock_pipeline):
+        mock_pipeline.hypothesis_agent.run_with_tools.return_value = {"hypotheses": []}
+        with patch('src.pipeline.ENABLE_AGENT_TOOLS', True):
+            mock_pipeline._run_hypothesis_agent("嫦娥六号", {"topic": "t"}, {"topic": "c"})
+        args = mock_pipeline.hypothesis_agent.run_with_tools.call_args.args[0]
+        assert args["context_analysis"]["topic"] == "c"
+
+    def test_hypothesis_exception_degrades(self, mock_pipeline):
+        mock_pipeline.hypothesis_agent.run_with_tools.side_effect = RuntimeError("down")
+        with patch('src.pipeline.ENABLE_AGENT_TOOLS', True):
+            result = mock_pipeline._run_hypothesis_agent("嫦娥六号", {}, {})
+        assert result["hypotheses"] == []
+        assert result["hypothesis_count"] == 0
+
+    def test_strategy_injects_feedback(self, mock_pipeline):
+        from src.schemas import IterationFeedback
+        fb = IterationFeedback(dimension="factual_accuracy", current_score=60,
+                               issue="弱", suggestion="补强", target_agent="science_agent")
+        mock_pipeline.strategy_agent.run_with_tools.return_value = {"strategies": []}
+        with patch('src.pipeline.ENABLE_AGENT_TOOLS', True):
+            mock_pipeline._run_strategy_agent("嫦娥六号", {}, {}, {"hypotheses": []},
+                                              [], [fb])
+        args = mock_pipeline.strategy_agent.run_with_tools.call_args.args[0]
+        assert len(args["iteration_feedback"]) == 1
+        assert args["iteration_feedback"][0]["dimension"] == "factual_accuracy"
+
+    def test_evaluator_round_and_feedback(self, mock_pipeline):
+        from src.schemas import IterationFeedback
+        fb = IterationFeedback(dimension="narrative_fluency", current_score=55,
+                               issue="i", suggestion="s", target_agent="strategy_agent")
+        mock_pipeline.evaluator_agent.run_with_tools.return_value = {"scores": {}, "passed": False}
+        with patch('src.pipeline.ENABLE_AGENT_TOOLS', True):
+            mock_pipeline._run_evaluator_agent("嫦娥六号", {"strategies": []}, {},
+                                               [], 3, [fb])
+        args = mock_pipeline.evaluator_agent.run_with_tools.call_args.args[0]
+        assert args["iteration_round"] == 3
+        assert len(args["previous_feedback"]) == 1
+
+    def test_evaluator_exception_default_scores(self, mock_pipeline):
+        mock_pipeline.evaluator_agent.run_with_tools.side_effect = RuntimeError("down")
+        with patch('src.pipeline.ENABLE_AGENT_TOOLS', True):
+            result = mock_pipeline._run_evaluator_agent("嫦娥六号", {}, {}, [], 1, [])
+        assert result["scores"]["factual_accuracy"] == 70
+        assert result["passed"] is False
+
+
+class TestRunVerification:
+    """校验层执行测试"""
+
+    def test_combines_and_reports(self, mock_pipeline):
+        from src.schemas import VerificationResult, VerificationStatus
+        vr = VerificationResult(claim="c", status=VerificationStatus.VERIFIED, confidence=0.8)
+        mock_pipeline.cross_validator.validate_science_facts.return_value = [vr]
+        mock_pipeline.cross_validator.validate_hypotheses.return_value = []
+        mock_pipeline.report_generator.generate_verification_report.return_value = {"topic": "t"}
+        results = mock_pipeline._run_verification({"topic": "嫦娥六号"}, {"hypotheses": []})
+        assert len(results) == 1
+        assert mock_pipeline.state["verification_report"] == {"topic": "t"}
+
+    def test_report_failure_not_fatal(self, mock_pipeline):
+        mock_pipeline.cross_validator.validate_science_facts.return_value = []
+        mock_pipeline.cross_validator.validate_hypotheses.return_value = []
+        mock_pipeline.report_generator.generate_verification_report.side_effect = RuntimeError("rep down")
+        results = mock_pipeline._run_verification({"topic": "t"}, {"hypotheses": []})
+        assert results == []
+
+    def test_validation_failure_returns_empty(self, mock_pipeline):
+        mock_pipeline.cross_validator.validate_science_facts.side_effect = RuntimeError("cv down")
+        assert mock_pipeline._run_verification({}, {"hypotheses": []}) == []

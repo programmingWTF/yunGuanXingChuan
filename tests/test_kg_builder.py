@@ -174,3 +174,72 @@ class TestLoadGraph:
     def test_load_graph_success(self, kg):
         assert kg.load_graph() is True
         assert kg.G.number_of_nodes() > 0
+
+
+class TestBuildFromData:
+    """图数据构建路径测试"""
+
+    def _new_kg(self):
+        from src.knowledge.kg_builder import KnowledgeGraph
+        return KnowledgeGraph()
+
+    def test_build_full_pipeline(self):
+        """build_from_data 全链路：加载实体/关系/科学数据并保存"""
+        kg = self._new_kg()
+        kg.build_from_data()
+        assert kg.G.number_of_nodes() > 0
+        assert kg.G.number_of_edges() > 0
+        assert len(kg.entities) > 0
+        # 生成图文件可被重新加载
+        assert kg.graph_path.exists()
+
+    def test_load_science_data_dedup(self):
+        """重复加载科学数据不应重复加边"""
+        kg = self._new_kg()
+        kg._load_entities()
+        before_edges = kg.G.number_of_edges()
+        kg._load_science_data()
+        kg._load_science_data()  # 再跑一遍
+        after_edges = kg.G.number_of_edges()
+        # 第二次运行不产生新增（图论上已存在边被跳过）
+        kg2 = self._new_kg()
+        kg2._load_entities()
+        kg2._load_science_data()
+        assert kg2.G.number_of_edges() == after_edges
+
+    def test_load_entities_merges_attributes(self):
+        """实体属性应写入节点"""
+        kg = self._new_kg()
+        kg._load_entities()
+        # 任一真实节点应有 entity_type 或 attributes 键
+        node = next(iter(kg.G.nodes()))
+        assert "entity_type" in kg.G.nodes[node]
+
+    def test_missing_files_graceful(self, tmp_path, monkeypatch):
+        """实体/关系文件缺失时应告警返回而不崩溃"""
+        from src.knowledge import kg_builder as kg_mod
+        monkeypatch.setattr(kg_mod, "KG_DIR", tmp_path / "empty_kg")
+        kg = self._new_kg()
+        kg._load_entities()  # 不抛
+        kg._load_relations()  # 不抛
+        assert kg.G.number_of_nodes() == 0
+
+    def test_relations_create_missing_nodes(self, tmp_path, monkeypatch):
+        """关系中的未知节点应被自动补建"""
+        import json as _json
+        from src.knowledge import kg_builder as kg_mod
+        kg_dir = tmp_path / "kg"
+        kg_dir.mkdir()
+        (kg_dir / "entities.json").write_text(
+            _json.dumps([{"id": "e1", "name": "嫦娥六号", "type": "mission", "attributes": {}}]),
+            encoding="utf-8")
+        (kg_dir / "relations.json").write_text(
+            _json.dumps([{"subject": "嫦娥六号", "predicate": "launched_by", "object": "长征五号",
+                          "confidence": 1.0, "source": "t"}]),
+            encoding="utf-8")
+        monkeypatch.setattr(kg_mod, "KG_DIR", kg_dir)
+        kg = self._new_kg()
+        kg._load_entities()
+        kg._load_relations()
+        assert "长征五号" in kg.G  # 自动补建的客体节点
+        assert kg.G.has_edge("嫦娥六号", "长征五号")
