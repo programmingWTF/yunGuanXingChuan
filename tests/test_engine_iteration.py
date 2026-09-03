@@ -427,3 +427,108 @@ class TestAutoIterate:
         # 旧评审产出被恢复（未丢失）
         assert project.stages["7"].output == old_review
         assert len(rounds) >= 1
+
+
+class TestReviseWithLLM:
+    """各阶段 LLM 修订函数测试（mock LLM 客户端）"""
+
+    def _project_with_stage(self, stage, output):
+        """构造含指定阶段产物的项目 mock"""
+        project = MagicMock()
+        project.title = "测试研究"
+        record = MagicMock()
+        record.output = output
+        project.stages.get.return_value = record
+        return project
+
+    def _iter(self, target_stage=2, text="问题描述"):
+        return IterationRecord(iteration=1, problems=[{"text": text, "target_stage": target_stage}])
+
+    @pytest.mark.parametrize("func_name,stage,output_key,problem_stage", [
+        ("_revise_literature_with_llm", "2", "sections", 2),
+        ("_revise_method_with_llm", "4", "methods", 4),
+        ("_revise_writing_with_llm", "6", "sections", 6),
+    ])
+    def test_revise_success(self, func_name, stage, output_key, problem_stage, tmp_path):
+        """LLM 返回有效数据时应返回增量补丁"""
+        from src.workflow.engine import WorkflowEngine
+        eng = WorkflowEngine(store=MagicMock())
+        output = {output_key: [{("theme" if output_key == "sections" else "name"): "原条目",
+                                "content": "x", "method_type": "qualitative"}]}
+        project = self._project_with_stage(stage, output)
+        it = self._iter(problem_stage)
+        mock_client = MagicMock()
+        mock_client.chat_json.return_value = {
+            output_key: [{("theme" if output_key == "sections" else "name"): "新条目",
+                          "content": "新内容"}],
+            "revision_note": "按诊断修订",
+        }
+        with patch('src.llm_client.get_llm_client', return_value=mock_client):
+            result = getattr(eng, func_name)(project, it, {"api_key": "k"})
+        assert result is not None
+        assert result[output_key]
+        assert "revision_note" in result
+
+    @pytest.mark.parametrize("func_name,stage", [
+        ("_revise_literature_with_llm", "2"),
+        ("_revise_method_with_llm", "4"),
+        ("_revise_writing_with_llm", "6"),
+    ])
+    def test_revise_no_client_returns_none(self, func_name, stage, tmp_path):
+        """无 LLM 配置应返回 None 不调用"""
+        from src.workflow.engine import WorkflowEngine
+        eng = WorkflowEngine(store=MagicMock())
+        project = self._project_with_stage(stage, {"sections": [{"theme": "A"}]})
+        it = self._iter()
+        with patch('src.llm_client.get_llm_client') as mock_get:
+            result = getattr(eng, func_name)(project, it, None)
+        assert result is None
+        mock_get.assert_not_called()
+
+    @pytest.mark.parametrize("func_name,stage,problem_stage", [
+        ("_revise_literature_with_llm", "2", 3),  # 问题不指向文献
+        ("_revise_method_with_llm", "4", 2),      # 问题不指向方法
+    ])
+    def test_revise_unrelated_problem_returns_none(self, func_name, stage, problem_stage, tmp_path):
+        """诊断问题与阶段无关时应返回 None"""
+        from src.workflow.engine import WorkflowEngine
+        eng = WorkflowEngine(store=MagicMock())
+        project = self._project_with_stage(stage, {"sections": [{"theme": "A"}], "methods": [{"name": "M"}]})
+        it = self._iter(problem_stage)
+        mock_client = MagicMock()
+        with patch('src.llm_client.get_llm_client', return_value=mock_client):
+            result = getattr(eng, func_name)(project, it, {"api_key": "k"})
+        assert result is None
+        mock_client.chat_json.assert_not_called()
+
+    def test_revise_empty_output_returns_none(self, tmp_path):
+        """无前置产出应返回 None"""
+        from src.workflow.engine import WorkflowEngine
+        eng = WorkflowEngine(store=MagicMock())
+        project = self._project_with_stage("2", {})  # 无 sections
+        it = self._iter(2)
+        with patch('src.llm_client.get_llm_client') as mock_get:
+            assert eng._revise_literature_with_llm(project, it, {"api_key": "k"}) is None
+        mock_get.return_value.chat_json.assert_not_called()
+
+    def test_revise_llm_exception_returns_none(self, tmp_path):
+        """LLM 调用异常应降级 None"""
+        from src.workflow.engine import WorkflowEngine
+        eng = WorkflowEngine(store=MagicMock())
+        project = self._project_with_stage("2", {"sections": [{"theme": "A", "content": "x"}]})
+        it = self._iter(2)
+        mock_client = MagicMock()
+        mock_client.chat_json.side_effect = RuntimeError("LLM down")
+        with patch('src.llm_client.get_llm_client', return_value=mock_client):
+            assert eng._revise_literature_with_llm(project, it, {"api_key": "k"}) is None
+
+    def test_revise_empty_result_returns_none(self, tmp_path):
+        """LLM 返回空列表应返回 None"""
+        from src.workflow.engine import WorkflowEngine
+        eng = WorkflowEngine(store=MagicMock())
+        project = self._project_with_stage("2", {"sections": [{"theme": "A", "content": "x"}]})
+        it = self._iter(2)
+        mock_client = MagicMock()
+        mock_client.chat_json.return_value = {"sections": []}
+        with patch('src.llm_client.get_llm_client', return_value=mock_client):
+            assert eng._revise_literature_with_llm(project, it, {"api_key": "k"}) is None
