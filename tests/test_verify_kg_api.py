@@ -197,3 +197,87 @@ class TestKGEndpoints:
         for comp in data["components"]:
             assert "nodes" not in comp  # 不应包含节点大列表
             assert "node_count" in comp
+
+
+class TestKnowledgeRoutes:
+    """知识库路由（/api/knowledge）测试"""
+
+    def test_libraries_meta(self, client):
+        resp = client.get("/api/knowledge/libraries")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data["libraries"]) >= 4
+        assert "stats" in data
+
+    def test_search_success(self, client):
+        """有效库名应返回检索结果（mock 语义检索层）"""
+        with patch('api.routes.knowledge.search_library',
+                   return_value=[{"text": "结果A", "score": 0.8}]):
+            resp = client.get("/api/knowledge/search?library=theory&q=框架理论&top_k=3")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["library"] == "theory"
+        assert data["count"] == 1
+
+    def test_search_blank_query_400(self, client):
+        resp = client.get("/api/knowledge/search?library=theory&q=%20%20")
+        assert resp.status_code == 400
+
+    def test_search_invalid_library_400(self, client):
+        resp = client.get("/api/knowledge/search?library=bad_lib&q=内容")
+        assert resp.status_code == 400
+
+    def test_search_exception_500(self, client):
+        with patch('api.routes.knowledge.search_library', side_effect=RuntimeError("index down")):
+            resp = client.get("/api/knowledge/search?library=theory&q=内容")
+        assert resp.status_code == 500
+
+    def test_seed_specific_and_all(self, client):
+        """seed 应返回各库构建摘要（mock 避免真实写库副作用）"""
+        with patch('api.routes.knowledge.build_library_index',
+                   return_value={"count": 10}) as mock_build:
+            resp = client.post("/api/knowledge/seed?library=method")
+        assert resp.status_code == 200
+        assert resp.json()["seeded"]["method"] == {"count": 10}
+        mock_build.assert_called_once_with("method")
+
+    def test_seed_invalid_library_400(self, client):
+        resp = client.post("/api/knowledge/seed?library=nope")
+        assert resp.status_code == 400
+
+    def test_seed_failure_reported(self, client):
+        with patch('api.routes.knowledge.build_library_index',
+                   side_effect=RuntimeError("boom")):
+            resp = client.post("/api/knowledge/seed")
+        assert resp.status_code == 200
+        assert "失败" in resp.json()["seeded"]["method"]
+
+
+class TestStrategiesRoutes:
+    """策略路由（/api/strategies）测试"""
+
+    def test_get_strategies_empty(self, client):
+        resp = client.get("/api/strategies/")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["strategies"] == []
+        assert data["filters"]["audience"] is None
+
+    def test_get_strategies_filters(self, client):
+        resp = client.get("/api/strategies/?audience=美国&persona=scientist")
+        assert resp.status_code == 200
+        assert resp.json()["filters"]["persona"] == "scientist"
+
+    def test_get_personas(self, client):
+        resp = client.get("/api/strategies/personas")
+        assert resp.status_code == 200
+        personas = resp.json()["personas"]
+        assert len(personas) == 4
+        assert any(p["id"] == "scientist" for p in personas)
+
+    def test_get_audiences(self, client):
+        resp = client.get("/api/strategies/audiences")
+        assert resp.status_code == 200
+        # load_audience_profiles 返回 {profile_id: {...}} 字典
+        assert isinstance(resp.json()["audiences"], dict)
+        assert len(resp.json()["audiences"]) > 0
