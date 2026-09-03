@@ -34,6 +34,8 @@ data/output/
 data/results/
 data/kg/graph.json
 data/kg/vectors.meta.json
+data/kg/verification_report.json
+data/library.db
 *.faiss
 *.npy
 *.pkl
