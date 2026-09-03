@@ -33,7 +33,7 @@ jobs:
       - name: 运行测试并检查覆盖率
         run: |
           pytest tests/ -q --cov=src --cov=api --cov-report=term-missing \
-            --cov-fail-under=55 --junitxml=test-results.xml
+            --cov-fail-under=70 --junitxml=test-results.xml
 
       - name: 汇总测试结果
         if: always()

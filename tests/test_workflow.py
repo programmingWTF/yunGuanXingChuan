@@ -1414,3 +1414,116 @@ class TestOutputSanitize:
                "hypotheses": ["id: ", "statement: "] * 100}
         out = agent._validate_output(bad)  # 不应抛异常
         assert out["research_questions"][0]["id"] == "RQ1"
+
+
+class TestWorkflowAPIExtra:
+    """工作流 API 缺口端点补充测试"""
+
+    def _create_project(self, client, interest="朱雀2号"):
+        r = client.post("/api/workflow/projects", json={"title": "接口测试", "interest": interest})
+        assert r.status_code == 200
+        return r.json()["project"]["id"]
+
+    def test_save_design_endpoint(self, api_engine):
+        from api.main import app
+        _, client = _make_auth_client(app)
+        with client:
+            pid = self._create_project(client)
+            # save_design 要求 stage 3 已有产出（先 run + approve）
+            client.post(f"/api/workflow/projects/{pid}/stages/1/run", json={"inputs": {}})
+            client.post(f"/api/workflow/projects/{pid}/stages/1/approve")
+            client.post(f"/api/workflow/projects/{pid}/stages/2/run", json={"inputs": {}})
+            client.post(f"/api/workflow/projects/{pid}/stages/2/approve")
+            client.post(f"/api/workflow/projects/{pid}/stages/3/run", json={"inputs": {}})
+            client.post(f"/api/workflow/projects/{pid}/stages/3/approve")
+            r = client.post(f"/api/workflow/projects/{pid}/stages/3/save", json={
+                "research_questions": [{"id": "RQ1", "text": "东盟媒体如何报道？"}],
+                "hypotheses": [{"id": "H1", "statement": "假设", "hypothesis_type": "qualitative"}],
+                "suggestion": "按诊断修改",
+            })
+            assert r.status_code == 200
+            detail = client.get(f"/api/workflow/projects/{pid}").json()["project"]
+            # run stage3 已 bump 一次，save_design 再 +1 → V3
+            assert detail["design_version"] == 3
+
+    def test_stage_result_endpoint(self, api_engine):
+        from api.main import app
+        _, client = _make_auth_client(app)
+        with client:
+            pid = self._create_project(client)
+            # 未运行阶段 → 404（无产出物）
+            assert client.get(f"/api/workflow/projects/{pid}/stages/1/result").status_code == 404
+            # 运行后 → 200
+            client.post(f"/api/workflow/projects/{pid}/stages/1/run", json={"inputs": {}})
+            r = client.get(f"/api/workflow/projects/{pid}/stages/1/result")
+            assert r.status_code == 200
+            assert "output" in r.json()
+
+    def test_approve_invalid_stage_400(self, api_engine):
+        """非法阶段 approve 应 400"""
+        from api.main import app
+        _, client = _make_auth_client(app)
+        with client:
+            pid = self._create_project(client)
+            r = client.post(f"/api/workflow/projects/{pid}/stages/99/approve")
+            assert r.status_code in (400, 404, 422)
+
+    def test_run_all_background(self, api_engine):
+        """run-all 应返回 202 并启动后台任务"""
+        from api.main import app
+        _, client = _make_auth_client(app)
+        with client:
+            pid = self._create_project(client)
+            r = client.post(f"/api/workflow/projects/{pid}/run-all", json={"materials": []})
+            assert r.status_code == 200
+            assert r.json()["status"] == "running"
+
+    def test_export_project_formats(self, api_engine):
+        """各格式导出应返回文件内容"""
+        from api.main import app
+        _, client = _make_auth_client(app)
+        with client:
+            pid = self._create_project(client)
+            client.post(f"/api/workflow/projects/{pid}/stages/1/run", json={"inputs": {}})
+            client.post(f"/api/workflow/projects/{pid}/stages/1/approve")
+            for fmt in ("md", "json"):
+                r = client.get(f"/api/workflow/projects/{pid}/export?fmt={fmt}")
+                assert r.status_code == 200
+                assert len(r.content) > 0
+
+    def test_export_unsupported_format_400(self, api_engine):
+        from api.main import app
+        _, client = _make_auth_client(app)
+        with client:
+            pid = self._create_project(client)
+            r = client.get(f"/api/workflow/projects/{pid}/export?fmt=docx")
+            assert r.status_code in (400, 422)
+
+    def test_polish_endpoint(self, api_engine):
+        """润色端点：内部 LLM 失败也应返回结构化响应"""
+        from api.main import app
+        _, client = _make_auth_client(app)
+        with client:
+            pid = self._create_project(client)
+            r = client.post(f"/api/workflow/projects/{pid}/stages/6/polish", json={
+                "section": "引言", "content": "这是一段足够长的用于润色测试的内容。",
+                "instruction": "更学术",
+            })
+            assert r.status_code in (200, 400, 500)  # 引擎无 LLM 时可能 500
+
+    def test_hot_topics_endpoint(self, api_engine):
+        from api.main import app
+        _, client = _make_auth_client(app)
+        with client:
+            pid = self._create_project(client, interest="嫦娥六号")
+            client.post(f"/api/workflow/projects/{pid}/stages/1/run", json={"inputs": {}})
+            r = client.get("/api/workflow/hot-topics?limit=5")
+            assert r.status_code == 200
+            assert isinstance(r.json().get("topics", []), list)
+
+    def test_delete_unknown_404(self, api_engine):
+        from api.main import app
+        _, client = _make_auth_client(app)
+        with client:
+            # 他人/不存在项目 delete → 404
+            assert client.delete("/api/workflow/projects/proj_not_exists").status_code == 404

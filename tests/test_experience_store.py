@@ -178,3 +178,172 @@ class TestImprovementTrend:
         trend = store.get_improvement_trend()
         assert trend["total_runs"] == 3
         assert trend["topics_count"] == 2
+
+
+# ══════════════════════════════════════════════════════════════
+# 以下为补充测试：历史查询 / embedding 向量相似 / 弱点统计 / 单例
+# ══════════════════════════════════════════════════════════════
+import json
+
+
+class TestGetTopicHistory:
+    """议题历史查询测试"""
+
+    def test_sorted_and_parsed(self, store):
+        store.log_experience("嫦娥六号", 1, {"factual_accuracy": 80}, [], passed=False,
+                             weak_dims=["factual_accuracy"])
+        store.log_experience("嫦娥六号", 2, {"factual_accuracy": 90}, [], passed=True,
+                             weak_dims=[])
+        history = store.get_topic_history("嫦娥六号")
+        assert len(history) == 2
+        # 时间升序：round 1 在前
+        assert history[0]["round_num"] == 1
+        assert history[1]["passed"] is True
+        # JSON 字段被解析
+        assert history[0]["scores"]["factual_accuracy"] == 80
+
+    def test_other_topic_not_included(self, store):
+        store.log_experience("天问三号", 1, {}, [], passed=False, weak_dims=[])
+        assert store.get_topic_history("嫦娥六号") == []
+
+
+class TestEmbeddingSimilarity:
+    """embedding 向量相似查找测试"""
+
+    def _seed(self, store, topic, vec):
+        store.store_topic_embedding(topic, vec)
+        store.log_experience(topic, 1, {"factual_accuracy": 75}, [], passed=True, weak_dims=[])
+
+    def test_vector_based_find(self, store):
+        """有 embedding 时应按余弦相似度排序"""
+        self._seed(store, "嫦娥六号", [1.0, 0.0, 0.0])
+        self._seed(store, "长征五号", [0.0, 1.0, 0.0])
+        with patch.object(store, '_get_or_compute_embedding', return_value=[0.9, 0.1, 0.0]):
+            similar = store.find_similar_topics("月背采样", top_k=2)
+        assert similar[0]["topic"] == "嫦娥六号"  # 与 [1,0,0] 更近
+        assert similar[0]["similarity"] > 0.9
+        assert similar[1]["topic"] == "长征五号"
+
+    def test_self_topic_excluded(self, store):
+        self._seed(store, "嫦娥六号", [1.0, 0.0])
+        with patch.object(store, '_get_or_compute_embedding', return_value=[1.0, 0.0]):
+            similar = store.find_similar_topics("嫦娥六号")
+        assert all(s["topic"] != "嫦娥六号" for s in similar)
+
+    def test_no_query_embedding_falls_back(self, store):
+        self._seed(store, "嫦娥六号", [1.0, 0.0])
+        with patch.object(store, '_get_or_compute_embedding', return_value=None):
+            similar = store.find_similar_topics("嫦娥六号")
+        assert isinstance(similar, list)
+
+    def test_best_score_attached(self, store):
+        self._seed(store, "天问三号", [1.0, 0.0])
+        store.log_experience("天问三号", 2, {"factual_accuracy": 95}, [], passed=True, weak_dims=[])
+        with patch.object(store, '_get_or_compute_embedding', return_value=[0.8, 0.2]):
+            similar = store.find_similar_topics("嫦娥六号", top_k=1)
+        # best_score = 加权总分 = 95×0.3（事实准确度权重）
+        assert similar[0]["best_score"] == 28.5
+
+
+class TestGetOrComputeEmbedding:
+    """embedding 获取/计算测试"""
+
+    def test_cached_returns_stored(self, store):
+        store.store_topic_embedding("嫦娥六号", [0.5, 0.5])
+        assert store._get_or_compute_embedding("嫦娥六号") == [0.5, 0.5]
+
+    def test_compute_and_cache(self, store):
+        """未缓存时应调用 LLM 计算并入库"""
+        with patch('src.llm_client.get_llm_client') as mock_get:
+            mock_get.return_value.get_embedding.return_value = [0.1, 0.9]
+            emb = store._get_or_compute_embedding("新议题")
+        assert emb == [0.1, 0.9]
+        # 已入库：二次查询命中缓存
+        assert store._get_or_compute_embedding("新议题") == [0.1, 0.9]
+
+    def test_llm_failure_returns_none(self, store):
+        with patch('src.llm_client.get_llm_client',
+                   side_effect=RuntimeError("LLM down")):
+            assert store._get_or_compute_embedding("议题") is None
+
+    def test_embedding_none_returns_none(self, store):
+        mock_client = MagicMock()
+        mock_client.get_embedding.return_value = None
+        with patch('src.llm_client.get_llm_client', return_value=mock_client):
+            assert store._get_or_compute_embedding("议题") is None
+
+
+class TestCommonWeaknesses:
+    """弱点统计测试"""
+
+    def test_aggregates_dims(self, store):
+        store.log_experience("议题A", 1, {"factual_accuracy": 50, "narrative_fluency": 60},
+                             [], passed=False, weak_dims=["factual_accuracy", "narrative_fluency"])
+        store.log_experience("议题B", 1, {"factual_accuracy": 40}, [],
+                             passed=False, weak_dims=["factual_accuracy"])
+        weak = store.get_common_weaknesses()
+        fa = next(w for w in weak if w["dimension"] == "factual_accuracy")
+        assert fa["count"] == 2
+        assert fa["avg_score"] == 45.0  # (50+40)/2
+        # 按 count 降序：factual_accuracy 排最前
+        assert weak[0]["dimension"] == "factual_accuracy"
+
+    def test_limit(self, store):
+        for i in range(5):
+            store.log_experience(f"议题{i}", 1, {"factual_accuracy": 50}, [],
+                                 passed=False, weak_dims=["factual_accuracy"])
+        store.log_experience("议题X", 1, {"narrative_fluency": 40}, [],
+                             passed=False, weak_dims=["narrative_fluency"])
+        weak = store.get_common_weaknesses(limit=1)
+        assert len(weak) == 1
+        assert weak[0]["dimension"] == "factual_accuracy"
+
+    def test_empty_returns_empty(self, store):
+        assert store.get_common_weaknesses() == []
+
+
+class TestRowToDict:
+    """数据库行转换测试"""
+
+    @staticmethod
+    def _make_row(topic, scores, weak, feedback, passed):
+        """经真实 sqlite 连接构造 Row（sqlite3.Row 不可直接实例化）"""
+        import sqlite3
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT ? AS topic, ? AS scores_json, ? AS weak_dims_json,"
+            " ? AS feedback_json, ? AS passed",
+            (topic, scores, weak, feedback, passed),
+        ).fetchone()
+        conn.close()
+        return row
+
+    def test_json_fields_parsed(self):
+        from src.knowledge.experience_store import ExperienceStore
+        row = self._make_row("议题", '{"factual_accuracy": 80}', '["x"]', "[]", 1)
+        d = ExperienceStore._row_to_dict(row)
+        assert d["scores"] == {"factual_accuracy": 80}
+        assert d["weak_dims"] == ["x"]
+        assert d["passed"] is True
+
+    def test_corrupt_json_defaults(self):
+        from src.knowledge.experience_store import ExperienceStore
+        row = self._make_row("议题", "{bad", '["x"]', "[]", 0)
+        d = ExperienceStore._row_to_dict(row)
+        assert d["scores"] == {}
+
+
+class TestSingleton:
+    """全局单例测试"""
+
+    def test_get_experience_store_singleton(self):
+        from src.knowledge import experience_store as es_mod
+        prev = es_mod._store
+        try:
+            es_mod._store = None
+            s1 = es_mod.get_experience_store()
+            s2 = es_mod.get_experience_store()
+            assert s1 is s2
+        finally:
+            es_mod._store = prev

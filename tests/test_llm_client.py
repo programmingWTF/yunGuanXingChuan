@@ -236,3 +236,224 @@ class TestEmbeddingKeyOwnership:
         monkeypatch.setattr("src.llm_client.QWEN_BASE_URL", "https://x/v1")
         c = LLMClient(api_key="", base_url="https://x/v1")
         assert c._embedding_client is None
+
+
+# ══════════════════════════════════════════════════════════════
+# 以下为补充测试：chat/联网搜索/多轮/embedding 客户端链路（Mock OpenAI SDK）
+# ══════════════════════════════════════════════════════════════
+import pytest
+from unittest.mock import patch, MagicMock
+
+
+@pytest.fixture
+def client():
+    """创建不触发真实网络的 LLMClient"""
+    with patch('src.llm_client.OpenAI') as MockOpenAI:
+        MockOpenAI.return_value = MagicMock()
+        from src.llm_client import LLMClient
+        c = LLMClient(api_key="test-key", base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+                      model="qwen-test", max_retries=2, retry_delay=0.01,
+                      embedding_api_key="", embedding_base_url="")
+        c.client = MockOpenAI.return_value
+        c._embedding_client = MockOpenAI.return_value  # embedding mock
+        yield c
+
+
+def _resp(content="ok", finish_reason="stop"):
+    r = MagicMock()
+    r.choices[0].finish_reason = finish_reason
+    r.choices[0].message.content = content
+    return r
+
+
+class TestChat:
+    """chat() 基础调用测试"""
+
+    def test_success_returns_content(self, client):
+        client.client.chat.completions.create.return_value = _resp("你好")
+        assert client.chat("sys", "user") == "你好"
+
+    def test_json_mode_appends_json_hint(self, client):
+        """prompt 无 json 字样时应自动追加 JSON 提示（DeepSeek 兼容）"""
+        client.client.chat.completions.create.return_value = _resp('{"a": 1}')
+        client.chat("回答", "什么是月球", json_mode=True)
+        kwargs = client.client.chat.completions.create.call_args.kwargs
+        assert "JSON" in kwargs["messages"][1]["content"]
+        assert kwargs["response_format"] == {"type": "json_object"}
+
+    def test_json_mode_with_json_word_no_append(self, client):
+        client.client.chat.completions.create.return_value = _resp('{}')
+        client.chat("请输出 JSON", "分析", json_mode=True)
+        msg = client.client.chat.completions.create.call_args.kwargs["messages"][1]["content"]
+        assert msg == "分析"  # 未追加
+
+    def test_max_tokens_passed(self, client):
+        client.client.chat.completions.create.return_value = _resp("x")
+        client.chat("s", "u", max_tokens=500)
+        kwargs = client.client.chat.completions.create.call_args.kwargs
+        assert kwargs["max_tokens"] == 500
+
+    def test_strict_truncation_raises(self, client):
+        """finish_reason=length + strict_truncation 应立即抛错"""
+        client.client.chat.completions.create.return_value = _resp("半截", finish_reason="length")
+        with pytest.raises(ValueError, match="截断"):
+            client.chat("s", "u", strict_truncation=True)
+
+    def test_permanent_error_no_retry(self, client):
+        """鉴权类永久错误应直接抛出不重试"""
+        client.client.chat.completions.create.side_effect = RuntimeError("InvalidApiKey: 401")
+        with pytest.raises(RuntimeError):
+            client.chat("s", "u")
+        assert client.client.chat.completions.create.call_count == 1
+
+    def test_transient_error_retries(self, client):
+        """临时错误应重试后成功"""
+        client.client.chat.completions.create.side_effect = [ConnectionError("net"), _resp("成功")]
+        with patch('src.llm_client.time.sleep'):
+            assert client.chat("s", "u") == "成功"
+        assert client.client.chat.completions.create.call_count == 2
+
+    def test_transient_error_exhausted_raises(self, client):
+        """临时错误重试耗尽应抛出"""
+        client.client.chat.completions.create.side_effect = ConnectionError("net")
+        with patch('src.llm_client.time.sleep'):
+            with pytest.raises(ConnectionError):
+                client.chat("s", "u")
+        assert client.client.chat.completions.create.call_count == 2  # max_retries=2
+
+    def test_empty_content_retried(self, client):
+        """空内容视为失败并重试"""
+        client.client.chat.completions.create.side_effect = [_resp(""), _resp("有内容")]
+        with patch('src.llm_client.time.sleep'):
+            assert client.chat("s", "u") == "有内容"
+
+
+class TestChatWithSearch:
+    """联网搜索调用测试"""
+
+    def test_dashscope_responses_api(self, client):
+        """百炼平台应走 Responses API + web_search"""
+        resp = MagicMock()
+        resp.output_text = "搜索结果"
+        client.client.responses.create.return_value = resp
+        result = client._chat_with_search("sys", "user", None, json_mode=True)
+        assert result == "搜索结果"
+        kwargs = client.client.responses.create.call_args.kwargs
+        assert kwargs["tools"] == [{"type": "web_search"}]
+        assert "JSON" in kwargs["input"]  # json_mode 提示追加
+
+    def test_dashscope_fallback_to_completions(self, client):
+        """Responses API 失败应回退普通 Chat Completions"""
+        client.client.responses.create.side_effect = RuntimeError("responses down")
+        client.client.chat.completions.create.return_value = _resp("回退结果")
+        with patch('src.llm_client.time.sleep'):
+            result = client._chat_with_search("sys", "user")
+        assert result == "回退结果"
+
+    def test_non_dashscope_direct_completions(self, client):
+        """非百炼平台直接走 Chat Completions"""
+        with patch('src.llm_client.OpenAI'):
+            from src.llm_client import LLMClient
+            c = LLMClient(api_key="k", base_url="https://api.deepseek.com/v1", max_retries=1)
+            c.client = MagicMock()
+            c.client.chat.completions.create.return_value = _resp("深度求索")
+            assert c._chat_with_search("s", "u") == "深度求索"
+
+
+class TestChatJson:
+    """chat_json 解析测试"""
+
+    def test_parses_json_with_markdown(self, client):
+        with patch.object(client, 'chat', return_value='```json\n{"topic": "嫦娥六号"}\n```'):
+            result = client.chat_json("s", "u")
+        assert result == {"topic": "嫦娥六号"}
+
+    def test_unparseable_falls_back_repair(self, client):
+        client._repair_json_quotes = MagicMock(return_value='{"ok": 1}')
+        with patch.object(client, 'chat', return_value='{"ok": 1'):  # 截断/损坏
+            result = client.chat_json("s", "u")
+        assert result == {"ok": 1}
+
+
+class TestChatMultiTurn:
+    """多轮对话测试"""
+
+    def test_success(self, client):
+        client.client.chat.completions.create.return_value = _resp("多轮回复")
+        msgs = [{"role": "system", "content": "s"}, {"role": "user", "content": "u"}]
+        assert client.chat_multi_turn(msgs) == "多轮回复"
+        kwargs = client.client.chat.completions.create.call_args.kwargs
+        assert kwargs["messages"] == msgs
+        assert kwargs["response_format"] == {"type": "json_object"}  # json_mode=True 默认
+
+    def test_empty_content_retries(self, client):
+        client.client.chat.completions.create.side_effect = [_resp(""), _resp("ok")]
+        with patch('src.llm_client.time.sleep'):
+            assert client.chat_multi_turn([{"role": "user", "content": "u"}]) == "ok"
+
+
+class TestEmbeddingCalls:
+    """embedding 调用测试"""
+
+    def test_no_embedding_client_returns_none(self, client):
+        client._embedding_client = None
+        assert client.get_embedding("文本") is None
+        assert client.get_embeddings_batch(["a"]) == []
+
+    def test_embedding_success(self, client):
+        resp = MagicMock()
+        resp.data[0].embedding = [0.1, 0.2]
+        client._embedding_client.embeddings.create.return_value = resp
+        assert client.get_embedding("文本") == [0.1, 0.2]
+
+    def test_embeddings_batch_success(self, client):
+        resp = MagicMock()
+        resp.data = [MagicMock(embedding=[0.1]), MagicMock(embedding=[0.2])]
+        client._embedding_client.embeddings.create.return_value = resp
+        assert client.get_embeddings_batch(["a", "b"]) == [[0.1], [0.2]]
+
+    def test_embedding_failure_raises(self, client):
+        client._embedding_client.embeddings.create.side_effect = RuntimeError("embed down")
+        with patch('src.llm_client.time.sleep'):
+            with pytest.raises(RuntimeError):
+                client.get_embedding("文本")
+
+
+class TestIsPermanentError:
+    """永久错误判定测试"""
+
+    def test_permanent_codes(self):
+        from src.llm_client import LLMClient
+        assert LLMClient._is_permanent_llm_error(RuntimeError("AccessDenied.Unpurchased model"))
+        assert LLMClient._is_permanent_llm_error(RuntimeError("InvalidApiKey given"))
+        assert LLMClient._is_permanent_llm_error(RuntimeError("401 unauthorized"))
+        assert LLMClient._is_permanent_llm_error(RuntimeError("模型未开通，请先开通"))
+
+    def test_transient_codes(self):
+        from src.llm_client import LLMClient
+        assert not LLMClient._is_permanent_llm_error(RuntimeError("timeout after 30s"))
+        assert not LLMClient._is_permanent_llm_error(RuntimeError("rate limit"))
+
+
+class TestChatJsonRepairChain:
+    """chat_json 多层修复链测试"""
+
+    def test_prefix_text_json_extracted(self, client):
+        """前后缀文本中的 JSON 应被提取"""
+        with patch.object(client, 'chat', return_value='以下是结果：{"topic": "嫦娥六号"} 完'):
+            assert client.chat_json("s", "u") == {"topic": "嫦娥六号"}
+
+    def test_truncated_repaired_by_fix(self, client):
+        """截断 JSON 应经 _fix_truncated_json 修复"""
+        with patch.object(client, 'chat', return_value='{"topic": "嫦娥六号", "facts": ['):
+            client._fix_truncated_json = MagicMock(return_value='{"topic": "嫦娥六号", "facts": []}')
+            assert client.chat_json("s", "u") == {"topic": "嫦娥六号", "facts": []}
+
+    def test_embedding_failure_raises_after_retries(self, client):
+        """embedding 重试耗尽应抛出"""
+        client._embedding_client = MagicMock()
+        client._embedding_client.embeddings.create.side_effect = RuntimeError("down")
+        with patch('src.llm_client.time.sleep'):
+            with pytest.raises(RuntimeError):
+                client.get_embeddings_batch(["a"])
+        assert client._embedding_client.embeddings.create.call_count == 2

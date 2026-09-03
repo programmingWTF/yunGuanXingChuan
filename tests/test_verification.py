@@ -525,3 +525,226 @@ class TestRagPartialCountsAsSupport:
         v = CrossValidator.__new__(CrossValidator)
         status, conf = v._four_way_vote("unverified", 0.1, "unverified", 0.0, "unverified", 0.0)
         assert status == VerificationStatus.UNVERIFIED
+
+
+# ══════════════════════════════════════════════════════════════
+# 以下为补充测试：cross_validate_claim 主流程 / 旧版双路判定 / 批量校验
+# ══════════════════════════════════════════════════════════════
+
+
+@pytest.fixture
+def cv_validator():
+    """模块级交叉验证器 fixture（mock 全部依赖，可跨测试类复用）"""
+    # 先按需 mock 重型依赖并清理半初始化模块
+    for mod_name, mock_mod in [
+        ('faiss', MagicMock()), ('openai', MagicMock()),
+        ('openai.OpenAI', MagicMock()), ('httpx', MagicMock()),
+    ]:
+        if mod_name not in sys.modules:
+            sys.modules[mod_name] = mock_mod
+    for mod_name in list(sys.modules):
+        if any(mod_name.startswith(p) for p in [
+            'src.knowledge.vector_store', 'src.verification.rag_checker',
+            'src.verification.external_validator', 'src.verification.cross_validator',
+            'src.llm_client', 'src.search',
+        ]):
+            del sys.modules[mod_name]
+    import src.verification.cross_validator as cv_module
+
+    with patch.object(cv_module, 'RAGChecker') as MockRAG, \
+         patch.object(cv_module, 'KGChecker') as MockKG, \
+         patch.object(cv_module, 'get_external_validator') as MockGetExt:
+        mock_rag = MockRAG.return_value
+        mock_rag.verify_claim.return_value = {
+            "status": "supported", "confidence": 0.85,
+            "evidence": "嫦娥六号实现人类首次月背采样返回",
+        }
+        mock_kg = MockKG.return_value
+        mock_ext = MockGetExt.return_value
+        mock_ext.validate.return_value = {
+            "status": "partial", "confidence": 0.5, "evidence": "外部校验结果",
+        }
+        validator = cv_module.CrossValidator()
+        validator.rag_checker = mock_rag
+        validator.kg_checker = mock_kg
+        validator.external_validator = mock_ext
+        yield validator
+    for mod_name in ('faiss', 'httpx', 'openai', 'openai.OpenAI'):
+        if mod_name in sys.modules:
+            del sys.modules[mod_name]
+
+
+class TestCrossValidateClaimFlow:
+    """cross_validate_claim 主流程集成测试"""
+
+    def test_rag_support_only(self, cv_validator):
+        """仅 RAG 支持（external unverified）→ 参与路 1 → PARTIAL"""
+        from src.schemas import VerificationStatus
+        cv_validator.external_validator.validate.return_value = {
+            "status": "unverified", "confidence": 0.0, "evidence": ""}
+        result = cv_validator.cross_validate_claim("嫦娥六号月背采样", entities=None)
+        assert result.status == VerificationStatus.PARTIALLY_VERIFIED
+        assert result.rag_evidence is not None
+        assert "RAG:" in result.notes
+
+    def test_dual_support_verified_flow(self, cv_validator):
+        """RAG + External 均支持 → VERIFIED"""
+        from src.schemas import VerificationStatus
+        result = cv_validator.cross_validate_claim("嫦娥六号实现月背采样返回")
+        assert result.status == VerificationStatus.VERIFIED
+        # avg(0.85, 0.5)+0.1 = 0.775
+        assert 0.7 < result.confidence <= 0.95
+        assert result.cross_source_agreement is True
+
+    def test_kg_entity_found_flow(self, cv_validator):
+        """KG 找到实体（entity_found）→ 计参与不计支持"""
+        from src.schemas import VerificationStatus
+        mock_kg = MagicMock()
+        mock_kg.get_related_context.return_value = [{"entity": "嫦娥六号", "relation": "x"}]
+        cv_validator.kg_checker = mock_kg
+        result = cv_validator.cross_validate_claim("嫦娥六号任务", entities=["嫦娥六号"])
+        assert result.kg_match == "找到相关实体: 嫦娥六号"
+        assert "KG: entity_found" in result.notes
+
+    def test_ext_exception_degrades(self, cv_validator):
+        """外部校验异常应降级为 unverified 不影响主流程"""
+        cv_validator.external_validator.validate.side_effect = ConnectionError("ext down")
+        result = cv_validator.cross_validate_claim("断言", entities=None)
+        assert "External: unverified" in result.notes
+
+    def test_kg_exception_degrades(self, cv_validator):
+        mock_kg = MagicMock()
+        mock_kg.get_related_context.side_effect = RuntimeError("kg down")
+        cv_validator.kg_checker = mock_kg
+        result = cv_validator.cross_validate_claim("断言", entities=["实体X"])
+        assert result is not None
+        assert "KG: unverified" in result.notes
+
+
+class TestDetermineStatusLegacy:
+    """旧版双路判定（向后兼容）测试"""
+
+    @staticmethod
+    def _cv():
+        from src.verification.cross_validator import CrossValidator
+        return CrossValidator.__new__(CrossValidator)
+
+    def test_both_support_verified(self):
+        from src.schemas import VerificationStatus
+        v = self._cv()
+        status, conf = v._determine_status("supported", 0.9, "verified", 0.8)
+        assert status == VerificationStatus.VERIFIED
+        assert abs(conf - 0.95) < 1e-9
+
+    def test_rag_only_partial(self):
+        from src.schemas import VerificationStatus
+        v = self._cv()
+        status, conf = v._determine_status("supported", 0.9, "unverified", 0.0)
+        assert status == VerificationStatus.PARTIALLY_VERIFIED
+        assert abs(conf - 0.72) < 1e-9
+
+    def test_kg_only_partial(self):
+        from src.schemas import VerificationStatus
+        v = self._cv()
+        status, _ = v._determine_status("partial", 0.5, "verified", 0.8)
+        assert status == VerificationStatus.PARTIALLY_VERIFIED
+
+    def test_rag_partial_only(self):
+        from src.schemas import VerificationStatus
+        v = self._cv()
+        status, conf = v._determine_status("partial", 0.7, "unverified", 0.0)
+        assert status == VerificationStatus.PARTIALLY_VERIFIED
+        assert abs(conf - 0.49) < 1e-9
+
+    def test_conflicting(self):
+        from src.schemas import VerificationStatus
+        v = self._cv()
+        status, conf = v._determine_status("conflicting", 0.3, "unverified", 0.0)
+        assert status == VerificationStatus.CONFLICTING
+        assert conf == 0.3
+
+    def test_none_verified(self):
+        from src.schemas import VerificationStatus
+        v = self._cv()
+        status, conf = v._determine_status("unverified", 0.4, "unverified", 0.2)
+        assert status == VerificationStatus.UNVERIFIED
+        assert abs(conf - 0.2) < 1e-9
+
+
+class TestValidateScienceFactsAndHypotheses:
+    """科学事实与假设批量校验测试"""
+
+    def test_facts_and_relations(self, cv_validator):
+        from src.schemas import VerificationResult
+        cv_validator.cross_validate_claim = MagicMock(return_value=VerificationResult(
+            claim="x", status="verified", confidence=0.8))
+        facts = {
+            "key_facts": ["事实1", "事实2"],
+            "entities": [{"name": "嫦娥六号"}],
+            "relations": [{"subject": "嫦娥六号", "predicate": "launched_by", "object": "长征五号"}],
+        }
+        results = cv_validator.validate_science_facts(facts)
+        assert len(results) == 3
+        assert cv_validator.cross_validate_claim.call_count == 3
+
+    def test_fact_exception_skipped(self, cv_validator):
+        from src.schemas import VerificationStatus
+        cv_validator.cross_validate_claim = MagicMock(side_effect=RuntimeError("LLM down"))
+        results = cv_validator.validate_science_facts({"key_facts": ["事实"], "entities": []})
+        assert len(results) == 1
+        assert results[0].status == VerificationStatus.UNVERIFIED
+        assert "校验异常" in results[0].notes
+
+    def test_hypotheses_with_evidence_chain(self, cv_validator):
+        from src.schemas import VerificationResult
+        cv_validator.cross_validate_claim = MagicMock(return_value=VerificationResult(
+            claim="x", status="partial", confidence=0.5))
+        hyps = [{
+            "statement": "假设一",
+            "kg_entities_involved": ["嫦娥六号"],
+            "evidence_chain": [{"quote": "引文1"}, {"quote": ""}],
+        }]
+        results = cv_validator.validate_hypotheses(hyps)
+        assert len(results) == 2  # statement + 非空引文
+
+    def test_hypothesis_exception_records_unverified(self, cv_validator):
+        from src.schemas import VerificationStatus
+        cv_validator.cross_validate_claim = MagicMock(side_effect=RuntimeError("down"))
+        results = cv_validator.validate_hypotheses([{"statement": "假设", "evidence_chain": []}])
+        assert len(results) == 1
+        assert results[0].status == VerificationStatus.UNVERIFIED
+
+
+class TestGetValidationSummary:
+    """校验摘要测试"""
+
+    @staticmethod
+    def _make(status):
+        from src.schemas import VerificationResult
+        return VerificationResult(claim="c", status=status, confidence=0.5)
+
+    def test_empty(self):
+        from src.verification.cross_validator import CrossValidator
+        assert CrossValidator.__new__(CrossValidator).get_validation_summary([]) == {
+            "total": 0, "verified": 0, "partial": 0, "conflicting": 0, "unverified": 0}
+
+    def test_counts(self):
+        from src.verification.cross_validator import CrossValidator
+        from src.schemas import VerificationStatus
+        v = CrossValidator.__new__(CrossValidator)
+        results = [
+            self._make(VerificationStatus.VERIFIED), self._make(VerificationStatus.VERIFIED),
+            self._make(VerificationStatus.PARTIALLY_VERIFIED),
+            self._make(VerificationStatus.CONFLICTING), self._make(VerificationStatus.UNVERIFIED),
+        ]
+        s = v.get_validation_summary(results)
+        assert s["total"] == 5 and s["verified"] == 2 and s["conflicting"] == 1
+        assert abs(s["verification_rate"] - 3 / 5) < 1e-9
+        assert s["needs_attention"] is True
+
+    def test_no_conflict_needs_attention_false(self):
+        from src.verification.cross_validator import CrossValidator
+        from src.schemas import VerificationStatus
+        v = CrossValidator.__new__(CrossValidator)
+        s = v.get_validation_summary([self._make(VerificationStatus.VERIFIED)])
+        assert s["needs_attention"] is False

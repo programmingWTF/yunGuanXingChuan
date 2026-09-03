@@ -271,3 +271,37 @@ class TestExportFilename:
         resp = asyncio.run(outputs_module.export_output("task_en", "markdown"))
         assert resp.status_code == 200
         assert "filename*=UTF-8''" in resp.headers["Content-Disposition"]
+
+
+class TestExportFormatsEndpoint:
+    """导出格式查询端点 HTTP 测试"""
+
+    def test_formats_for_kg_report(self, outputs_module, tmp_path, monkeypatch):
+        """kg_report 结果应含 kg_png 格式"""
+        from fastapi.testclient import TestClient
+        from api.main import app
+        monkeypatch.setattr(outputs_module, "RESULTS_DIR", tmp_path)
+        outputs_module.outputs_results["task_kg"] = {"generator_type": "kg_report", "topic": "嫦娥六号"}
+        with TestClient(app) as client:
+            r = client.get("/api/outputs/export-formats/task_kg")
+        assert r.status_code == 200
+        assert "kg_png" in r.json()["formats"]
+        assert r.json()["generator_type"] == "kg_report"
+
+    def test_formats_404(self, outputs_module, tmp_path, monkeypatch):
+        from fastapi.testclient import TestClient
+        from api.main import app
+        monkeypatch.setattr(outputs_module, "RESULTS_DIR", tmp_path)
+        with TestClient(app) as client:
+            r = client.get("/api/outputs/export-formats/task_missing")
+        assert r.status_code == 404
+
+    def test_generate_endpoint_rejects_unknown_type(self, outputs_module, tmp_path, monkeypatch):
+        """POST /generate 非法类型应 400"""
+        from fastapi.testclient import TestClient
+        from api.main import app
+        monkeypatch.setattr(outputs_module, "RESULTS_DIR", tmp_path)
+        with TestClient(app) as client:
+            r = client.post("/api/outputs/generate", json={
+                "generator_type": "bad_type", "topic": "嫦娥六号"})
+        assert r.status_code == 400
