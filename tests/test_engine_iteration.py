@@ -793,3 +793,72 @@ class TestStageContextAndKeywords:
         inputs2 = {"topic": "t", "inspiration_result": "自定义"}
         engine._inject_previous_outputs(project, 3, inputs2)
         assert inputs2["inspiration_result"] == "自定义"
+
+
+class TestExtractClaims:
+    """阶段断言抽取测试"""
+
+    def test_non_dict_output(self, engine):
+        assert engine._extract_claims(WorkflowStage.DATA_ANALYSIS, "not-dict") == []
+
+    def test_data_analysis_findings(self, engine):
+        out = {"findings": [
+            {"finding": "媒体以合作框架为主呈现嫦娥六号任务（较客观）"},
+            {"finding": "短"},  # 长度不足跳过
+            {"finding": "存在过度推断需要留意"},
+        ]}
+        claims = engine._extract_claims(WorkflowStage.DATA_ANALYSIS, out)
+        assert len(claims) == 2
+        assert all(len(c) > 8 for c in claims)
+
+    def test_subjective_phrases_filtered(self, engine):
+        """主观评价性措辞不应作为事实断言"""
+        out = {"findings": [{"finding": "本研究具有重要意义且值得关注，需进一步验证模型适配"}]}
+        claims = engine._extract_claims(WorkflowStage.DATA_ANALYSIS, out)
+        assert claims == []
+
+    def test_design_checks_hypotheses_only(self, engine):
+        out = {"research_questions": [{"text": "这是一个研究问题无需校验" * 2}],
+               "hypotheses": [{"statement": "假设成立需验证的断言内容较长"}]}
+        claims = engine._extract_claims(WorkflowStage.DESIGN, out)
+        assert len(claims) == 1  # 只抽 hypothesis
+
+    def test_writing_first_sentence(self, engine):
+        out = {"sections": [{"content": "本节提出三大发现并展开论证过程。"}]}
+        claims = engine._extract_claims(WorkflowStage.WRITING, out)
+        assert len(claims) == 1
+
+    def test_literature_gap_and_themes(self, engine):
+        out = {"research_gap": {"description": "现有研究缺少东盟视角需要补充的空白领域"},
+               "sections": [{"theme": "框架理论在传播研究的应用综述"}]}
+        claims = engine._extract_claims(WorkflowStage.LITERATURE, out)
+        assert len(claims) == 2
+
+    def test_inspiration_and_review_skip(self, engine):
+        """选题与评审阶段不抽断言"""
+        assert engine._extract_claims(WorkflowStage.INSPIRATION, {"directions": [{"title": "方向很长值得校验吗"}]}) == []
+        assert engine._extract_claims(WorkflowStage.REVIEW, {"reviewers": [{"suggestions": "修改建议很长但不是事实"}]}) == []
+
+
+class TestExtractEntities:
+    """实体提取测试"""
+
+    def test_topic_and_kg_match(self, engine):
+        """产出物文本应匹配 KG 真实实体（嫦娥六号在图库中）"""
+        out = {"topic": "嫦娥六号", "findings": [{"finding": "嫦娥六号实现了月背采样"}]}
+        entities = engine._extract_entities(out, "嫦娥六号")
+        assert "嫦娥六号" in entities
+        assert len(entities) <= 6
+
+    def test_directions_keywords(self, engine):
+        out = {"directions": [{"keywords": ["国际月球科研站"]}]}
+        entities = engine._extract_entities(out, "议题")
+        assert len(entities) >= 1
+
+    def test_short_topic_ignored(self, engine):
+        entities = engine._extract_entities({}, "短")  # 长度 <2
+        assert entities == []
+
+    def test_non_dict_output(self, engine):
+        entities = engine._extract_entities("str", "议题")
+        assert "议题" in entities
