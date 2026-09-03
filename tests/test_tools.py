@@ -244,3 +244,149 @@ class TestFallbackResult:
         fallback = agent._get_fallback_result()
         assert "topic" in fallback
         assert "strategies" in fallback
+
+
+# ══════════════════════════════════════════════════════════════
+# 以下为补充测试：单个工具执行器（KG / RAG / Wikipedia / 外部校验）
+# ══════════════════════════════════════════════════════════════
+
+
+class TestExecQueryKnowledgeGraph:
+    """KG 查询工具测试"""
+
+    def test_entity_found(self):
+        from src.agents.tools import _exec_query_knowledge_graph
+        mock_kg = MagicMock()
+        mock_kg.find_related_entities.return_value = [
+            {"entity": "长征五号", "relation": "launched_by", "direction": "outgoing", "depth": 1}]
+        with patch('src.knowledge.kg_builder.get_knowledge_graph', return_value=mock_kg):
+            result = _exec_query_knowledge_graph("嫦娥六号")
+        assert result["found"] is True
+        assert result["count"] == 1
+        mock_kg.find_related_entities.assert_called_once_with("嫦娥六号", depth=2)
+
+    def test_entity_not_found(self):
+        from src.agents.tools import _exec_query_knowledge_graph
+        mock_kg = MagicMock()
+        mock_kg.find_related_entities.return_value = []
+        with patch('src.knowledge.kg_builder.get_knowledge_graph', return_value=mock_kg):
+            result = _exec_query_knowledge_graph("未知实体")
+        assert result["found"] is False
+        assert "未找到" in result["message"]
+
+    def test_depth_capped_at_3(self):
+        from src.agents.tools import _exec_query_knowledge_graph
+        mock_kg = MagicMock()
+        mock_kg.find_related_entities.return_value = []
+        with patch('src.knowledge.kg_builder.get_knowledge_graph', return_value=mock_kg):
+            _exec_query_knowledge_graph("x", depth=99)
+        # depth 被 min(depth, 3) 限制
+        assert mock_kg.find_related_entities.call_args.kwargs["depth"] == 3
+
+
+class TestExecSearchRag:
+    """RAG 检索工具测试"""
+
+    def test_empty_index(self):
+        from src.agents.tools import _exec_search_rag_knowledge
+        vs = MagicMock()
+        vs.index.ntotal = 0
+        with patch('src.knowledge.vector_store.get_vector_store', return_value=vs):
+            result = _exec_search_rag_knowledge("嫦娥六号")
+        assert result["results"] == []
+        assert "向量库为空" in result["message"]
+
+    def test_returns_results(self):
+        from src.agents.tools import _exec_search_rag_knowledge
+        vs = MagicMock()
+        vs.index.ntotal = 10
+        vs.search.return_value = [
+            {"text": "月球采样返回" * 50, "score": 0.92, "metadata": {}},
+            {"text": "短文", "score": 0.5, "metadata": {}},
+        ]
+        with patch('src.knowledge.vector_store.get_vector_store', return_value=vs):
+            result = _exec_search_rag_knowledge("月球")
+        assert result["count"] == 2
+        assert len(result["results"][0]["text"]) <= 300  # 截断
+        assert result["results"][0]["score"] == 0.92
+
+
+class TestExecSearchWikipedia:
+    """Wikipedia 搜索工具测试（mock httpx）"""
+
+    def test_success_flow(self):
+        from src.agents.tools import _exec_search_wikipedia
+        fake_client = MagicMock()
+        # 支持 with 上下文协议：__enter__ 返回自身
+        fake_client.__enter__.return_value = fake_client
+        fake_client.__exit__.return_value = False
+        search_resp = MagicMock()
+        search_resp.json.return_value = {"query": {"search": [{"title": "嫦娥六号"}, {"title": "嫦娥五号"}]}}
+        extract_resp = MagicMock()
+        extract_resp.json.return_value = {"query": {"pages": {"1": {"extract": "嫦娥六号是中国探月任务"}}}}
+        fake_client.get.side_effect = [search_resp, extract_resp]
+        with patch('httpx.Client', return_value=fake_client) as MockClient:
+            result = _exec_search_wikipedia("嫦娥六号")
+        assert result["title"] == "嫦娥六号"
+        assert result["extract"] == "嫦娥六号是中国探月任务"
+        assert result["other_titles"] == ["嫦娥五号"]
+        MockClient.assert_called_once_with(timeout=5.0, follow_redirects=True)
+
+    def test_no_titles(self):
+        from src.agents.tools import _exec_search_wikipedia
+        fake_client = MagicMock()
+        fake_client.__enter__.return_value = fake_client
+        fake_client.__exit__.return_value = False
+        search_resp = MagicMock()
+        search_resp.json.return_value = {"query": {"search": []}}
+        fake_client.get.return_value = search_resp
+        with patch('httpx.Client', return_value=fake_client):
+            result = _exec_search_wikipedia("不存在的话题")
+        assert result["results"] == []
+
+    def test_exception_degraded(self):
+        from src.agents.tools import _exec_search_wikipedia
+        with patch('httpx.Client', side_effect=ConnectionError("no net")):
+            result = _exec_search_wikipedia("嫦娥六号")
+        assert "error" in result
+
+
+class TestExecVerifyExternal:
+    """外部校验工具测试"""
+
+    def test_validates_claim(self):
+        from src.agents.tools import _exec_verify_claim_external
+        validator = MagicMock()
+        validator.validate.return_value = {"status": "verified", "confidence": 0.9}
+        with patch('src.verification.external_validator.get_external_validator', return_value=validator):
+            result = _exec_verify_claim_external("嫦娥六号2024年发射", ["嫦娥六号"])
+        assert result["status"] == "verified"
+        validator.validate.assert_called_once_with("嫦娥六号2024年发射", entities=["嫦娥六号"])
+
+
+class TestExecuteToolErrors:
+    """execute_tool 错误路径测试"""
+
+    def test_unknown_tool_returns_error_json(self):
+        from src.agents.tools import execute_tool
+        import json
+        out = execute_tool("not_a_tool", {})
+        assert json.loads(out)["error"] == "未知工具: not_a_tool"
+
+    def test_executor_exception_returns_error_json(self):
+        from src.agents.tools import execute_tool, TOOL_EXECUTORS
+        import json
+        with patch.dict(TOOL_EXECUTORS, {"boom": lambda **k: (_ for _ in ()).throw(RuntimeError("炸了"))}):
+            out = execute_tool("boom", {})
+        parsed = json.loads(out)
+        assert "error" in parsed
+        assert "工具执行失败" in parsed["error"]
+        assert parsed["tool"] == "boom"
+
+    def test_executor_json_serializable(self):
+        """带非 JSON 类型返回值也应序列化成功（default=str）"""
+        from src.agents.tools import execute_tool, TOOL_EXECUTORS
+        import json
+        with patch.dict(TOOL_EXECUTORS, {"weird": lambda **k: {"dt": object()}}):
+            out = execute_tool("weird", {})
+        assert '"dt"' in out
