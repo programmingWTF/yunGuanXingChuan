@@ -284,6 +284,8 @@ function Footer() {
             <h4 className="font-semibold mb-4">技术支持</h4>
             <ul className="space-y-2 text-sm text-slate-400">
               <li>通义大模型</li>
+              <li>阿里云 TokenPlan</li>
+              <li>阿里云域名</li>
               <li>RAG + 知识图谱双校验</li>
               <li>FAISS 向量库</li>
               <li>多智能体协作</li>
