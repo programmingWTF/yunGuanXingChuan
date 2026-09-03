@@ -15,6 +15,15 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import httpx  # noqa: F401
 import openai  # noqa: F401
 
+# 同理锁定 faiss：vector_store 等模块依赖真实 FAISS 行为
+# （IndexFlatIP/normalize_L2），若任一测试文件的条件 mock 先行注册
+# `sys.modules['faiss'] = MagicMock()`，后续导入会拿到假模块。
+# CI 与本地均安装 faiss-cpu，导入失败时静默回退由各测试自行 mock。
+try:
+    import faiss  # noqa: F401
+except ImportError:  # pragma: no cover - 环境无 faiss 时由测试文件自行 mock
+    pass
+
 import pytest
 
 
