@@ -376,3 +376,35 @@ class TestExportHelpers:
         data = {"topic": "T", "raw": '{"nested": true}'}
         out = export_markdown(data, {"topic": "T", "title": "报告"})
         assert "nested" in out.decode("utf-8") or "报告" in out.decode("utf-8")
+
+
+class TestRichRenderBranches:
+    """复杂数据渲染分支测试（HTML/Word/PDF 全块类型）"""
+
+    RICH = {
+        "title": "综合报告",
+        "score": 88.5,
+        "passed": True,
+        "nothing": None,
+        "tags": ["航天", "国际传播"],
+        "obj_list": [{"name": "A", "count": 3}, {"name": "B", "count": 5}],
+        "nested": {"inner": {"deep": "值"}, "nums": [1, 2, 3]},
+        "long_text": "月" * 800,
+    }
+
+    def test_html_rich(self):
+        out = export_html(self.RICH, {"topic": "T", "title": "报告"})
+        assert len(out) > 2000
+
+    def test_word_rich(self):
+        out = export_word(self.RICH, {"topic": "T", "title": "报告"})
+        assert len(out) > 1000
+
+    def test_pdf_rich(self):
+        out = export_pdf(self.RICH, {"topic": "T", "title": "报告"})
+        assert len(out) > 500
+
+    def test_markdown_json_plain_value(self):
+        """纯文本长值应作为段落输出"""
+        out = export_markdown({"topic": "T", "正文": "月" * 400}, {"topic": "T", "title": "报告"})
+        assert len(out) > 400

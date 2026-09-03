@@ -433,3 +433,27 @@ class TestIsPermanentError:
         from src.llm_client import LLMClient
         assert not LLMClient._is_permanent_llm_error(RuntimeError("timeout after 30s"))
         assert not LLMClient._is_permanent_llm_error(RuntimeError("rate limit"))
+
+
+class TestChatJsonRepairChain:
+    """chat_json 多层修复链测试"""
+
+    def test_prefix_text_json_extracted(self, client):
+        """前后缀文本中的 JSON 应被提取"""
+        with patch.object(client, 'chat', return_value='以下是结果：{"topic": "嫦娥六号"} 完'):
+            assert client.chat_json("s", "u") == {"topic": "嫦娥六号"}
+
+    def test_truncated_repaired_by_fix(self, client):
+        """截断 JSON 应经 _fix_truncated_json 修复"""
+        with patch.object(client, 'chat', return_value='{"topic": "嫦娥六号", "facts": ['):
+            client._fix_truncated_json = MagicMock(return_value='{"topic": "嫦娥六号", "facts": []}')
+            assert client.chat_json("s", "u") == {"topic": "嫦娥六号", "facts": []}
+
+    def test_embedding_failure_raises_after_retries(self, client):
+        """embedding 重试耗尽应抛出"""
+        client._embedding_client = MagicMock()
+        client._embedding_client.embeddings.create.side_effect = RuntimeError("down")
+        with patch('src.llm_client.time.sleep'):
+            with pytest.raises(RuntimeError):
+                client.get_embeddings_batch(["a"])
+        assert client._embedding_client.embeddings.create.call_count == 2
