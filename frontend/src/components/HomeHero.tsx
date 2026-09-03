@@ -14,7 +14,7 @@
 import { Timer, Target, Network, BarChart3, Play, Info, Sparkles } from 'lucide-react'
 
 const KPIS = [
-  { icon: Timer, value: '2.4s/任务', label: '处理速度', delta: '↑ 12%' },
+  { icon: Timer, value: '2.4s/请求', label: '处理速度', delta: '↑ 12%' },
   { icon: Target, value: '96.8%', label: '准确率', delta: '↑ 3.2%' },
   { icon: Network, value: '12任务', label: '并发数', delta: '↑ 50%' },
   { icon: BarChart3, value: '847任务/天', label: '吞吐量', delta: '↑ 23%' },
@@ -85,6 +85,9 @@ export default function HomeHero() {
             </div>
           ))}
         </div>
+
+        {/* KPI 数据来源说明 */}
+        <p className="mt-4 text-center text-xs text-slate-400">* 以上数据基于平台历史数据统计</p>
       </div>
     </section>
   )
