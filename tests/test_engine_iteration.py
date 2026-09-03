@@ -724,3 +724,72 @@ class TestExportProjectExtra:
     def test_get_stage_result_none(self, engine):
         p = engine.create_project(title="t", interest="议题")
         assert engine.get_stage_result(p.id, 1) is None  # 未运行
+
+
+class TestRunWithTimeout:
+    """限时执行工具测试"""
+
+    def test_returns_result(self, engine):
+        assert engine._run_with_timeout(lambda: 42, 2.0, -1, "t") == 42
+
+    def test_timeout_returns_default(self, engine):
+        import time
+        result = engine._run_with_timeout(lambda: time.sleep(3) or "late", 0.1, "DEFAULT", "慢任务")
+        assert result == "DEFAULT"
+
+    def test_exception_swallowed(self, engine):
+        def boom():
+            raise RuntimeError("x")
+        assert engine._run_with_timeout(boom, 1.0, "FALLBACK", "任务", swallow_exc=True) == "FALLBACK"
+
+    def test_exception_raised(self, engine):
+        def boom():
+            raise RuntimeError("x")
+        with pytest.raises(RuntimeError):
+            engine._run_with_timeout(boom, 1.0, None, "任务", swallow_exc=False)
+
+
+class TestStageContextAndKeywords:
+    """阶段上下文与关键词提取测试"""
+
+    def test_keywords_from_direction_and_rqs(self, engine):
+        inputs = {"direction": "国际传播研究", "research_questions": [{"text": "东盟如何报道"}],
+                  "research_questions_extra": []}
+        kws = engine._extract_keywords(inputs)
+        assert "国际传播研究" in kws
+        assert any("东盟" in k for k in kws)
+        assert len(kws) <= 5
+
+    def test_stage_search_query_different_by_stage(self, engine):
+        """不同阶段查询词应有差异（Issue #98）"""
+        inputs = {"topic": "嫦娥六号", "direction": "叙事框架"}
+        q1 = engine._stage_search_query(1, inputs)
+        q3 = engine._stage_search_query(3, inputs)
+        assert q1 and q3
+        assert "嫦娥六号" in q1
+
+    def test_build_context_degrades_gracefully(self, engine):
+        """外部服务不可用时上下文应降级为空结构"""
+        p = engine.create_project(title="t", interest="嫦娥六号")
+        ctx = engine._build_stage_context(WorkflowStage.LITERATURE, {"topic": "嫦娥六号"})
+        assert ctx.get("search_context") == []
+        assert ctx.get("knowledge_hits") == []
+        # INSPIRATION 阶段应有 kg_entities 键
+        ctx2 = engine._build_stage_context(WorkflowStage.INSPIRATION, {"topic": "嫦娥六号"})
+        assert ctx2.get("kg_entities") == []
+
+    def test_inject_previous_outputs(self, engine):
+        """前序已完成阶段产出应注入下游输入"""
+        p = engine.create_project(title="t", interest="朱雀2号火箭")
+        for s in (1, 2):
+            engine.run_stage(p.id, s, {})
+            engine.approve_stage(p.id, s)
+        project = engine.store.get(p.id)
+        inputs = {"topic": "朱雀2号火箭"}
+        engine._inject_previous_outputs(project, 3, inputs)
+        assert "inspiration_result" in inputs
+        assert "literature_review" in inputs
+        # 用户显式传入的 key 不被覆盖
+        inputs2 = {"topic": "t", "inspiration_result": "自定义"}
+        engine._inject_previous_outputs(project, 3, inputs2)
+        assert inputs2["inspiration_result"] == "自定义"
