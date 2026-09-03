@@ -532,3 +532,195 @@ class TestReviseWithLLM:
         mock_client.chat_json.return_value = {"sections": []}
         with patch('src.llm_client.get_llm_client', return_value=mock_client):
             assert eng._revise_literature_with_llm(project, it, {"api_key": "k"}) is None
+
+
+class TestReviseDesignWithLLM:
+    """研究设计 LLM 修订测试"""
+
+    def _proj(self, rq="default"):
+        project = MagicMock()
+        project.title, project.interest = "题目", "议题"
+        rec = MagicMock()
+        rec.output = {
+            "research_questions": rq if rq != "default" else [{"id": "RQ1", "text": "旧问题"}],
+            "hypotheses": [{"id": "H1", "statement": "旧假设"}]}
+        project.stages.get.return_value = rec
+        return project
+
+    def test_success_returns_patch(self, tmp_path):
+        from src.workflow.engine import WorkflowEngine
+        eng = WorkflowEngine(store=MagicMock())
+        it = IterationRecord(iteration=1, problems=[{"text": "细化RQ", "target_stage": 3}])
+        mock_client = MagicMock()
+        mock_client.chat_json.return_value = {
+            "research_questions": [{"id": "RQ1", "text": "新问题"}],
+            "hypotheses": [{"id": "H2", "statement": "新增假设", "hypothesis_type": "quantitative"}],
+        }
+        with patch('src.llm_client.get_llm_client', return_value=mock_client):
+            patch_out = eng._revise_design_with_llm(self._proj(), it, {"api_key": "k"})
+        assert patch_out["research_questions"][0]["text"] == "新问题"
+        assert patch_out["hypotheses"][0]["id"] == "H2"
+
+    def test_no_client_returns_none(self):
+        from src.workflow.engine import WorkflowEngine
+        eng = WorkflowEngine(store=MagicMock())
+        assert eng._revise_design_with_llm(self._proj(), IterationRecord(iteration=1), None) is None
+
+    def test_no_rq_returns_none(self, tmp_path):
+        from src.workflow.engine import WorkflowEngine
+        eng = WorkflowEngine(store=MagicMock())
+        project = self._proj(rq=[])
+        mock_client = MagicMock()
+        with patch('src.llm_client.get_llm_client', return_value=mock_client):
+            assert eng._revise_design_with_llm(project, IterationRecord(iteration=1), {"k": 1}) is None
+        mock_client.chat_json.assert_not_called()
+
+    def test_empty_result_returns_none(self, tmp_path):
+        from src.workflow.engine import WorkflowEngine
+        eng = WorkflowEngine(store=MagicMock())
+        mock_client = MagicMock()
+        mock_client.chat_json.return_value = {"research_questions": []}
+        with patch('src.llm_client.get_llm_client', return_value=mock_client):
+            assert eng._revise_design_with_llm(self._proj(), IterationRecord(iteration=1), {"k": 1}) is None
+
+    def test_exception_returns_none(self, tmp_path):
+        from src.workflow.engine import WorkflowEngine
+        eng = WorkflowEngine(store=MagicMock())
+        mock_client = MagicMock()
+        mock_client.chat_json.side_effect = RuntimeError("down")
+        with patch('src.llm_client.get_llm_client', return_value=mock_client):
+            assert eng._revise_design_with_llm(self._proj(), IterationRecord(iteration=1), {"k": 1}) is None
+
+
+class TestRunStageEdgeCases:
+    """run_stage 边界与降级测试"""
+
+    def test_stage_locked_raises(self, engine):
+        """未解锁阶段应拒绝"""
+        p = engine.create_project(interest="朱雀2号火箭")
+        with pytest.raises(ValueError, match="未解锁"):
+            engine.run_stage(p.id, 3, {})  # 当前在阶段 1
+
+    def test_invalid_stage_raises(self, engine):
+        p = engine.create_project(interest="朱雀2号火箭")
+        with pytest.raises(ValueError, match="非法阶段"):
+            engine.run_stage(p.id, 9, {})
+
+    def test_project_missing_raises(self, engine):
+        with pytest.raises(ValueError, match="不存在"):
+            engine.run_stage("proj_不存在", 1, {})
+
+    def test_agent_failure_marks_failed(self, engine):
+        """智能体异常时应标记 FAILED 并抛出"""
+        p = engine.create_project(interest="朱雀2号火箭")
+        failing = make_mock_agent({"topic": "t"})
+        failing.run.side_effect = RuntimeError("LLM 崩了")
+        engine._agents[WorkflowStage.INSPIRATION] = failing
+        with pytest.raises(RuntimeError):
+            engine.run_stage(p.id, 1, {})
+        project = engine.store.get(p.id)
+        assert project.stages["1"].status.value == "failed"
+
+    def test_science_data_autogen_success(self, engine, tmp_path, monkeypatch):
+        """本地无语料时应自动生成并入库（全链路 mock，成功后清理文件）"""
+        from src.pipeline import _safe_name
+        topic = "coverage临时议题XYZ"
+        loader = MagicMock()
+        loader.load_science_facts.return_value = []
+        vs = MagicMock()
+        vs.index = MagicMock()
+        vs.documents = []
+        kg = MagicMock()
+        mock_client = MagicMock()
+        mock_client.chat_json.return_value = {
+            "topic": topic, "key_facts": ["事实1"], "entities": [],
+            "relations": [], "timeline": [], "data_sources": []}
+        with patch('src.knowledge.data_loader.get_data_loader', return_value=loader), \
+             patch('src.llm_client.get_llm_client', return_value=mock_client), \
+             patch('src.knowledge.vector_store.get_vector_store', return_value=vs), \
+             patch('src.knowledge.kg_builder.get_knowledge_graph', return_value=kg):
+            p = engine.create_project(title="t", interest=topic)
+            record = engine.run_stage(p.id, 1, {})
+        assert record.status == StageStatus.AWAITING_REVIEW
+        # 清理生成的文件
+        f = Path(__file__).parent.parent / "data" / "science" / f"{_safe_name(topic)}_facts.json"
+        if f.exists():
+            f.unlink()
+
+    def test_science_data_autogen_degrades(self, engine, monkeypatch, tmp_path):
+        """自动生成失败（外部服务不可达）不应影响阶段主流程"""
+        loader = MagicMock()
+        loader.load_science_facts.return_value = []
+        with patch('src.knowledge.data_loader.get_data_loader', return_value=loader), \
+             patch('src.llm_client.get_llm_client', side_effect=RuntimeError("LLM down")):
+            p = engine.create_project(title="t", interest="coverage降级议题XYZ")
+            record = engine.run_stage(p.id, 1, {})
+        assert record.status == StageStatus.AWAITING_REVIEW  # 降级成功
+
+
+class TestExportProjectExtra:
+    """导出与多租户细节测试"""
+
+    def test_export_all_formats(self, engine):
+        """md/json/word/pdf 均应返回内容"""
+        p = engine.create_project(title="导出测试", interest="嫦娥六号")
+        engine.run_stage(p.id, 1, {})
+        engine.approve_stage(p.id, 1)
+        for fmt in ("md", "json"):
+            r = engine.export_project(p.id, fmt)
+            assert r["format"] == fmt
+            assert len(r["content"]) > 0
+        for fmt in ("word", "pdf"):
+            r = engine.export_project(p.id, fmt)
+            assert r["format"] == fmt
+            assert len(r["content_bytes"]) > 0
+
+    def test_export_unknown_project_raises(self, engine):
+        with pytest.raises(ValueError, match="不存在"):
+            engine.export_project("proj_no", "md")
+
+    def test_export_unknown_format_falls_back_md(self, engine):
+        """未知 fmt 回退 markdown 渲染"""
+        p = engine.create_project(title="t", interest="议题")
+        r = engine.export_project(p.id, "not_a_fmt")
+        assert r["format"] == "not_a_fmt"
+        assert "# t" in r["content"]
+
+    def test_to_markdown_structure(self, engine):
+        """Markdown 渲染包含标题/阶段/产出"""
+        p = engine.create_project(title="结构测试", interest="议题")
+        engine.run_stage(p.id, 1, {})
+        project = engine.store.get(p.id)
+        data = {
+            "id": project.id, "title": project.title, "interest": project.interest,
+            "current_stage": project.current_stage, "status": project.status,
+            "created_at": project.created_at, "updated_at": project.updated_at,
+            "stages": [{"stage": s, "name": n, "icon": "🔬", "status": "completed",
+                        "output": {"topic": "嫦娥六号", "key": "值"}}
+                       for s, n in [(1, "选题孵化"), (2, "文献综述")]],
+            "history": [],
+        }
+        md = engine._to_markdown(data)
+        assert "# 结构测试" in md
+        assert "选题孵化" in md
+        assert "嫦娥六号" in md  # 产出物 JSON 内嵌
+        assert "```json" in md
+
+    def test_get_agent_rebuilds_for_other_tenant(self, engine):
+        """不同用户 client 触发时 agent 应整体重建（防串号）"""
+        # fixture 预填了 agents；先模拟缓存已绑定用户 A 的 client
+        engine._agents_client = "client-A"
+        a1 = engine._get_agent(1, llm_client="client-A")
+        assert a1 is engine._agents[1]  # 同 client 复用
+        a2 = engine._get_agent(1, llm_client="client-B")
+        assert a2 is not a1  # 不同 client → 整体重建
+        assert engine._agents_client == "client-B"
+
+    def test_save_design_without_stage3_raises(self, engine):
+        p = engine.create_project(title="t", interest="议题")
+        with pytest.raises(ValueError, match="尚无产出物"):
+            engine.save_design(p.id, [{"id": "RQ1", "text": "x"}], [])
+
+    def test_get_stage_result_none(self, engine):
+        p = engine.create_project(title="t", interest="议题")
+        assert engine.get_stage_result(p.id, 1) is None  # 未运行
