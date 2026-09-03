@@ -11,6 +11,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from unittest.mock import patch
 
+from unittest.mock import patch, MagicMock
+
 from src.search.tashan_search import (
     TashanSearchService,
     _has_results,
@@ -89,3 +91,101 @@ class TestSingleton:
         assert isinstance(svc, TashanSearchService)
         svc2 = get_tashan_search_service()
         assert svc is svc2
+
+
+class TestSafeGet:
+    """带重试/鉴权的 GET 测试"""
+
+    def test_token_attached(self):
+        """有 token 时应附加 query 参数与 Bearer 头"""
+        svc = TashanSearchService.__new__(TashanSearchService)
+        svc.token = "tashan-test-token"
+        svc._http_client = None
+        client = MagicMock()
+        resp = MagicMock()
+        resp.raise_for_status.return_value = None
+        resp.json.return_value = {"ok": 1}
+        client.get.return_value = resp
+        svc._http_client = client
+        svc._safe_get("https://x.test/api", {"a": 1})
+        kwargs = client.get.call_args.kwargs
+        assert kwargs["params"]["token"] == "tashan-test-token"
+        assert kwargs["headers"]["Authorization"] == "Bearer tashan-test-token"
+
+    def test_detail_response_returns_none(self):
+        """detail 且无结果应视为失败"""
+        svc = TashanSearchService.__new__(TashanSearchService)
+        svc.token = None
+        client = MagicMock()
+        resp = MagicMock()
+        resp.raise_for_status.return_value = None
+        resp.json.return_value = {"detail": "not found"}
+        client.get.return_value = resp
+        svc._http_client = client
+        assert svc._safe_get("https://x/api") is None
+
+    def test_exception_returns_none(self):
+        svc = TashanSearchService.__new__(TashanSearchService)
+        svc.token = None
+        client = MagicMock()
+        client.get.side_effect = ConnectionError("net")
+        svc._http_client = client
+        assert svc._safe_get("https://x/api") is None
+
+
+def _svc():
+    svc = TashanSearchService.__new__(TashanSearchService)
+    svc.token = "test-token"  # aminer 等检索要求 token
+    return svc
+
+
+class TestSearchMethods:
+    """各搜索方法解析测试（mock _safe_get）"""
+
+    def test_aminer_parses_papers(self):
+        svc = _svc()
+        svc._safe_get = MagicMock(return_value={
+            "data": {"list": [{
+                "title": "Lunar samples study", "url": "https://p", "authors": "Li",
+                "venue": "Nature", "year": 2024,
+                "abstract": "研究月壤", "score": 0.9}]}})
+        results = svc._search_aminer("月球采样")
+        assert len(results) == 1
+        assert results[0].title == "Lunar samples study"
+        assert "作者" in results[0].content
+        assert "期刊" in results[0].content
+
+    def test_aminer_no_token(self):
+        svc = _svc()
+        svc.token = ""
+        assert svc._search_aminer("x") == []
+
+    def test_source_feed_filters_terms(self):
+        svc = _svc()
+        svc._safe_get = MagicMock(return_value={"list": [
+            {"title": "嫦娥六号 月背采样", "url": "https://a", "description": "报道", "source_feed_name": "央视"},
+            {"title": "无关新闻", "url": "https://b", "description": ""},
+        ]})
+        results = svc._search_source_feed("嫦娥六号", query_terms=["嫦娥六号"])
+        assert len(results) == 1
+        assert "信源: 央视" in results[0].content
+
+    def test_world_weave_relevance_filter(self):
+        svc = _svc()
+        svc._safe_get = MagicMock(return_value={"signals": [
+            {"title": "Space mission update", "url": "u1", "summary": "about 嫦娥六号", "region_label": "美国"},
+            {"title": "unrelated stock", "url": "u2", "summary": "finance"},
+        ]})
+        results = svc._search_world_weave("嫦娥六号", query_terms=["嫦娥六号"])
+        assert len(results) == 1
+        assert results[0].content.startswith("[美国]")
+
+    def test_literature_recent_filters(self):
+        svc = _svc()
+        svc._safe_get = MagicMock(return_value={"list": [
+            {"title": "月球火山活动研究", "url": "u1", "authors": ["张"], "category": "A"},
+            {"title": "量子计算", "url": "u2", "authors": ["李"]},
+        ]})
+        results = svc._search_literature_recent(query_terms=["月球"])
+        assert len(results) == 1
+        assert results[0].title == "月球火山活动研究"
