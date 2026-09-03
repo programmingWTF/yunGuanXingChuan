@@ -351,3 +351,34 @@ class TestParliamentStop:
             parliament_module.run_parliament_task("t_cb", "嫦娥六号", None, None)
             kwargs = MockParl.call_args.kwargs
             assert callable(kwargs.get("stop_check"))
+
+
+class TestRecordsEndpoint:
+    """议会记录列表端点测试"""
+
+    def test_records_lists_files(self, tmp_path, monkeypatch):
+        """records 应列出 parliament_*.json 文件"""
+        import api.routes.parliament as mod
+        from fastapi.testclient import TestClient
+        from api.main import app
+        mod.parliament_results.clear()
+        monkeypatch.setattr(mod, "RESULTS_DIR", tmp_path)
+        (tmp_path / "parliament_task_20260903_abc123.json").write_text("{}", encoding="utf-8")
+        with TestClient(app) as client:
+            r = client.get("/api/parliament/records")
+        assert r.status_code == 200
+        assert r.json()["count"] == 1
+        assert r.json()["records"][0]["filename"].startswith("parliament_")
+        mod.parliament_results.clear()
+
+    def test_records_empty(self, tmp_path, monkeypatch):
+        import api.routes.parliament as mod
+        from fastapi.testclient import TestClient
+        from api.main import app
+        mod.parliament_results.clear()
+        monkeypatch.setattr(mod, "RESULTS_DIR", tmp_path)
+        with TestClient(app) as client:
+            r = client.get("/api/parliament/records")
+        assert r.status_code == 200
+        assert r.json()["count"] == 0
+        mod.parliament_results.clear()
