@@ -529,3 +529,86 @@ class TestCheckClaimRelationMatch:
 
     def test_no_match_zero(self, validator):
         assert self._m(validator, "完全无关的断言文本", obj="另一个实体", pred="other_pred") == 0.0
+
+
+class TestCombineSignalsFull:
+    """三路信号综合判定全分支测试"""
+
+    def _c(self, validator, wd, wp, ac=None):
+        return validator._combine_signals(wd, wp, ac)
+
+    def test_two_strong_verified(self, validator):
+        status, conf, _ = self._c(validator,
+                                  {"status": "verified", "confidence": 0.8, "evidence": "a"},
+                                  {"status": "verified", "confidence": 0.7, "evidence": "b"})
+        assert status == "verified"
+        assert conf > 0.8
+
+    def test_one_strong_plus_real_partial(self, validator):
+        status, _, _ = self._c(validator,
+                               {"status": "verified", "confidence": 0.9, "evidence": "a"},
+                               {"status": "partial", "confidence": 0.5, "evidence": "b"})
+        assert status == "verified"
+
+    def test_one_strong_plus_empty_partial_not_verified(self, validator):
+        """佐证 partial 置信度 <0.3 不算有效佐证"""
+        status, _, _ = self._c(validator,
+                               {"status": "verified", "confidence": 0.9, "evidence": "a"},
+                               {"status": "partial", "confidence": 0.1, "evidence": ""})
+        assert status == "partial"
+
+    def test_single_academic_without_wiki_evidence_low_partial(self, validator):
+        """仅学术强证据 + wd/wp 未命中 → 低置信 partial（防荒谬断言）"""
+        status, conf, _ = self._c(validator,
+                                  {"status": "unverified", "confidence": 0.0, "evidence": ""},
+                                  {"status": "unverified", "confidence": 0.0, "evidence": ""},
+                                  {"status": "verified", "confidence": 0.9, "evidence": "论文"})
+        assert status == "partial"
+        assert conf == 0.5  # min(0.5, 0.9)
+
+    def test_single_strong_plain_partial(self, validator):
+        status, conf, _ = self._c(validator,
+                                  {"status": "verified", "confidence": 0.9, "evidence": "a"},
+                                  {"status": "unverified", "confidence": 0.0, "evidence": ""})
+        assert status == "partial"
+        assert conf == 0.75
+
+    def test_two_partial_with_wiki_backing(self, validator):
+        status, conf, _ = self._c(validator,
+                                  {"status": "partial", "confidence": 0.6, "evidence": "a"},
+                                  {"status": "partial", "confidence": 0.5, "evidence": "b"})
+        assert status == "partial"
+        assert abs(conf - 0.6) < 1e-9  # min(0.65, (0.6+0.5)/2+0.05)
+
+    def test_two_partial_no_wiki_evidence(self, validator):
+        """wd/wp 未命中时两路弱 partial 不上浮"""
+        status, conf, _ = self._c(validator,
+                                  {"status": "unverified", "confidence": 0.0, "evidence": ""},
+                                  {"status": "unverified", "confidence": 0.0, "evidence": ""},
+                                  {"status": "partial", "confidence": 0.5, "evidence": "c"},
+                                  )
+        # 只有一路 partial（academic）→ 单路 partial 低置信
+        assert status == "partial"
+        assert conf == 0.5
+
+    def test_single_partial(self, validator):
+        status, conf, _ = self._c(validator,
+                                  {"status": "partial", "confidence": 0.6, "evidence": "a"},
+                                  {"status": "unverified", "confidence": 0.0, "evidence": ""})
+        assert status == "partial"
+        assert conf == 0.5
+
+    def test_all_unverified_default_evidence(self, validator):
+        status, conf, evidence = self._c(validator,
+                                         {"status": "unverified", "confidence": 0.2, "evidence": ""},
+                                         {"status": "unverified", "confidence": 0.0, "evidence": ""})
+        assert status == "unverified"
+        assert abs(conf - 0.08) < 1e-9  # max*0.4
+        assert evidence == "无外部证据支持"
+
+    def test_academic_none_treated_empty(self, validator):
+        status, _, _ = self._c(validator,
+                               {"status": "unverified", "confidence": 0.0, "evidence": ""},
+                               {"status": "partial", "confidence": 0.6, "evidence": "b"},
+                               None)
+        assert status == "partial"
