@@ -862,3 +862,113 @@ class TestExtractEntities:
     def test_non_dict_output(self, engine):
         entities = engine._extract_entities("str", "议题")
         assert "议题" in entities
+
+
+class TestAttachSearchSources:
+    """搜索来源附加测试"""
+
+    def test_attaches_sources_and_query(self, engine):
+        out = {}
+        engine._attach_search_sources(out, [
+            {"url": "https://a.com", "title": "标题A", "content": "摘要", "source": "TavilySearch"},
+            "非法条目",  # 非 dict 跳过
+        ], "嫦娥六号 最新进展")
+        assert out["search_sources"][0]["url"] == "https://a.com"
+        assert out["search_query"] == "嫦娥六号 最新进展"
+
+    def test_no_sources_no_pollution(self, engine):
+        out = {"topic": "t"}
+        engine._attach_search_sources(out, [], "")
+        assert "search_sources" not in out
+        assert "search_query" not in out
+
+
+class TestInjectUserStyle:
+    """用户论文库风格注入测试"""
+
+    def test_non_writing_stage_skip(self, engine):
+        inputs = {}
+        engine._inject_user_style(WorkflowStage.DESIGN, inputs, "user1")
+        assert "style_sample" not in inputs
+
+    def test_no_owner_skip(self, engine):
+        inputs = {}
+        engine._inject_user_style(WorkflowStage.WRITING, inputs, None)
+        assert "style_sample" not in inputs
+
+    def test_user_disabled_skip(self, engine):
+        inputs = {}
+        engine._inject_user_style(WorkflowStage.WRITING, inputs, "u", use_user_style=False)
+        assert "style_sample" not in inputs
+
+    def test_explicit_style_sample_priority(self, engine):
+        inputs = {"style_sample": "用户自己提供"}
+        engine._inject_user_style(WorkflowStage.WRITING, inputs, "u")
+        assert inputs["style_sample"] == "用户自己提供"
+
+    def test_injects_library_style(self, engine):
+        lib = MagicMock()
+        lib.global_style.return_value = {
+            "few_shot": ["示例段落一", "示例段落二"],
+            "terms": ["框架理论", "议程设置"],
+        }
+        with patch('src.knowledge.user_library.get_user_library', return_value=lib):
+            inputs = {}
+            engine._inject_user_style(WorkflowStage.WRITING, inputs, "user1")
+        assert "示例段落一" in inputs["style_sample"]
+        assert "框架理论" in inputs["style_sample"]
+
+    def test_empty_style_skip(self, engine):
+        lib = MagicMock()
+        lib.global_style.return_value = {}
+        with patch('src.knowledge.user_library.get_user_library', return_value=lib):
+            inputs = {}
+            engine._inject_user_style(WorkflowStage.WRITING, inputs, "user1")
+        assert "style_sample" not in inputs
+
+    def test_library_exception_degrades(self, engine):
+        with patch('src.knowledge.user_library.get_user_library', side_effect=RuntimeError("db down")):
+            inputs = {}
+            engine._inject_user_style(WorkflowStage.WRITING, inputs, "user1")
+        assert "style_sample" not in inputs
+
+
+class TestAttachVerificationExtra:
+    """校验结果附加测试"""
+
+    def _out(self):
+        return {"topic": "嫦娥六号", "findings": [
+            {"finding": "嫦娥六号于2024年实现月背采样返回的客观记录描述"}]}
+
+    def test_success_attaches_verification(self, engine):
+        from src.schemas import VerificationResult, VerificationStatus
+        vr = VerificationResult(claim="c", status=VerificationStatus.VERIFIED,
+                                confidence=0.85, rag_evidence="ev", notes="n")
+        validator = MagicMock()
+        validator.cross_validate_claim.return_value = vr
+        with patch('src.verification.cross_validator.CrossValidator', return_value=validator):
+            out = self._out()
+            engine._attach_verification(WorkflowStage.DATA_ANALYSIS, out, "嫦娥六号")
+        assert out["verification"]["summary"]["total"] == 1
+        assert out["verification"]["summary"]["verified"] == 1
+        assert out["verification"]["items"][0]["confidence"] == 0.85
+
+    def test_validation_timeout_degrades(self, engine):
+        validator = MagicMock()
+        with patch('src.verification.cross_validator.CrossValidator', return_value=validator), \
+             patch.object(engine, '_run_with_timeout', return_value=None):
+            out = self._out()
+            engine._attach_verification(WorkflowStage.DATA_ANALYSIS, out, "嫦娥六号")
+        assert out["verification"]["items"][0]["notes"] == "校验超时（已降级）"
+        assert out["verification"]["summary"]["unverified"] == 1
+
+    def test_validator_init_failure_skips(self, engine):
+        with patch('src.verification.cross_validator.CrossValidator', side_effect=RuntimeError("cv down")):
+            out = self._out()
+            engine._attach_verification(WorkflowStage.DATA_ANALYSIS, out, "嫦娥六号")
+        assert "verification" not in out
+
+    def test_no_claims_skips(self, engine):
+        out = {"topic": "嫦娥六号"}  # 无 findings → 无断言
+        engine._attach_verification(WorkflowStage.DATA_ANALYSIS, out, "嫦娥六号")
+        assert "verification" not in out
