@@ -972,3 +972,73 @@ class TestAttachVerificationExtra:
         out = {"topic": "嫦娥六号"}  # 无 findings → 无断言
         engine._attach_verification(WorkflowStage.DATA_ANALYSIS, out, "嫦娥六号")
         assert "verification" not in out
+
+
+class TestPolishSection:
+    """论文章节润色测试"""
+
+    def test_success_returns_polished(self, engine):
+        mock_llm = MagicMock()
+        mock_llm.chat.return_value = "  润色后的内容  "
+        with patch('src.llm_client.get_llm_client', return_value=mock_llm):
+            out = engine.polish_section("引言", "原文内容", "更简洁", {"api_key": "k"})
+        assert out == "润色后的内容"
+        kwargs = mock_llm.chat.call_args.kwargs
+        assert kwargs["json_mode"] is False
+        assert kwargs["max_tokens"] == 4000
+
+    def test_timeout_raises(self, engine):
+        mock_llm = MagicMock()
+        with patch('src.llm_client.get_llm_client', return_value=mock_llm), \
+             patch.object(engine, '_run_with_timeout', return_value=None):
+            with pytest.raises(TimeoutError, match="超时"):
+                engine.polish_section("引言", "内容")
+
+
+class TestHotTopics:
+    """今日热点获取测试"""
+
+    def _source(self, title, url, content="内容"):
+        return type("S", (), {"title": title, "url": url, "content": content, "source": "T"})
+
+    def test_returns_filtered_topics(self, engine):
+        engine._hot_cache = {"at": 0, "items": []}
+        engine._hot_seen_urls = []
+        svc = MagicMock()
+        svc.search_for_topic.return_value = [
+            self._source("科技日报", "u1"),                     # junk 标题
+            self._source("中国航天今日取得新突破性进展", "https://a.com/x", "报道内容"),
+            self._source("短标题", "https://b.com"),            # 过短
+            self._source("人工智能大模型发布最新成果详情", "https://c.com"),
+        ]
+        with patch('src.search.unified_search.get_unified_search_service', return_value=svc):
+            items = engine.get_hot_topics(limit=6)
+        titles = [i["title"] for i in items]
+        assert "科技日报" not in titles
+        assert any("航天" in t for t in titles)
+        assert len(titles) == 2
+
+    def test_never_repeats_seen_url(self, engine):
+        engine._hot_cache = {"at": 0, "items": []}
+        engine._hot_seen_urls = ["https://seen.com/x"]
+        svc = MagicMock()
+        svc.search_for_topic.return_value = [
+            self._source("已经展示过的完整新闻标题内容", "https://seen.com/x"),
+            self._source("另一个全新科技新闻标题条目", "https://new.com/y"),
+        ]
+        with patch('src.search.unified_search.get_unified_search_service', return_value=svc):
+            items = engine.get_hot_topics(limit=6)
+        assert all(i["url"] != "https://seen.com/x" for i in items)
+
+    def test_cache_hit_skips_search(self, engine):
+        engine._hot_cache = {"at": 9999999999.0, "items": [{"title": "缓存项", "url": "u", "content": "", "source": ""}]}
+        svc = MagicMock()
+        with patch('src.search.unified_search.get_unified_search_service', return_value=svc):
+            items = engine.get_hot_topics(limit=6)
+        assert items[0]["title"] == "缓存项"
+        svc.search_for_topic.assert_not_called()
+
+    def test_search_failure_returns_empty(self, engine):
+        engine._hot_cache = {"at": 0, "items": []}
+        with patch('src.search.unified_search.get_unified_search_service', side_effect=RuntimeError("net")):
+            assert engine.get_hot_topics() == []
