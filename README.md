@@ -191,6 +191,8 @@ cp .env.example .env
 | `RESEND_API_KEY` | 邮箱验证码（用户系统，可选） | [Resend](https://resend.com/api-keys) |
 
 > 🔑 **多租户「自带钥匙」**：平台也支持用户登录后在「模型设置」页自行填写 Key，不强制在 `.env` 全局配置。
+>
+> 🎁 **Tavily 免配置**：`.env.example` 已内置一个公共演示 Key（所有账号/部署实例共用同一个，通过全局 `TAVILY_API_KEY` 环境变量生效），评委和演示用户无需注册即可直接使用 Tavily 搜索；如需自用请到 [Tavily](https://app.tavily.com/) 注册后替换。该演示 Key 免费额度每月 1000 次，用完即止，请勿用于生产环境。
 
 ### 第三步：安装依赖 + 启动
 
